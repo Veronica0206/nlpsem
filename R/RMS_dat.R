@@ -1,0 +1,41 @@
+#' ECLS-K (2011) Sample Dataset for Demonstration
+#'
+#' A sample dataset extracted from the public-use Early Childhood Longitudinal Study, Kindergarten Class of 2010-11 (ECLS-K:2011)
+#' collected by the National Center for Education Statistics (NCES). This dataset is NOT a posting of the original data, and
+#' it has been processed and formatted for use in demonstration purposes within this package. For access to the original
+#' data, please visit the NCES data products page at \url{https://nces.ed.gov/ecls/dataproducts.asp}.
+#'
+#' The ECLS-K:2011 offers a comprehensive and detailed set of information about children's early life experiences,
+#' focusing on children's health, development, education, and experiences in the years leading up to kindergarten.
+#'
+#' The sample dataset included in this package is used for demonstrating the functionality of the package's functions and
+#' it does not include survey weights. In real analysis, the complex survey weights provided by NCES should be utilized
+#' appropriately, for instance, as done in R packages such as \code{lavaan.survey} or \code{EdSurvey} if not using SEM.
+#'
+#' Please note that this data must not be used to attempt to identify respondents. For detailed documentation and proper usage of
+#' the ECLS-K:2011 data, please refer to the original source at the National Center for Education Statistics (NCES) website:
+#' \url{https://nces.ed.gov/}.
+#'
+#' @format A data frame with 500 rows and 49 variables:
+#' \describe{
+#'   \item{ID}{Identification number.}
+#'   \item{R1, R2, R3, R4, R5, R6, R7, R8, R9}{Reading scores from 9 study waves.}
+#'   \item{M1, M2, M3, M4, M5, M6, M7, M8, M9}{Math scores from 9 study waves.}
+#'   \item{S2, S3, S4, S5, S6, S7, S8, S9}{Science scores from 8 study waves (starting from the second study wave).}
+#'   \item{T1, T2, T3, T4, T5, T6, T7, T8, T9}{Children's age-in-month at 9 study waves.}
+#'   \item{SEX}{Sex of the child.}
+#'   \item{RACE}{Race of the child.}
+#'   \item{LOCALE}{Locale of the child's school.}
+#'   \item{INCOME}{Family income.}
+#'   \item{SCHOOL_TYPE}{Type of the child's school.}
+#'   \item{Approach_to_Learning}{Teacher's rating on the child's approach to learning.}
+#'   \item{Self_control}{Teacher's rating on the child's self-control.}
+#'   \item{Interpersonal}{Teacher's rating on the child's interpersonal skills.}
+#'   \item{External_prob_Behavior}{Teacher's rating on the child's external problem behaviors.}
+#'   \item{Internal_prob_Behavior}{Teacher's rating on the child's internal problem behaviors.}
+#'   \item{Attention_focus}{Teacher's rating on the child's attention focus.}
+#'   \item{Inhibitory_Ctrl}{Teacher's rating on the child's inhibitory control.}
+#'   \item{EDU}{Highest education level between the child's parents.}
+#' }
+#' @source \url{https://nces.ed.gov/ecls/dataproducts.asp}
+"RMS_dat"

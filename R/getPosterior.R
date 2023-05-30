@@ -1,0 +1,120 @@
+#' @title Compute Posterior Probabilities, Cluster Assignments, and Model Entropy for a Longitudinal Mixture Model
+#'
+#' @description This function computes posterior probabilities, cluster assignments, and model entropy for a given mixture model
+#' with a predefined number of classes. If the true labels are available, it can also compute the model accuracy.
+#'
+#' @param model A fitted mxModel object. This is the output from \code{getMIX()}.
+#' @param nClass An integer representing the predefined number of latent classes in the model.
+#' @param label A logical value indicating whether the data contains true labels. Default is FALSE.
+#' @param cluster_TIC A string or character vector representing the column name(s) for time-invariant covariate(s)
+#' indicating cluster formations. Default is \code{NULL}, indicating that no such time-invariant covariates are present
+#' in the model.
+#'
+#' @return A list containing:
+#' \itemize{
+#'   \item {\code{prob}: A matrix of posterior probabilities.}
+#'   \item {\code{membership}: A vector indicating class membership based on maximum posterior probability.}
+#'   \item {\code{entropy}: The entropy of the model, a measure of uncertainty in class assignment.}
+#'   \item {\code{accuracy}: The model's accuracy, if true labels are provided (\code{label = TRUE}).}
+#' }
+#'
+#' @references
+#' \itemize{
+#'   \item {Peugh, J., & Fan, X. (2015). Enumeration Index Performance in Generalized Growth Mixture Models:
+#' A Monte Carlo Test of Muthén's (2003) Hypothesis. Structural Equation Modeling: A Multidisciplinary Journal, 22(1), 115-131.
+#' Routledge. \doi{10.1080/10705511.2014.919823}}
+#'   \item {Lubke, G., & Muthén, B.O. (2007). Performance of Factor Mixture Models as a Function of Model Size,
+#' Covariate Effects, and Class-Specific Parameters. Structural Equation Modeling: A Multidisciplinary Journal, 14(1), 26-47.
+#' Routledge. \doi{10.1080/10705510709336735}}
+#' }
+#'
+#' @export
+#'
+#' @examples
+#' OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+#' data("RMS_dat")
+#' RMS_dat0 <- RMS_dat
+#' baseT <- RMS_dat0$T1
+#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
+#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
+#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
+#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
+#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
+#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
+#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
+#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
+#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
+#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+#' RMS_dat0$gx1 <- scale(RMS_dat0$INCOME)
+#' RMS_dat0$gx2 <- scale(RMS_dat0$EDU)
+#' \donttest{
+#' set.seed(20191029)
+#' MIX_BLS_LGCM_r <-  getMIX(
+#'   dat = RMS_dat0, prop_starts = c(0.33, 0.34, 0.33), sub_Model = "LGCM",
+#'   cluster_TIC = NULL, y_var = "M", t_var = "T", records = 1:9, curveFun = "BLS",
+#'   intrinsic = FALSE, res_scale = list(0.3, 0.3, 0.3), growth_TIC = NULL, tries = 10
+#' )
+#' label1 <- getPosterior(
+#'   model = MIX_BLS_LGCM_r, nClass = 3, label = FALSE, cluster_TIC = NULL
+#' )
+#' set.seed(20191029)
+#' MIX_BLS_LGCM.TIC_r <-  getMIX(
+#'   dat = RMS_dat0, prop_starts = c(0.33, 0.34, 0.33), sub_Model = "LGCM",
+#'   cluster_TIC = c("gx1", "gx2"), y_var = "M", t_var = "T", records = 1:9,
+#'   curveFun = "BLS", intrinsic = FALSE, res_scale = list(0.3, 0.3, 0.3),
+#'   growth_TIC = c("ex1", "ex2"), tries = 10
+#' )
+#' label2 <- getPosterior(
+#'   model = MIX_BLS_LGCM.TIC_r, nClass = 3, label = FALSE, cluster_TIC = c("gx1", "gx2")
+#' )
+#' }
+#'
+#' @importFrom OpenMx mxEval
+#'
+getPosterior <- function(model, nClass, label = FALSE, cluster_TIC = NULL){
+  # Extract submodels from the input model
+  subs <- model@submodels
+  # Define a function to get the likelihood for a submodel
+  getLIK <- function(num){
+    return(mxEval(objective, subs[[num]]))
+  }
+  # Compute the likelihood for each submodel
+  likelihood <- sapply(1:length(names(subs)), getLIK)
+  # Initialize a probability matrix
+  prob <- matrix(0, nrow = nrow(model$data$observed), ncol = nClass)
+  # Calculate class probabilities based on model weights or time-invariant covariates that inform class formation
+  if (is.null(cluster_TIC)){
+    # Compute class probabilities based on model weights
+    log_cp <- model$weights$values
+    classProbs <- exp(log_cp)/sum(exp(log_cp))
+    # Compute posterior probabilities for each observation
+    for (i in 1:nrow(model$data$observed)){
+      prob[i, ] <- classProbs * likelihood[i, ]/sum(classProbs * likelihood[i, ])
+    }
+  }
+  else if (!is.null(cluster_TIC)){
+    # Compute class probabilities based on time-invariant covariates that inform class formation
+    oneX <- as.matrix(cbind(matrix(1, nrow = nrow(model$data$observed), ncol = 1),
+                            model$data$observed[, cluster_TIC]))
+    prop <- exp(oneX %*% t(model$classbeta$values))
+    classProbs <- prop/apply(prop, 1, sum)
+    # Compute posterior probabilities for each observation
+    for (i in 1:nrow(model$data$observed)){
+      prob[i, ] <- classProbs[i, ] * likelihood[i, ]/sum(classProbs[i, ] * likelihood[i, ])
+    }
+  }
+  # Assign cluster membership based on maximum posterior probability
+  membership <- apply(prob, 1, which.max)
+  # Calculate entropy
+  entropy <- 1 - sum(-prob * log(prob))/(nrow(model$data$observed) * log(nClass))
+  if (label){
+    true_labels <- model$data$observed$class
+    # Calculate accuracy
+    accuracy <- sum(true_labels == membership)/length(true_labels)
+    return(list(prob = prob, membership = membership, entropy = entropy, accuracy = accuracy))
+  }
+  else if (!label){
+    return(list(prob = prob, membership = membership, entropy = entropy))
+  }
+}
