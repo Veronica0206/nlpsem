@@ -1,0 +1,142 @@
+---
+title: "Examples of Latent Change Score Models"
+output: rmarkdown::html_vignette
+description: > 
+  This vignette provides a comprehensive exploration and practical demonstrations of the `getLCSM()` function. This function is designed to construct Latent Change Score Models (LCSMs) using one of four different functional forms: quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LCSMs can be fitted as intrinsically nonlinear models. Moreover, the function provides the flexibility to be constructed with or without the incorporation of time-invariant covariates (TICs).
+vignette: >
+  %\VignetteIndexEntry{getLCSM_examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
+```{r, message = FALSE}
+library(OpenMx)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(nlpsem)
+mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+```
+
+## Load pre-computed models
+```{r, message = FALSE}
+load(system.file("extdata", "getLCSM_examples.RData", package = "nlpsem"))
+```
+
+## Load example data and preprocess data
+```{r, message = FALSE, eval = FALSE}
+# Load ECLS-K (2011) data
+data("RMS_dat")
+RMS_dat0 <- RMS_dat
+# Re-baseline the data so that the estimated initial status is for the
+# starting point of the study
+baseT <- RMS_dat0$T1
+RMS_dat0$T1 <- (RMS_dat0$T1 - baseT)/12
+RMS_dat0$T2 <- (RMS_dat0$T2 - baseT)/12
+RMS_dat0$T3 <- (RMS_dat0$T3 - baseT)/12
+RMS_dat0$T4 <- (RMS_dat0$T4 - baseT)/12
+RMS_dat0$T5 <- (RMS_dat0$T5 - baseT)/12
+RMS_dat0$T6 <- (RMS_dat0$T6 - baseT)/12
+RMS_dat0$T7 <- (RMS_dat0$T7 - baseT)/12
+RMS_dat0$T8 <- (RMS_dat0$T8 - baseT)/12
+RMS_dat0$T9 <- (RMS_dat0$T9 - baseT)/12
+# Standardize time-invariant covariates (TICs)
+## ex1 and ex2 are standardized growth TICs in models
+RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
+RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+xstarts <- mean(baseT)/12
+```
+
+## Example 1: Fit nonparametric LCSMs to assess the development of reading ability from Kindergarten to Grade 5, both with and without incorporating baseline teacher-reported approach to learning and attentional focus. The `getSummary()` function is used to generate a comprehensive summary table for these two models. Additionally, the visual representations of the growth rate and change from the baseline for both models.
+```{r, message = FALSE, eval = FALSE}
+paraNonP_LCSM <- c(
+  c("mueta0", "mueta1", paste0("psi", c("00", "01", "11")), paste0("rel_rate", 2:8),
+    "residuals", paste0("slp_val_est", 1:8), paste0("slp_var_est", 1:8),
+    paste0("chg_inv_val_est", 1:8), paste0("chg_inv_var_est", 1:8),
+    paste0("chg_bl_val_est", 1:8), paste0("chg_bl_var_est", 1:8))
+  )
+Read_LCSM_NonP <- getLCSM(
+  dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "nonparametric",
+  intrinsic = FALSE, records = 1:9, growth_TIC = NULL, res_scale = 0.1, 
+  paramOut = TRUE, names = paraNonP_LCSM
+  )
+paraNonP_LCSM_TIC <- c(
+  c("alpha0", "alpha1", paste0("psi", c("00", "01", "11")), paste0("rel_rate", 2:8),
+    "residuals", paste0("beta1", c(0:1)), paste0("beta2", c(0:1)),
+    paste0("mux", 1:2), paste0("phi", c("11", "12", "22")), "mueta0", "mueta1",
+    paste0("slp_val_est", 1:8), paste0("slp_var_est", 1:8),
+    paste0("chg_inv_val_est", 1:8), paste0("chg_inv_var_est", 1:8),
+    paste0("chg_bl_val_est", 1:8), paste0("chg_bl_var_est", 1:8))
+  )
+Read_LCSM_NonP_TIC <- getLCSM(
+  dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "nonparametric",
+  intrinsic = FALSE, records = 1:9, growth_TIC = c("ex1", "ex2"), res_scale = 0.1, 
+  paramOut = TRUE, names = paraNonP_LCSM_TIC
+  )
+```
+```{r}
+getSummary(model_list = list(Read_LCSM_NonP[[1]], Read_LCSM_NonP_TIC[[1]]))
+Figure1 <- getFigure(
+  model = Read_LCSM_NonP[[1]], sub_Model = "LCSM", y_var = "R", curveFun = "NonP", 
+  y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
+  outcome = "Reading"
+)
+print(Figure1[[1]])
+print(Figure1[[2]])
+Figure2 <- getFigure(
+  model = Read_LCSM_NonP_TIC[[1]], sub_Model = "LCSM", y_var = "R", curveFun = "NonP", 
+  y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
+  outcome = "Reading"
+)
+print(Figure2[[1]])
+print(Figure2[[2]])
+```
+
+
+## Example 2: Fit LCSMs with quadratic, negative exponential and Jenss-Bayley functional forms. Additionally, the visual representations change from the baseline for three models.
+```{r, message = FALSE, eval = FALSE}
+Read_LCSM_QUAD <- getLCSM(
+  dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "quadratic", intrinsic = FALSE,
+  records = 1:9, res_scale = 0.1
+  )
+set.seed(20191029)
+Read_LCSM_EXP_r <- getLCSM(
+  dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "negative exponential",
+  intrinsic = FALSE, records = 1:9, res_scale = 0.1, tries = 10
+  )
+set.seed(20191029)
+Read_LCSM_JB_r <- getLCSM(
+  dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "Jenss-Bayley",
+  intrinsic = FALSE, records = 1:9, res_scale = 0.1, tries = 10
+  )
+```
+
+```{r}
+Figure3 <- getFigure(
+  model = Read_LCSM_QUAD, sub_Model = "LCSM", y_var = "R", curveFun = "QUAD", 
+  y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
+  outcome = "Reading"
+)
+print(Figure3[[1]])
+Figure4 <- getFigure(
+  model = Read_LCSM_EXP_r, sub_Model = "LCSM", y_var = "R", curveFun = "EXP", 
+  y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
+  outcome = "Reading"
+)
+print(Figure4[[1]])
+Figure5 <- getFigure(
+  model = Read_LCSM_JB_r, sub_Model = "LCSM", y_var = "R", curveFun = "JB", 
+  y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
+  outcome = "Reading"
+)
+print(Figure5[[1]])
+```

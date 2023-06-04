@@ -1,0 +1,114 @@
+---
+title: "Examples of Latent Growth Curve Models"
+output: rmarkdown::html_vignette
+description: > 
+  This vignette provides a comprehensive exploration and practical demonstrations of the `getLGCM()` function. This function is designed to construct Latent Growth Curve Models (LGCMs) using one of five different functional forms: linear, quadratic, negative exponential, Jenss-Bayley, and bilinear spline. Notably, the negative exponential, Jenss-Bayley, and bilinear spline LGCMs can be fitted as intrinsically nonlinear models. Moreover, the function provides the flexibility to be constructed with or without the incorporation of time-invariant covariates (TICs).
+vignette: >
+  %\VignetteIndexEntry{getLGCM_examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
+```{r, message = FALSE}
+library(OpenMx)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(nlpsem)
+mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+```
+
+## Load pre-computed models
+```{r, message = FALSE}
+load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
+```
+
+## Load example data and preprocess data
+```{r, message = FALSE, eval = FALSE}
+# Load ECLS-K (2011) data
+data("RMS_dat")
+RMS_dat0 <- RMS_dat
+# Re-baseline the data so that the estimated initial status is for the
+# starting point of the study
+baseT <- RMS_dat0$T1
+RMS_dat0$T1 <- RMS_dat0$T1 - baseT
+RMS_dat0$T2 <- RMS_dat0$T2 - baseT
+RMS_dat0$T3 <- RMS_dat0$T3 - baseT
+RMS_dat0$T4 <- RMS_dat0$T4 - baseT
+RMS_dat0$T5 <- RMS_dat0$T5 - baseT
+RMS_dat0$T6 <- RMS_dat0$T6 - baseT
+RMS_dat0$T7 <- RMS_dat0$T7 - baseT
+RMS_dat0$T8 <- RMS_dat0$T8 - baseT
+RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+# Standardize time-invariant covariates (TICs)
+## ex1 and ex2 are standardized growth TICs in models
+RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
+RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+xstarts <- mean(baseT)
+```
+
+## Example 1: Fit bilinear spline LGCMs with both a random and a fixed knot to evaluate the development of mathematics ability from Kindergarten to Grade 5. These models are then compared using a likelihood ratio test (LRT) utilizing the getLRT() function.
+```{r, message = FALSE, eval = FALSE}
+Math_LGCM_BLS_f <- getLGCM(
+  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
+  intrinsic = TRUE, records = 1:9, growth_TIC = NULL, res_scale = 0.1
+)
+Math_LGCM_BLS_r <- getLGCM(
+  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
+  intrinsic = FALSE, records = 1:9, growth_TIC = NULL, res_scale = 0.1
+)
+```
+
+```{r}
+getLRT(
+  full = Math_LGCM_BLS_f, reduced = Math_LGCM_BLS_r, boot = FALSE, replications = NA
+  )
+```
+
+The output illustrates a difference of $4$ degrees of freedom between the full model (bilinear spline LGCM with a random knot) and the reduced model (bilinear spline LGCM with a fixed knot). This difference arises from the knot variance and its covariance with the intercept and the two slopes. A Likelihood Ratio Test (LRT) returns a p-value of less than $0.0001$, which is indicative of the test favoring the full model. Additionally, both the Akaike Information Criterion (AIC) and the Bayesian Information Criterion (BIC) corroborate this preference, suggesting the superiority of the full model over the reduced one.
+
+## Example 2: Fit the full bilinear spline LGCM to assess the development of mathematics skill from Kindergarten to Grade 5. This model includes two growth time-invariant covariates (TICs), baseline values of teacher-reported approach to learning and attentional focus. Point estimates and corresponding standard errors (SEs) of all parameters are presented within the original parameter space. The plot of the growth status of mathematics ability is also provided.
+```{r, message = FALSE, eval = FALSE}
+paraBLS.TIC_LGCM.f <- c(
+  "alpha0", "alpha1", "alpha2", "alphag", 
+  paste0("psi", c("00", "01", "02", "0g", "11", "12", "1g", "22", "2g", "gg")),
+  "residuals", 
+  paste0("beta1", c(0:2, "g")), paste0("beta2", c(0:2, "g")),
+  paste0("mux", 1:2), paste0("phi", c("11", "12", "22")), 
+  "mueta0", "mueta1", "mueta2", "mu_knot"
+  )
+Math_LGCM_TIC_BLS_f <- getLGCM(
+  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
+  intrinsic = TRUE, records = 1:9, growth_TIC = c("ex1", "ex2"), res_scale = 0.1, 
+  paramOut = TRUE, names = paraBLS.TIC_LGCM.f
+  )
+```
+
+```{r}
+Math_LGCM_TIC_BLS_f[[2]]
+getFigure(
+  model = Math_LGCM_TIC_BLS_f[[1]], nClass = NULL, cluster_TIC = NULL, sub_Model = "LGCM",
+  y_var = "M", curveFun = "BLS", y_model = "LGCM", t_var = "T", records = 1:9,
+  m_var = NULL, x_var = NULL, x_type = NULL, xstarts = xstarts, xlab = "Month",
+  outcome = "Mathematics"
+)
+```
+
+In the provided output, the terms alpha0, alpha1, alpha2, and alphag denote the conditional mean values of the intercept, first slope, second slope, and knot on growth TICs. The terms mueta0, mueta1, mueta2, and mu_knot represent the mean values of the intercept, first slope, second slope, and knot. These corresponding values match as we've centered the growth TICs.
+
+The mean values of growth factors suggest that the rate of progress in mathematical ability slowed down after approximately 35.16 months since the beginning of the study. Moreover, the psi terms indicate the unexplained variance or covariance of the growth factors, while residuals corresponds to residual variance.
+
+Moreover, beta10, beta11, beta12, and beta1g are path coefficients from the first growth TIC (i.e., baseline teacher-reported approach to learning) to the intercept, first slope, second slope, and knot, respectively. Similarly, beta2's correspond to the path coefficients of the baseline teacher-reported attentional focus.
+
+The interpretations of these coefficients are rather intuitive. For instance, a beta1g value of $0.2187$ implies that a one standardized unit increase in baseline teacher-reported approach to learning delays the transition time to slower development by $0.2187$ months. Similarly, a beta2g value of $-0.9865$ indicates that a one standardized unit increase in baseline teacher-reported attentional focus advances the transition time to slower development by $0.9865$ months.
+
+However, caution is required when considering potential colinearity between growth TICs. The graphic representation of mathematical development also supports the observation that developmental pace slows down in later stages.
