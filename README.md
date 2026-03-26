@@ -129,7 +129,7 @@ Highlights include:
 - synchronized vignettes and saved example objects
 - a new `testthat` test suite and cleaner CRAN-facing documentation
 
-See [NEWS.md](NEWS.md) for a fuller summary of changes from version 0.3.
+See [NEWS.md](NEWS.md) for a more comprehensive summary of changes from version 0.3.
 
 ## Documentation
 
