@@ -1,0 +1,179 @@
+---
+title: "Introduction to nlpsem"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to nlpsem}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+The **nlpsem** package provides computational tools for fitting linear and
+nonlinear longitudinal models within the structural equation modeling (SEM)
+framework. It is built on top of the **OpenMx** package and is designed to
+handle intrinsically nonlinear growth functions that cannot be expressed as
+simple reparameterizations of linear models.
+
+The methods implemented in this package are described in
+Liu (2025) [doi:10.3758/s13428-025-02596-4](https://doi.org/10.3758/s13428-025-02596-4).
+
+## Modeling Scenarios
+
+The package supports four modeling scenarios:
+
+1. **Univariate longitudinal processes** -- Models for a single longitudinal
+   outcome with growth factors, optionally including time-invariant covariates
+   (TICs) and time-varying covariates (TVCs). Key functions: `getLGCM()`,
+   `getLCSM()`, `getTVCmodel()`.
+
+2. **Multivariate longitudinal processes** -- Models that assess the correlation
+   or causation between multiple longitudinal variables. Key functions:
+   `getMGM()`, `getMediation()`.
+
+3. **Multiple-group models** -- Extensions of scenarios 1 and 2 that evaluate
+   differences among manifested groups. Key function: `getMGroup()`.
+
+4. **Longitudinal mixture models** -- Extensions of scenarios 1 and 2 that
+   assume trajectories arise from multiple latent classes. Key function:
+   `getMIX()`.
+
+## Supported Growth Curve Functions
+
+The following functional forms are available for specifying the shape of
+longitudinal trajectories:
+
+| Curve Function       | Abbreviation | Available in LGCM | Available in LCSM |
+|:---------------------|:-------------|:------------------:|:------------------:|
+| Linear               | `"LIN"`      | Yes                | --                 |
+| Quadratic            | `"QUAD"`     | Yes                | Yes                |
+| Negative exponential | `"EXP"`      | Yes                | Yes                |
+| Jenss-Bayley         | `"JB"`       | Yes                | Yes                |
+| Bilinear spline      | `"BLS"`      | Yes                | --                 |
+| Nonparametric        | `"NonP"`     | --                 | Yes                |
+
+The negative exponential, Jenss-Bayley, and bilinear spline models can be
+fitted as intrinsically nonlinear models (set `intrinsic = TRUE`), which allows
+certain parameters (e.g., the knot in bilinear spline models) to vary across
+individuals.
+
+## Quick-Start Example
+
+The package ships with the `RMS_dat` dataset, a processed sample from the
+ECLS-K:2011 study containing reading, mathematics, and science scores across
+nine study waves for 500 children.
+
+### Data Preparation
+
+```{r, eval = FALSE}
+library(nlpsem)
+mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+
+# Load ECLS-K (2011) data
+data("RMS_dat")
+RMS_dat0 <- RMS_dat
+
+# Re-baseline the data so that the estimated initial status corresponds to
+# the starting point of the study
+baseT <- RMS_dat0$T1
+for (i in 1:9) {
+  RMS_dat0[[paste0("T", i)]] <- RMS_dat0[[paste0("T", i)]] - baseT
+}
+xstarts <- mean(baseT)
+```
+
+### Fitting a Latent Growth Curve Model
+
+Below we fit a bilinear spline LGCM with a fixed knot to the mathematics
+scores. Setting `intrinsic = FALSE` fixes the knot location across
+individuals, while `intrinsic = TRUE` would allow the knot to vary.
+
+```{r, eval = FALSE}
+# Fit bilinear spline LGCM (fixed knot)
+Math_BLS_fixed <- getLGCM(
+  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
+  intrinsic = FALSE, records = 1:9
+)
+```
+
+To obtain parameter estimates and standard errors, set `paramOut = TRUE`:
+
+```{r, eval = FALSE}
+# Fit with parameter output
+Math_BLS_fixed <- getLGCM(
+  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
+  intrinsic = FALSE, records = 1:9,
+  paramOut = TRUE
+)
+
+# View estimates
+printTable(Math_BLS_fixed)
+```
+
+## Post-Processing
+
+### Model Fit Summary
+
+Use `getSummary()` to compare fit statistics (number of parameters, -2LL,
+AIC, BIC) across one or more models:
+
+```{r, eval = FALSE}
+getSummary(model_list = list(Math_BLS_fixed@mxOutput))
+```
+
+### Parameter Inference
+
+Use `getEstimateStats()` to obtain p-values and confidence intervals for
+the estimated parameters:
+
+```{r, eval = FALSE}
+getEstimateStats(
+  est_in = Math_BLS_fixed@Estimates, CI_type = "Wald"
+)
+```
+
+The function supports Wald, likelihood-based, and bootstrap confidence
+intervals via the `CI_type` argument.
+
+### Visualization
+
+Use `getFigure()` to plot estimated growth trajectories with 95% confidence
+intervals:
+
+```{r, eval = FALSE}
+Figure <- getFigure(
+  model = Math_BLS_fixed@mxOutput, nClass = NULL, cluster_TIC = NULL,
+  sub_Model = "LGCM", y_var = "M", curveFun = "BLS", y_model = "LGCM",
+  t_var = "T", records = 1:9, m_var = NULL, x_var = NULL, x_type = NULL,
+  xstarts = xstarts, xlab = "Month", outcome = "Mathematics"
+)
+show(Figure)
+```
+
+### Other Useful Functions
+
+- `getLRT()`: Perform a likelihood ratio test to compare nested models (e.g.,
+  fixed vs. random knot).
+- `getIndFS()`: Obtain individual factor scores from a fitted model.
+- `getPosterior()`: Compute posterior class probabilities for mixture models.
+- `getLatentKappa()`: Calculate Cohen's kappa for agreement between latent
+  class assignments.
+
+## Further Reading
+
+For detailed examples of each modeling scenario, see the following vignettes:
+
+- `vignette("getLGCM_examples")` -- Latent growth curve models
+- `vignette("getLCSM_examples")` -- Latent change score models
+- `vignette("getTVCmodel_examples")` -- Models with time-varying covariates
+- `vignette("getMGM_examples")` -- Multivariate growth models
+- `vignette("getMediation_examples")` -- Longitudinal mediation models
+- `vignette("getMGroup_examples")` -- Multiple-group models
+- `vignette("getMIX_examples")` -- Mixture models

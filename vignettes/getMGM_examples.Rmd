@@ -1,0 +1,86 @@
+---
+title: "Examples of Multivariate Longitudinal Models"
+output: rmarkdown::html_vignette
+description: > 
+  This vignette provides a comprehensive exploration and practical demonstrations of the `getMGM()` function. This function is designed to construct multivariate Latent Growth Curve Models (LGCMs) or Latent Change Score Models (LCSMs). The supported functional forms of LGCMs include linear, quadratic, negative exponential, Jenss-Bayley, and bilinear spline. LCSMs support quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LGCMs/LCSMs, as well as bilinear spline LGCMs, can be fitted as intrinsically nonlinear models. 
+vignette: >
+  %\VignetteIndexEntry{getMGM_examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+has_data <- nzchar(system.file("extdata", "getMGM_examples.RData", package = "nlpsem"))
+knitr::opts_chunk$set(eval = has_data)
+```
+
+## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
+```{r, message = FALSE}
+library(nlpsem)
+mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+```
+
+## Load pre-computed models
+```{r, message = FALSE}
+load(system.file("extdata", "getMGM_examples.RData", package = "nlpsem"))
+```
+
+## Load example data and preprocess data
+```{r, message = FALSE, eval = FALSE}
+# Load ECLS-K (2011) data
+data("RMS_dat")
+RMS_dat0 <- RMS_dat
+# Re-baseline the data so that the estimated initial status is for the
+# starting point of the study
+baseT <- RMS_dat0$T1
+RMS_dat0$T1 <- RMS_dat0$T1 - baseT
+RMS_dat0$T2 <- RMS_dat0$T2 - baseT
+RMS_dat0$T3 <- RMS_dat0$T3 - baseT
+RMS_dat0$T4 <- RMS_dat0$T4 - baseT
+RMS_dat0$T5 <- RMS_dat0$T5 - baseT
+RMS_dat0$T6 <- RMS_dat0$T6 - baseT
+RMS_dat0$T7 <- RMS_dat0$T7 - baseT
+RMS_dat0$T8 <- RMS_dat0$T8 - baseT
+RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+xstarts <- mean(baseT)
+```
+
+## Example 1: Fit multivariate bilinear spline LGCMs fixed knots to evaluate the development of reading and mathematics ability from Kindergarten to Grade 5. 
+```{r, message = FALSE, eval = FALSE}
+RM_PLGCM.r <- getMGM(
+  dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "BLS",
+  intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM",
+  tries = 10, paramOut = TRUE
+  )
+```
+
+```{r}
+Figure1 <- getFigure(
+  model = RM_PLGCM.r@mxOutput, sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", 
+  y_model = "LGCM", t_var = c("T", "T"), records = list(1:9, 1:9), xstarts = xstarts, 
+  xlab = "Month", outcome = c("Reading", "Mathematics")
+)
+show(Figure1)
+```
+
+## Example 2: Fit multivariate bilinear spline LGCMs with random knots to evaluate the development of reading and mathematics ability from Kindergarten to Grade 5. 
+```{r, message = FALSE, eval = FALSE}
+RM_PLGCM.f <- getMGM(
+  dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "BLS",
+  intrinsic = TRUE, records = list(1:9, 1:9), y_model = "LGCM",
+  tries = 10, paramOut = TRUE
+  )
+```
+
+```{r}
+Figure2 <- getFigure(
+  model = RM_PLGCM.f@mxOutput, sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", 
+  y_model = "LGCM", t_var = c("T", "T"), records = list(1:9, 1:9), xstarts = xstarts, 
+  xlab = "Month", outcome = c("Reading", "Mathematics")
+)
+show(Figure2)
+```

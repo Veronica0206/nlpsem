@@ -1,0 +1,94 @@
+---
+title: "Multiple-group Longitudinal Models"
+description: > 
+  This vignette provides a comprehensive exploration and practical demonstrations of the `getMGroup()` function. This function is designed for the construction of multiple-group longitudinal models. The models produced by getLGCM(), getLCSM(), getTVCmodel(), getMGM(), and getMediation() can all serve as sub-models within a multiple-group model.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{getMGroup_examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+has_data <- nzchar(system.file("extdata", "getMGroup_examples.RData", package = "nlpsem"))
+knitr::opts_chunk$set(eval = has_data)
+```
+
+## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
+```{r, message = FALSE}
+library(nlpsem)
+mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+```
+
+## Load pre-computed models
+```{r, message = FALSE}
+load(system.file("extdata", "getMGroup_examples.RData", package = "nlpsem"))
+```
+
+## Load example data and preprocess data
+```{r, message = FALSE, eval = FALSE}
+# Load ECLS-K (2011) data
+data("RMS_dat")
+RMS_dat0 <- RMS_dat
+# Re-baseline the data so that the estimated initial status is for the
+# starting point of the study
+baseT <- RMS_dat0$T1
+RMS_dat0$T1 <- RMS_dat0$T1 - baseT
+RMS_dat0$T2 <- RMS_dat0$T2 - baseT
+RMS_dat0$T3 <- RMS_dat0$T3 - baseT
+RMS_dat0$T4 <- RMS_dat0$T4 - baseT
+RMS_dat0$T5 <- RMS_dat0$T5 - baseT
+RMS_dat0$T6 <- RMS_dat0$T6 - baseT
+RMS_dat0$T7 <- RMS_dat0$T7 - baseT
+RMS_dat0$T8 <- RMS_dat0$T8 - baseT
+RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+# Standardize time-invariant covariates (TICs)
+## ex1 and ex2 are standardized growth TICs in models
+RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
+RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+xstarts <- mean(baseT)
+```
+
+## Example 1: Fit multiple group bilinear spline LGCM to evaluate the difference in the development of mathematics ability
+```{r, message = FALSE, eval = FALSE}
+set.seed(20191029)
+MGroup_Math_BLS_LGCM_f <-  getMGroup(
+  dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
+  records = 1:9, curveFun = "BLS", intrinsic = TRUE, tries = 20
+)
+```
+
+```{r}
+Figure1 <- getFigure(
+  model = MGroup_Math_BLS_LGCM_f@mxOutput, nClass = 2, cluster_TIC = NULL, grp_var = "SEX",
+  sub_Model = "LGCM", y_var = "M", curveFun = "BLS", y_model = "LGCM", t_var = "T",
+  records = 1:9, m_var = NULL, x_var = NULL, x_type = NULL, xstarts = xstarts,
+  xlab = "Month", outcome = "Mathematics"
+)
+show(Figure1)
+```
+
+## Example 2: Fit multiple group negative exponential LGCM with time-invariant covariates (TICs) to evaluate the difference in the development of reading ability. This model includes two growth TICs, baseline values of teacher-reported approach to learning and attentional focus. Point estimates and corresponding standard errors (SEs) of all parameters are presented within the original parameter space.
+```{r, message = FALSE, eval = FALSE}
+set.seed(20191029)
+MGroup_Read_EXP_LGCM_TIC_r <- getMGroup(
+  dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "R", t_var = "T",
+  records = 1:9, curveFun = "EXP", intrinsic = FALSE,
+  growth_TIC = c("ex1", "ex2"), paramOut = TRUE
+)
+```
+
+```{r, eval = FALSE}
+MGroup_Read_EXP_LGCM_TIC_r@Estimates
+Figure2 <- getFigure(
+  model = MGroup_Read_EXP_LGCM_TIC_r@mxOutput, nClass = 2, cluster_TIC = NULL, grp_var = "SEX",
+  sub_Model = "LGCM", y_var = "R", curveFun = "EXP", y_model = "LGCM", t_var = "T",
+  records = 1:9, m_var = NULL, x_var = NULL, x_type = NULL, xstarts = xstarts,
+  xlab = "Month", outcome = "Reading"
+)
+show(Figure2)
+```
