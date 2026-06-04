@@ -1,16 +1,42 @@
 # nlpsem
 
+[![CRAN](https://www.r-pkg.org/badges/version/nlpsem)](https://cran.r-project.org/package=nlpsem)
+[![GitHub repo](https://img.shields.io/badge/GitHub-nlpsem-black)](https://github.com/Veronica0206/nlpsem)
+[![R](https://img.shields.io/badge/R-OpenMx%20package-blue)](https://www.r-project.org/)
+[![DOI](https://img.shields.io/badge/DOI-10.3758%2Fs13428--025--02596--4-blue)](https://doi.org/10.3758/s13428-025-02596-4)
+[![License: GPL >= 3](https://img.shields.io/badge/License-GPL--3%2B-green.svg)](DESCRIPTION)
+
 `nlpsem` provides tools for fitting linear and nonlinear longitudinal models
 within the structural equation modeling (SEM) framework. The package is built
 on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
+## Portfolio positioning
+
+`nlpsem` is a statistical software and measurement-methods asset. It supports nonlinear longitudinal modeling, latent growth and latent change models, mixture modeling, multivariate longitudinal processes, multiple-group comparisons, and psychometric/measurement-science workflows in R.
+
+For AI evaluation roles, the package is relevant because repeated AI behavior across prompts, models, seeds, raters, and deployment conditions can be studied with the same measurement mindset used for longitudinal human-development and latent-process modeling: define the measurement occasions, model systematic variation, quantify reliability, and separate signal from instability.
+
+## For hiring reviewers
+
+This repository demonstrates:
+
+- R package development with documented functions, vignettes, tests, and CRAN-facing metadata
+- nonlinear longitudinal modeling in the SEM framework
+- latent growth, latent change, multivariate, mediation, multiple-group, and mixture modeling workflows
+- psychometric and measurement-science foundations relevant to evaluator reliability and repeated-behavior analysis
+- reproducible statistical examples backed by `OpenMx`
+
 The methods implemented in this package are described in:
 
 Liu, J. (2025). *Examination of nonlinear longitudinal processes in the
 framework of structural equation modeling: The R package nlpsem*. Behavior
 Research Methods. <https://doi.org/10.3758/s13428-025-02596-4>
+
+## Connection to AI evaluation
+
+The same measurement-science principles used for longitudinal human-development modeling also inform evaluation of AI system behavior over prompts, models, seeds, raters, and deployment conditions. In both settings, the central questions are how behavior changes across repeated conditions, which sources of variation are meaningful, and how much confidence a reviewer should place in an observed pattern.
 
 ## Main modeling scenarios
 
