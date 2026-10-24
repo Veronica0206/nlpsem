@@ -11,11 +11,11 @@
   for (k in seq_along(pfx)){
     outPointM <- outPointY <- list()
     for (j in m_records){
-      outPointM[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
+      outPointM[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[2], j),
                                  name = paste0("t", m_var, j))
     }
     for (j in y_records){
-      outPointY[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[2], j),
+      outPointY[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
                                  name = paste0("t", y_var, j))
     }
     if (x_type == "baseline"){
@@ -50,7 +50,7 @@
     else if (x_type == "longitudinal"){
       outPointX <- list()
       for (j in x_records){
-        outPointX[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
+        outPointX[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[3], j),
                                    name = paste0("t", x_var, j))
       }
       if (curveFun %in% c("linear", "LIN")){

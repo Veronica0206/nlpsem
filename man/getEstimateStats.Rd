@@ -45,6 +45,11 @@ An object of class \code{StatsOutput} with potential slots:
   \item \code{bootstrap}: Contains a data frame with bootstrap confidence intervals (when specified).
 }
 The content of these slots can be printed using the \code{printTable()} method for S4 objects.
+Numeric estimates, standard errors, and interval endpoints retain full precision;
+the p-value column is formatted for display. Use unrounded input estimates and
+standard errors for inference. Saved objects created before version 1.0.0.9003
+may contain rounded \code{Estimates}; their lost precision cannot be recovered
+by this function.
 Bootstrap intervals use only replications with an acceptable OpenMx status and finite
 parameter estimates. Discarded replications trigger a warning; fewer than two usable
 replications trigger an error. The bootstrap data frame has a \code{bootstrap_diagnostics}

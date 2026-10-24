@@ -58,8 +58,8 @@ getMGM.output <- function(model, y_var, records, curveFun, y_model, names){
     }
   }
   if (y_model == "LGCM"){
-    model.est <- round(c(unlist(outcome_est), unlist(btw_est)), 4)
-    model.se <- round(c(unlist(outcome_se), unlist(btw_se)), 4)
+    model.est <- c(unlist(outcome_est), unlist(btw_est))
+    model.se <- c(unlist(outcome_se), unlist(btw_se))
   }
   if (y_model == "LCSM"){
     slp_m.est_L <- slp_v.est_L <- slp_cov.est_L <- chg_inv_m.est_L <- chg_inv_v.est_L <- chg_bl_m.est_L <- chg_bl_v.est_L <-
@@ -86,16 +86,16 @@ getMGM.output <- function(model, y_var, records, curveFun, y_model, names){
       }
     }
     if (curveFun %in% c("nonparametric", "NonP")){
-      model.est <- round(c(unlist(outcome_est), unlist(rel_m_est_L), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L),
-                           unlist(chg_inv_m.est_L), unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L)), 4)
-      model.se <- round(c(unlist(outcome_se), unlist(rel_m_se_L), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L),
-                          unlist(chg_inv_m.se_L), unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L)), 4)
+      model.est <- c(unlist(outcome_est), unlist(rel_m_est_L), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L),
+                           unlist(chg_inv_m.est_L), unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L))
+      model.se <- c(unlist(outcome_se), unlist(rel_m_se_L), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L),
+                          unlist(chg_inv_m.se_L), unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L))
     }
     else{
-      model.est <- round(c(unlist(outcome_est), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L), unlist(chg_inv_m.est_L),
-                           unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L)), 4)
-      model.se <- round(c(unlist(outcome_se), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L), unlist(chg_inv_m.se_L),
-                          unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L)), 4)
+      model.est <- c(unlist(outcome_est), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L), unlist(chg_inv_m.est_L),
+                           unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L))
+      model.se <- c(unlist(outcome_se), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L), unlist(chg_inv_m.se_L),
+                          unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L))
     }
   }
   # Safety net: ensure names and estimates have matching length

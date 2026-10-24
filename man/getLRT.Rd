@@ -30,7 +30,11 @@ It also provides an option to perform bootstrapping for the comparison.
 # Fitted bilinear spline models shipped with the package: random knot (full) versus
 # fixed knot (reduced)
 load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
-getLRT(full = Math_LGCM_BLS_r@mxOutput, reduced = Math_LGCM_BLS_f@mxOutput, boot = FALSE, rep = NA)
+comparison <- getLRT(full = Math_LGCM_BLS_f@mxOutput,
+                     reduced = Math_LGCM_BLS_r@mxOutput)
+stopifnot(comparison["Reduced Model", "Diff in DoF"] == 4,
+          is.finite(comparison["Reduced Model", "p.values"]))
+comparison
 
 }
 \seealso{

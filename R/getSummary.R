@@ -79,7 +79,10 @@ getSummary <- function(model_list, HetModels = FALSE){
                                        BIC = round(BIC(model_list[[model]]), 2),
                                        Class = paste0("c", 1:nClass), Prop = prop)
         tmp_l <- data.frame(res_names, res_estimates)
-        tmp_l <- separate(tmp_l, col = "res_names", into = c("Class", "Residual"), sep = "(?<=^.{2})")
+        # Class tokens can contain multiple digits (for example, c10 and c11).
+        tmp_l$Class <- sub("^(c[0-9]+).*", "\\1", tmp_l$res_names)
+        tmp_l$Residual <- sub("^c[0-9]+", "", tmp_l$res_names)
+        tmp_l$res_names <- NULL
         tmp_w <- spread(tmp_l, key = "Residual", value = "res_estimates")
         output0[[model]] <- output0[[model]] %>% left_join(tmp_w, by = "Class")
       }

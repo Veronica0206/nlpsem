@@ -1,3 +1,29 @@
+# nlpsem 1.0.0.9003 (development correctness update)
+
+* Corrected mediation time prefixes to follow outcome, mediator, and predictor
+  order, including distinct observation schedules in all model containers.
+* Estimate and standard-error tables, including derived parameters and numeric
+  confidence bounds, now retain full precision. Display p-values retain their
+  existing format. Older saved estimate tables remain unchanged and may contain
+  rounded values.
+* Decomposed TVC models with growth TICs now determine free covariance parameters
+  from model structure, independently of zero or nonzero starting values.
+* Non-intrinsic EXP multivariate models now select covariance starts for every
+  outcome. QUAD/JB multivariate LCSMs use outcome-specific constant matrices,
+  allowing different numbers of waves.
+* Multivariate residual covariance paths match shared wave IDs, including
+  reordered selections. Outcome pairs without shared waves receive a clear
+  error before optimization.
+* Kappa intervals now include empirical marginal uncertainty using the
+  multinomial delta variance for paired observed labels.
+* Corrected class/group summary parsing for numbers above nine, and one-class
+  mixture parameter output when there are no free mixture weights.
+* Corrected the LRT example's full/reduced fixture order and added executable
+  assertions for its degrees of freedom and finite p-value.
+* Raised the minimum testthat version to 3.2.0, added targeted regression tests,
+  and enabled the full fitting workflow on pull requests. Preserved the Phase C
+  structural baseline with provenance and an explicit comparison tool.
+
 # nlpsem 1.0.0.9002 (development version, Phase C)
 
 * New fits from all seven fitting functions carry versioned metadata containing

@@ -67,8 +67,8 @@
       }
       else if (curveFun %in% c("quadratic", "QUAD")){
         ADD1 <- mxMatrix(type = "Full", nrow = length(m_lag), ncol = 1, values = rep(1, length(m_lag)),
-                         free = FALSE, name = "ADD1")
-        rate_loads <- mxAlgebraFromString(paste0("cbind(ADD1, ", y_var[traj], "M_MID_TIME[-1, ] * 2)"),
+                         free = FALSE, name = paste0(pfx[k], y_var[traj], "ADD1"))
+        rate_loads <- mxAlgebraFromString(paste0("cbind(", pfx[k], y_var[traj], "ADD1, ", y_var[traj], "M_MID_TIME[-1, ] * 2)"),
                                           name = paste0(pfx[k], y_var[traj], "r_loads"))
         status_loads <- mxAlgebraFromString(paste0(y_var[traj], "Omega %*% ", "", pfx[k], y_var[traj], "r_loads"),
                                             name = paste0(pfx[k], y_var[traj], "s_loads"))
@@ -149,8 +149,8 @@
       else if (curveFun %in% c("Jenss-Bayley", "JB")){
         if (intrinsic){
           ADD1 <- mxMatrix(type = "Full", nrow = length(m_lag), ncol = 1, values = rep(1, length(m_lag)),
-                           free = FALSE, name = "ADD1")
-          rate_loads <- mxAlgebraFromString(paste0("cbind(ADD1, ", pfx[k], y_var[traj], "_mug * exp(", pfx[k], y_var[traj], "_mug * ",
+                           free = FALSE, name = paste0(pfx[k], y_var[traj], "ADD1"))
+          rate_loads <- mxAlgebraFromString(paste0("cbind(", pfx[k], y_var[traj], "ADD1, ", pfx[k], y_var[traj], "_mug * exp(", pfx[k], y_var[traj], "_mug * ",
                                                    y_var[traj], "M_MID_TIME[-1, ]), ", pfx[k], y_var[traj], "_mueta2 * exp(", pfx[k], y_var[traj], "_mug * ", y_var[traj], "M_MID_TIME[-1, ]) * (1 + ", pfx[k], y_var[traj], "_mug * ", y_var[traj], "M_MID_TIME[-1, ]))"),
                                             name = paste0(pfx[k], y_var[traj], "r_loads"))
           status_loads <- mxAlgebraFromString(paste0(y_var[traj], "Omega %*% ", "", pfx[k], y_var[traj], "r_loads"),
@@ -177,8 +177,8 @@
         }
         else if (!intrinsic){
           ADD1 <- mxMatrix(type = "Full", nrow = length(m_lag), ncol = 1, values = rep(1, length(m_lag)),
-                           free = FALSE, name = "ADD1")
-          rate_loads <- mxAlgebraFromString(paste0("cbind(ADD1, ", pfx[k], y_var[traj], "_mug * exp(", pfx[k], y_var[traj], "_mug * ",
+                           free = FALSE, name = paste0(pfx[k], y_var[traj], "ADD1"))
+          rate_loads <- mxAlgebraFromString(paste0("cbind(", pfx[k], y_var[traj], "ADD1, ", pfx[k], y_var[traj], "_mug * exp(", pfx[k], y_var[traj], "_mug * ",
                                                    y_var[traj], "M_MID_TIME[-1, ]))"),
                                             name = paste0(pfx[k], y_var[traj], "r_loads"))
           status_loads <- mxAlgebraFromString(paste0(y_var[traj], "Omega %*% ", "", pfx[k], y_var[traj], "r_loads"),

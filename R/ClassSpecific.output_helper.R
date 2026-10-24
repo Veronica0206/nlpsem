@@ -47,7 +47,7 @@
   for (k in 1:nClass){
     if (sub_Model == "LGCM"){
       if (!is.null(growth_TIC)){
-        model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+        model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                   mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                     row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                       col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -55,8 +55,8 @@
                                   mxEvalByName(paste0("c", k, "beta"), model = model@submodels[[k]]),
                                   model@output$estimate[grep(paste0("c", k, "mux"), names(model@output$estimate))],
                                   model@output$estimate[grep(paste0("c", k, "phi"), names(model@output$estimate))],
-                                  mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]])), 4)
-        model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                  mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]))
+        model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                  mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                    row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                      col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -64,25 +64,25 @@
                                  mxSE(paste0("Class", k, ".c", k, "beta"), model, forceName = TRUE, silent = TRUE),
                                  model@output$standardErrors[, 1][grep(paste0("c", k, "mux"), names(model@output$standardErrors[, 1]))],
                                  model@output$standardErrors[, 1][grep(paste0("c", k, "phi"), names(model@output$standardErrors[, 1]))],
-                                 mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE)), 4)
+                                 mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE))
       }
       else if (is.null(growth_TIC)){
-        model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
+        model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                   mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])[
                                     row(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])) >=
                                       col(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]]))],
-                                  model@output$estimate[grep(paste0("c", k, "Y_residuals"), names(model@output$estimate))]), 4)
-        model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
+                                  model@output$estimate[grep(paste0("c", k, "Y_residuals"), names(model@output$estimate))])
+        model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                  mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)[
                                    row(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)) >=
                                      col(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE))],
-                                 model@output$standardErrors[, 1][grep(paste0("c", k, "Y_residuals"), names(model@output$standardErrors[, 1]))]), 4)
+                                 model@output$standardErrors[, 1][grep(paste0("c", k, "Y_residuals"), names(model@output$standardErrors[, 1]))])
       }
     }
     else if (sub_Model == "LCSM"){
       if (curveFun %in% c("nonparametric", "NonP")){
         if (!is.null(growth_TIC)){
-          model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+          model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                       row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                         col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -97,8 +97,8 @@
                                     mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-          model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+          model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                      row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                        col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -113,10 +113,10 @@
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
         }
         else if (is.null(growth_TIC)){
-          model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
+          model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])[
                                       row(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])) >=
                                         col(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]]))],
@@ -127,8 +127,8 @@
                                     mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-          model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
+                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+          model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)[
                                      row(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)) >=
                                        col(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE))],
@@ -139,12 +139,12 @@
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
         }
       }
       else {
         if (!is.null(growth_TIC)){
-          model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+          model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                       row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                         col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -158,8 +158,8 @@
                                     mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-          model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+          model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                      row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                        col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -173,10 +173,10 @@
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
         }
         else if (is.null(growth_TIC)){
-          model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
+          model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])[
                                       row(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])) >=
                                         col(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]]))],
@@ -186,8 +186,8 @@
                                     mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                     mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-          model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
+                                    diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+          model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)[
                                      row(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)) >=
                                        col(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE))],
@@ -197,7 +197,7 @@
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                    mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                   diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
         }
       }
     }
@@ -205,7 +205,7 @@
       if (decompose == 0){
         if (y_model == "LGCM"){
           if (!is.null(growth_TIC)){
-            model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+            model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                       mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                         row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                           col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -216,8 +216,8 @@
                                       model@output$estimate[grep(paste0("c", k, "mux"), names(model@output$estimate))],
                                       model@output$estimate[grep(paste0("c", k, "phi"), names(model@output$estimate))],
                                       mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
-                                      model@output$estimate[grep(paste0("c", k, "kappa"), names(model@output$estimate))]), 4)
-            model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                      model@output$estimate[grep(paste0("c", k, "kappa"), names(model@output$estimate))])
+            model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                      mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                        row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                          col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -230,32 +230,32 @@
                                      mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "covBL"), names(model@output$standardErrors[, 1]))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))],
-                                     model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))]), 4)
+                                     model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))])
           }
           else if (is.null(growth_TIC)){
-            model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
+            model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                       mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])[
                                         row(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])) >=
                                           col(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]]))],
                                       model@output$estimate[grep(paste0("c", k, "Y_residuals"), names(model@output$estimate))],
                                       model@output$estimate[grep(paste0("c", k, "TVC_m"), names(model@output$estimate))],
                                       model@output$estimate[grep(paste0("c", k, "TVC_v"), names(model@output$estimate))],
-                                      model@output$estimate[grep(paste0("c", k, "kappa"), names(model@output$estimate))]), 4)
-            model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
+                                      model@output$estimate[grep(paste0("c", k, "kappa"), names(model@output$estimate))])
+            model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                      mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)[
                                        row(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)) >=
                                          col(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "Y_residuals"), names(model@output$standardErrors[, 1]))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "TVC_m"), names(model@output$standardErrors[, 1]))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "TVC_v"), names(model@output$standardErrors[, 1]))],
-                                     model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))]), 4)
+                                     model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))])
           }
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (y_model == "LCSM"){
           if (curveFun %in% c("nonparametric", "NonP")){
             if (!is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -273,8 +273,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -292,10 +292,10 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
             else if (is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]]))],
@@ -309,8 +309,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE))],
@@ -324,12 +324,12 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
           }
           else{
             if (!is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -346,8 +346,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -364,10 +364,10 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
             else if (is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi0"), model = model@submodels[[k]]))],
@@ -380,8 +380,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi0"), model, forceName = TRUE, silent = TRUE))],
@@ -394,7 +394,7 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
           }
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
@@ -409,7 +409,7 @@
             X_slp_m.se[idx] <- mxSE(paste0("Class", k, ".c", k, "X_abs_rate", j), model = model, forceName = TRUE, silent = TRUE)
           }
           if (!is.null(growth_TIC)){
-            model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+            model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                       mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                         row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                           col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -426,8 +426,8 @@
                                       mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                       model@output$estimate[grep(paste0("c", k, "covBL"), names(model@output$estimate))],
                                       model@output$estimate[grep(paste0("c", k, "kappa"), names(model@output$estimate))],
-                                      model@output$estimate[grep(paste0("c", k, "Cov_XYres"), names(model@output$estimate))]), 4)
-            model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                      model@output$estimate[grep(paste0("c", k, "Cov_XYres"), names(model@output$estimate))])
+            model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                      mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                        row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                          col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -444,10 +444,10 @@
                                      mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "covBL"), names(model@output$standardErrors[, 1]))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))],
-                                     model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))]), 4)
+                                     model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))])
           }
           else if (is.null(growth_TIC)){
-            model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+            model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                       mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                         row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                           col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -461,8 +461,8 @@
                                       mxEvalByName(paste0("c", k, "beta"), model = model@submodels[[k]]),
                                       mxEvalByName(paste0("c", k, "Y_mean0"), model = model@submodels[[k]]),
                                       model@output$estimate[grep(paste0("c", k, "kappa"), names(model@output$estimate))],
-                                      model@output$estimate[grep(paste0("c", k, "Cov_XYres"), names(model@output$estimate))]), 4)
-            model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                      model@output$estimate[grep(paste0("c", k, "Cov_XYres"), names(model@output$estimate))])
+            model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                      mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                        row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                          col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -476,7 +476,7 @@
                                      mxSE(paste0("Class", k, ".c", k, "beta"), model, forceName = TRUE, silent = TRUE),
                                      mxSE(paste0("Class", k, ".c", k, "Y_mean0"), model, forceName = TRUE, silent = TRUE),
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))],
-                                     model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))]), 4)
+                                     model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))])
           }
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
@@ -489,7 +489,7 @@
           }
           if (curveFun %in% c("nonparametric", "NonP")){
             if (!is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -513,8 +513,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -538,10 +538,10 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
             else if (is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -562,8 +562,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -584,12 +584,12 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
           }
           else{
             if (!is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -612,8 +612,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -636,10 +636,10 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
             else if (is.null(growth_TIC)){
-              model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
+              model.est[[k]] <- c(mxEvalByName(paste0("c", k, "Y_alpha0"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])[
                                           row(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]])) >=
                                             col(mxEvalByName(paste0("c", k, "Y_psi_r"), model = model@submodels[[k]]))],
@@ -659,8 +659,8 @@
                                         mxEvalByName(paste0("c", k, "Ychg_inv_m"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_inv_v"), model = model@submodels[[k]]),
                                         mxEvalByName(paste0("c", k, "Ychg_bl_m"), model = model@submodels[[k]]),
-                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]]))), 4)
-              model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
+                                        diag(mxEvalByName(paste0("c", k, "Ychg_bl_v"), model = model@submodels[[k]])))
+              model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "Y_alpha0"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)[
                                          row(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE)) >=
                                            col(mxSE(paste0("Class", k, ".c", k, "Y_psi_r"), model, forceName = TRUE, silent = TRUE))],
@@ -680,7 +680,7 @@
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_m"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_inv_v"), model, forceName = TRUE, silent = TRUE),
                                        mxSE(paste0("Class", k, ".c", k, "Ychg_bl_m"), model, forceName = TRUE, silent = TRUE),
-                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE))), 4)
+                                       diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
           }
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
@@ -719,8 +719,8 @@
         }
       }
       if (y_model == "LGCM"){
-        model.est[[k]] <- round(c(unlist(outcome_est), unlist(btw_est)), 4)
-        model.se[[k]] <- round(c(unlist(outcome_se), unlist(btw_se)), 4)
+        model.est[[k]] <- c(unlist(outcome_est), unlist(btw_est))
+        model.se[[k]] <- c(unlist(outcome_se), unlist(btw_se))
         est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
       }
       else if (y_model == "LCSM"){
@@ -748,16 +748,16 @@
           }
         }
         if (curveFun %in% c("nonparametric", "NonP")){
-          model.est[[k]] <- round(c(unlist(outcome_est), unlist(rel_val_est_L), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L),
-                                    unlist(chg_inv_m.est_L), unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L)), 4)
-          model.se[[k]] <- round(c(unlist(outcome_se), unlist(rel_val_se_L), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L),
-                                   unlist(chg_inv_m.se_L), unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L)), 4)
+          model.est[[k]] <- c(unlist(outcome_est), unlist(rel_val_est_L), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L),
+                                    unlist(chg_inv_m.est_L), unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L))
+          model.se[[k]] <- c(unlist(outcome_se), unlist(rel_val_se_L), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L),
+                                   unlist(chg_inv_m.se_L), unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L))
         }
         else{
-          model.est[[k]] <- round(c(unlist(outcome_est), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L), unlist(chg_inv_m.est_L),
-                                    unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L)), 4)
-          model.se[[k]] <- round(c(unlist(outcome_se), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L), unlist(chg_inv_m.se_L),
-                                   unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L)), 4)
+          model.est[[k]] <- c(unlist(outcome_est), unlist(btw_est), unlist(slp_m.est_L), unlist(slp_v.est_L), unlist(chg_inv_m.est_L),
+                                    unlist(chg_inv_v.est_L), unlist(chg_bl_m.est_L), unlist(chg_bl_v.est_L))
+          model.se[[k]] <- c(unlist(outcome_se), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L), unlist(chg_inv_m.se_L),
+                                   unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L))
         }
         est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
       }
@@ -765,7 +765,7 @@
     else if (sub_Model == "MED"){
       if (x_type == "baseline"){
         if (curveFun %in% c("linear", "LIN")){
-          model.est[[k]] <- round(c(model@output$estimate[grep(paste0("c", k, "muX"), names(model@output$estimate))],
+          model.est[[k]] <- c(model@output$estimate[grep(paste0("c", k, "muX"), names(model@output$estimate))],
                                     model@output$estimate[grep(paste0("c", k, "phi11"), names(model@output$estimate))],
                                     mxEvalByName(paste0("c", k, "M_alpha"), model = model@submodels[[k]]),
                                     c(mxEvalByName(paste0("c", k, "M_psi_r"), model = model@submodels[[k]]))[c(1, 2, 4)],
@@ -780,8 +780,8 @@
                                     mxEvalByName(paste0("c", k, "total"), model = model@submodels[[k]]),
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "Y_residuals")],
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "M_residuals")],
-                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "YM_RES")]), 4)
-          model.se[[k]] <- round(c(model@output$standardErrors[, 1][grep(paste0("c", k, "muX"), names(model@output$standardErrors[, 1]))],
+                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "YM_RES")])
+          model.se[[k]] <- c(model@output$standardErrors[, 1][grep(paste0("c", k, "muX"), names(model@output$standardErrors[, 1]))],
                                    model@output$standardErrors[, 1][grep(paste0("c", k, "phi11"), names(model@output$standardErrors[, 1]))],
                                    mxSE(paste0("Class", k, ".c", k, "M_alpha"), model, forceName = TRUE, silent = TRUE),
                                    c(mxSE(paste0("Class", k, ".c", k, "M_psi_r"), model, forceName = TRUE, silent = TRUE))[c(1, 2, 4)],
@@ -796,11 +796,11 @@
                                    mxSE(paste0("Class", k, ".c", k, "total"), model, forceName = TRUE, silent = TRUE),
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "Y_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "M_residuals")],
-                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")]), 4)
+                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")])
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (curveFun %in% c("bilinear spline", "BLS")){
-          model.est[[k]] <- round(c(model@output$estimate[grep(paste0("c", k, "muX"), names(model@output$estimate))],
+          model.est[[k]] <- c(model@output$estimate[grep(paste0("c", k, "muX"), names(model@output$estimate))],
                                     model@output$estimate[grep(paste0("c", k, "phi11"), names(model@output$estimate))],
                                     mxEvalByName(paste0("c", k, "M_alpha"), model = model@submodels[[k]]),
                                     c(mxEvalByName(paste0("c", k, "M_psi_r"), model = model@submodels[[k]]))[c(1:3, 5:6, 9)],
@@ -815,8 +815,8 @@
                                     mxEvalByName(paste0("c", k, "total"), model = model@submodels[[k]]),
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "Y_residuals")],
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "M_residuals")],
-                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "YM_RES")]), 4)
-          model.se[[k]] <- round(c(model@output$standardErrors[, 1][grep(paste0("c", k, "muX"), names(model@output$standardErrors[, 1]))],
+                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "YM_RES")])
+          model.se[[k]] <- c(model@output$standardErrors[, 1][grep(paste0("c", k, "muX"), names(model@output$standardErrors[, 1]))],
                                    model@output$standardErrors[, 1][grep(paste0("c", k, "phi11"), names(model@output$standardErrors[, 1]))],
                                    mxSE(paste0("Class", k, ".c", k, "M_alpha"), model, forceName = TRUE, silent = TRUE),
                                    c(mxSE(paste0("Class", k, ".c", k, "M_psi_r"), model, forceName = TRUE, silent = TRUE))[c(1:3, 5:6, 9)],
@@ -831,13 +831,13 @@
                                    mxSE(paste0("Class", k, ".c", k, "total"), model, forceName = TRUE, silent = TRUE),
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "Y_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "M_residuals")],
-                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")]), 4)
+                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")])
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
       }
       if (x_type == "longitudinal"){
         if (curveFun %in% c("linear", "LIN")){
-          model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "X_mean"), model = model@submodels[[k]]),
+          model.est[[k]] <- c(mxEvalByName(paste0("c", k, "X_mean"), model = model@submodels[[k]]),
                                     c(mxEvalByName(paste0("c", k, "X_psi0"), model = model@submodels[[k]]))[c(1, 2, 4)],
                                     mxEvalByName(paste0("c", k, "M_alpha"), model = model@submodels[[k]]),
                                     c(mxEvalByName(paste0("c", k, "M_psi_r"), model = model@submodels[[k]]))[c(1, 2, 4)],
@@ -855,8 +855,8 @@
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "X_residuals")],
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "YM_RES")],
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "YX_RES")],
-                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "MX_RES")]), 4)
-          model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "X_mean"), model, forceName = TRUE, silent = TRUE),
+                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "MX_RES")])
+          model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "X_mean"), model, forceName = TRUE, silent = TRUE),
                                    c(mxSE(paste0("Class", k, ".c", k, "X_psi0"), model, forceName = TRUE, silent = TRUE))[c(1, 2, 4)],
                                    mxSE(paste0("Class", k, ".c", k, "M_alpha"), model, forceName = TRUE, silent = TRUE),
                                    c(mxSE(paste0("Class", k, ".c", k, "M_psi_r"), model, forceName = TRUE, silent = TRUE))[c(1, 2, 4)],
@@ -874,11 +874,11 @@
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "X_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YX_RES")],
-                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "MX_RES")]), 4)
+                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "MX_RES")])
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (curveFun %in% c("bilinear spline", "BLS")){
-          model.est[[k]] <- round(c(mxEvalByName(paste0("c", k, "X_mean"), model = model@submodels[[k]]),
+          model.est[[k]] <- c(mxEvalByName(paste0("c", k, "X_mean"), model = model@submodels[[k]]),
                                     c(mxEvalByName(paste0("c", k, "X_psi0"), model = model@submodels[[k]]))[c(1:3, 5:6, 9)],
                                     mxEvalByName(paste0("c", k, "M_alpha"), model = model@submodels[[k]]),
                                     c(mxEvalByName(paste0("c", k, "M_psi_r"), model = model@submodels[[k]]))[c(1:3, 5:6, 9)],
@@ -896,8 +896,8 @@
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "X_residuals")],
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "YM_RES")],
                                     model@output$estimate[names(model@output$estimate) == paste0("c", k, "YX_RES")],
-                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "MX_RES")]), 4)
-          model.se[[k]] <- round(c(mxSE(paste0("Class", k, ".c", k, "X_mean"), model, forceName = TRUE, silent = TRUE),
+                                    model@output$estimate[names(model@output$estimate) == paste0("c", k, "MX_RES")])
+          model.se[[k]] <- c(mxSE(paste0("Class", k, ".c", k, "X_mean"), model, forceName = TRUE, silent = TRUE),
                                    c(mxSE(paste0("Class", k, ".c", k, "X_psi0"), model, forceName = TRUE, silent = TRUE))[c(1:3, 5:6, 9)],
                                    mxSE(paste0("Class", k, ".c", k, "M_alpha"), model, forceName = TRUE, silent = TRUE),
                                    c(mxSE(paste0("Class", k, ".c", k, "M_psi_r"), model, forceName = TRUE, silent = TRUE))[c(1:3, 5:6, 9)],
@@ -915,7 +915,7 @@
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "X_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YX_RES")],
-                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "MX_RES")]), 4)
+                                   model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "MX_RES")])
           est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
       }
@@ -923,20 +923,21 @@
     est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
   }
   estimate_out <- do.call(rbind.data.frame, est)
-  if (mixture && !is.null(cluster_TIC)){
+  # A one-class model has no free membership coefficients or softmax weights.
+  if (mixture && nClass > 1L && !is.null(cluster_TIC)){
     # .cluster_tic_param_names() orders the labels class by class (beta20, beta21, ..., beta30, ...),
     # so the class-by-coefficient matrices are read row by row to keep labels and values aligned.
     est.beta <- data.frame(Name = .cluster_tic_param_names(nClass, cluster_TIC),
-                           Estimate = round(c(t(mxEval(classbeta, model)[-1, , drop = FALSE])), 4),
-                           SE = round(c(t(mxSE(classbeta, model, silent = TRUE)[-1, , drop = FALSE])), 4))
+                           Estimate = c(t(mxEval(classbeta, model)[-1, , drop = FALSE])),
+                           SE = c(t(mxSE(classbeta, model, silent = TRUE)[-1, , drop = FALSE])))
     estimate_out <- rbind(estimate_out, est.beta)
   }
-  else if (mixture){
+  else if (mixture && nClass > 1L){
     # Softmax weights w2, ..., wK (w1 is fixed at 0); 0.4 repeated the estimates in the SE column.
     w_labels <- paste0("w", 2:nClass)
     est.weights <- data.frame(Name = paste0("p", 2:nClass),
-                              Estimate = round(unname(model@output$estimate[w_labels]), 4),
-                              SE = round(unname(model@output$standardErrors[w_labels, 1]), 4))
+                              Estimate = unname(model@output$estimate[w_labels]),
+                              SE = unname(model@output$standardErrors[w_labels, 1]))
     estimate_out <- rbind(estimate_out, est.weights)
   }
   return(estimate_out)

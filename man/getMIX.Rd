@@ -143,6 +143,8 @@ This function fits a longitudinal mixture model based on the specified sub-model
 }
 \details{
 New fits retain their resolved model specification and fitting provenance.
+For multivariate submodels, every outcome pair must share at least one record ID;
+see \code{\link{getMGM}}.
 Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
 \code{logLik()} and \code{plot()} methods are available.
 }

@@ -18,7 +18,9 @@
 #' @param intrinsic A logical flag indicating whether to build an intrinsically nonlinear longitudinal model. Default is
 #' \code{TRUE}.
 #' @param records A list of numeric vectors, with each vector specifying the indices of the observed study waves for
-#' the corresponding outcome variable.
+#' the corresponding outcome variable. Every pair of outcomes must share at least one
+#' record ID to estimate its residual covariance. Residual pairs are matched by record
+#' ID, independently of the order of the selected columns.
 #' @param y_model A string specifying how to fit the longitudinal outcome. Supported values are \code{"LGCM"} and \code{"LCSM"}.
 #' @param starts A list containing initial values for the parameters. Default is \code{NULL}, indicating no user-specified initial
 #' values.

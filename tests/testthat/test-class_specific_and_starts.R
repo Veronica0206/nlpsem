@@ -227,8 +227,8 @@ test_that("mixture weight rows report the standard error of the softmax weight",
                                  curveFun = "LIN", intrinsic = FALSE, records = 1:9, paramOut = TRUE))
   m <- fit@mxOutput
   w <- fit@Estimates[fit@Estimates$Name == "p2", ]
-  expect_equal(w$Estimate, round(unname(m@output$estimate["w2"]), 4))
-  expect_equal(w$SE, round(unname(m@output$standardErrors["w2", 1]), 4))
+  expect_equal(w$Estimate, unname(m@output$estimate["w2"]))
+  expect_equal(w$SE, unname(m@output$standardErrors["w2", 1]))
   expect_false(isTRUE(all.equal(w$SE, w$Estimate)))
 })
 
@@ -246,6 +246,6 @@ test_that("class-specific decomposed-TVC tables read the renamed absolute-rate a
   expect_true(all(is.finite(rate_rows$Estimate)))
   for (k in 1:2) {
     direct <- unname(OpenMx::mxEvalByName(paste0("c", k, "X_abs_rate2"), fit@mxOutput@submodels[[k]]))
-    expect_equal(rate_rows$Estimate[rate_rows$Name == paste0("c", k, "X_abs_rate2")], round(c(direct), 4))
+    expect_equal(rate_rows$Estimate[rate_rows$Name == paste0("c", k, "X_abs_rate2")], c(direct))
   }
 })

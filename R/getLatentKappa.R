@@ -6,6 +6,11 @@
 #' Latent class numbers have no intrinsic correspondence across models: align their meanings
 #' explicitly before calling this function. The function does not permute classes to maximize agreement.
 #'
+#' @details The confidence interval uses the multinomial delta-method variance for
+#' paired categorical labels, including uncertainty in their empirical marginal
+#' frequencies. It treats subjects as independent and the supplied labels as observed;
+#' uncertainty from fitting latent class models or assigning classes is not included.
+#'
 #' @param label1 A factor vector representing the first set of latent categorical labels.
 #' @param label2 A factor vector representing the second set of latent categorical labels.
 #' @param conf.level A numeric value representing the confidence level for the confidence interval of the kappa statistic.
@@ -42,7 +47,7 @@
 #' kappa <- getLatentKappa(label1 = label1, label2 = label2)
 #' printTable(kappa)
 #'
-#' @importFrom stats complete.cases qnorm pnorm
+#' @importFrom stats complete.cases qnorm
 #' @importFrom methods new
 #'
 getLatentKappa <- function(label1, label2, conf.level = 0.95){
@@ -74,11 +79,15 @@ getLatentKappa <- function(label1, label2, conf.level = 0.95){
                    "Moderate Agreement", "Substantial Agreement", "Almost Perfect Agreement")
     judge <- JUDGEMENT[min(which(kappa < seq(0.2, 1, 0.2)))]
   }
-  seK0 <- sqrt(Pe/(N * (1 - Pe)))
-  seK <- sqrt(Po * (1 - Po)/(N * (1 - Pe)^2))
+  # For cell p_ij, dPe/dp_ij = column_i + row_j. Centering the
+  # gradient gives its variance under multinomial sampling and avoids
+  # subtracting nearly equal second moments near perfect agreement.
+  probs <- tbl/N
+  gradient <- diag(length(categories))/(1 - Pe) -
+    (1 - Po)/(1 - Pe)^2 * outer(colSums(probs), rowSums(probs), "+")
+  centered <- gradient - sum(probs * gradient)
+  seK <- sqrt(sum(probs * centered^2)/N)
   norm.pp <- qnorm(1 - (1 - conf.level)/2)
-  Z <- kappa/seK0
-  p.v <- 1 - pnorm(Z)
   kappaL <- round(kappa - norm.pp * seK, 4)
   kappaU <- round(kappa + norm.pp * seK, 4)
   KappaOut <- new("KappaOutput",

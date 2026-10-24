@@ -31,18 +31,18 @@
     for (traj_i in 1:(length(y_var) - 1)){
       for (traj_j in traj_i:(length(y_var) - 1)){
         common_records <- Reduce(intersect, list(records[[traj_i]], records[[traj_j + 1]]))
-        if (setequal(records[[traj_i]], records[[traj_j + 1]])){
-          COV[[.outcome_pair_index(traj_i, traj_j + 1L, length(y_var))]] <- mxPath(from = traj_list[[traj_i]], to = traj_list[[traj_j + 1]],
-                                               arrows = 2, free = TRUE,
-                                               values = starts[[k]]$residuals[traj_i, traj_j + 1],
-                                               labels = paste0(pfx[k], y_var[traj_i], y_var[traj_j + 1], "_RES"))
+        # Contemporaneous residuals follow wave IDs even when the selected
+        # columns have different orders. The model estimates a residual covariance
+        # for every outcome pair, so a pair needs at least one shared wave.
+        if (!length(common_records)){
+          stop("Multivariate outcomes '", y_var[traj_i], "' and '", y_var[traj_j + 1],
+               "' must share at least one record ID to estimate their residual covariance.",
+               call. = FALSE)
         }
-        else{
-          COV[[.outcome_pair_index(traj_i, traj_j + 1L, length(y_var))]] <- mxPath(from = paste0(y_var[traj_i], common_records),
-                                               to = paste0(y_var[traj_j + 1], common_records),
-                                               arrows = 2, free = TRUE, values = starts[[k]]$residuals[traj_i, traj_j + 1],
-                                               labels = paste0(pfx[k], y_var[traj_i], y_var[traj_j + 1], "_RES"))
-        }
+        COV[[.outcome_pair_index(traj_i, traj_j + 1L, length(y_var))]] <- mxPath(from = paste0(y_var[traj_i], common_records),
+                                             to = paste0(y_var[traj_j + 1], common_records),
+                                             arrows = 2, free = TRUE, values = starts[[k]]$residuals[traj_i, traj_j + 1],
+                                             labels = paste0(pfx[k], y_var[traj_i], y_var[traj_j + 1], "_RES"))
       }
     }
     RES_L[[k]] <- RES
@@ -286,8 +286,8 @@
           class.list[[k]] <- mxModel(name = model_names[k], type = "RAM",
                                      manifestVars = manifests, latentVars = latents,
                                      mxPath(from = latents, to = latents, arrows = 2, connect = "unique.pairs", free = TRUE,
-                                            values = t(starts[[k]]$covMatrix[c(1:2, 4:5), c(1:2, 4:5)])[row(t(starts[[k]]$covMatrix[c(1:2, 4:5), c(1:2, 4:5)])) >=
-                                                                                                     col(t(starts[[k]]$covMatrix[c(1:2, 4:5), c(1:2, 4:5)]))],
+                                            values = .multi_reduced_cov_starts(starts[[k]]$covMatrix, n_traj = length(y_var),
+                                                                               n_keep = 2L, stride = 3L),
                                             labels = t(multi_label)[row(t(multi_label)) >= col(t(multi_label))]),
                                      GF_loadings[[k]], GAMMA, GF_MEAN, GF_LOADINGS, RES_L[[k]], COV_L[[k]],
                                      mean_L, psi_L, psi_btw_L)
@@ -922,8 +922,8 @@
           class.list[[k]] <- mxModel(name = model_names[k], type = "RAM",
                                      manifestVars = manifests, latentVars = latents,
                                      mxPath(from = latents[1:(length(y_var) * 2)], to = latents[1:(length(y_var) * 2)], arrows = 2, connect = "unique.pairs", free = TRUE,
-                                            values = t(starts[[k]]$covMatrix[c(1:2, 4:5), c(1:2, 4:5)])[row(t(starts[[k]]$covMatrix[c(1:2, 4:5), c(1:2, 4:5)])) >=
-                                                                                                     col(t(starts[[k]]$covMatrix[c(1:2, 4:5), c(1:2, 4:5)]))],
+                                            values = .multi_reduced_cov_starts(starts[[k]]$covMatrix, n_traj = length(y_var),
+                                                                               n_keep = 2L, stride = 3L),
                                             labels = t(multi_label)[row(t(multi_label)) >= col(t(multi_label))]),
                                      GF_loadings[[k]], AddPara[[k]], GAMMA, GF_MEAN, GF_LOADINGS, RES_L[[k]], COV_L[[k]], mean_L, psi_L,
                                      psi_btw_L, PATH_L_L_CL[[k]], PATH_SLP_L_CL[[k]], PATH_AUTO_L_CL[[k]])

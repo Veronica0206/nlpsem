@@ -18,8 +18,8 @@ test_that("getEstimateStats computes Wald CIs and formatted p-values", {
   out <- getEstimateStats(est_in = est, CI_type = "Wald")
   expect_s4_class(out, "StatsOutput")
   wald <- out@wald
-  expect_equal(wald$wald_lbound, round(est$Estimate - qnorm(0.975) * est$SE, 4))
-  expect_equal(wald$wald_ubound, round(est$Estimate + qnorm(0.975) * est$SE, 4))
+  expect_equal(wald$wald_lbound, est$Estimate - qnorm(0.975) * est$SE)
+  expect_equal(wald$wald_ubound, est$Estimate + qnorm(0.975) * est$SE)
   expect_equal(wald["a", "p.value"], "<0.0001")
   expect_equal(wald["b", "p.value"], "0.0455")
   expect_equal(wald["c", "p.value"], ">0.9999")

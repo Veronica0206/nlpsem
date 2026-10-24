@@ -26,6 +26,11 @@
 #'   \item \code{bootstrap}: Contains a data frame with bootstrap confidence intervals (when specified).
 #' }
 #' The content of these slots can be printed using the \code{printTable()} method for S4 objects.
+#' Numeric estimates, standard errors, and interval endpoints retain full precision;
+#' the p-value column is formatted for display. Use unrounded input estimates and
+#' standard errors for inference. Saved objects created before version 1.0.0.9003
+#' may contain rounded \code{Estimates}; their lost precision cannot be recovered
+#' by this function.
 #' Bootstrap intervals use only replications with an acceptable OpenMx status and finite
 #' parameter estimates. Discarded replications trigger a warning; fewer than two usable
 #' replications trigger an error. The bootstrap data frame has a \code{bootstrap_diagnostics}
@@ -62,7 +67,7 @@
 #'
 #' @importFrom OpenMx omxGetParameters mxTryHard mxModel mxCI mxBootstrap
 #' @importFrom dplyr %>% select left_join
-#' @importFrom stats quantile
+#' @importFrom stats quantile pnorm
 #' @importFrom methods new
 #'
 getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, CI_type = "Wald", rep = NA,
@@ -80,7 +85,9 @@ getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, C
   if (p_values){
     se <- est_in[, 3]
     z_ratio <- ifelse(se == 0, NA_real_, est_in[, 2] / se)
-    p_value <- round((1 - pnorm(abs(z_ratio), lower.tail = TRUE)) * 2, 4)
+    # Keep the established character display for p-values, after computing from
+    # full-precision estimates and SEs. The lower tail avoids cancellation.
+    p_value <- round(2 * pnorm(-abs(z_ratio)), 4)
     est_out_wald$p.value <- ifelse(is.na(p_value), NA_character_,
                                    ifelse(p_value < 0.0001, "<0.0001",
                                           ifelse(p_value > 0.9999, ">0.9999", p_value)))
@@ -88,15 +95,15 @@ getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, C
   # Helper: compute Wald CIs
   .add_wald_CI <- function(est_out, est_in, conf.level) {
     z <- qnorm(1 - (1 - conf.level)/2)
-    est_out$wald_lbound <- round(est_in[, 2] - z * est_in[, 3], 4)
-    est_out$wald_ubound <- round(est_in[, 2] + z * est_in[, 3], 4)
+    est_out$wald_lbound <- est_in[, 2] - z * est_in[, 3]
+    est_out$wald_ubound <- est_in[, 2] + z * est_in[, 3]
     est_out
   }
   # Helper: compute likelihood-based CIs
   .get_likelihood_CI <- function(model, conf.level) {
     free_para <- omxGetParameters(model = model)
     model_CI <- mxTryHard(mxModel(model = model, mxCI(names(free_para), interval = conf.level)), intervals = TRUE)
-    est_out_lik <- as.data.frame(round(model_CI$output$confidenceIntervals, 4))[, c(2, 1, 3)]
+    est_out_lik <- as.data.frame(model_CI$output$confidenceIntervals)[, c(2, 1, 3)]
     names(est_out_lik) <- c("Estimate", "lik_lbound", "lik_ubound")
     est_out_lik
   }
@@ -167,9 +174,9 @@ getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, C
                     sum(!usable), nrow(raw), sum(usable)), call. = FALSE)
   }
   bounds <- vapply(seq_along(pars), function(j) quantile(values[usable, j], probs), numeric(2))
-  out <- data.frame(Estimate = round(unname(estimates), 4),
-                    boot_lbound = round(bounds[1L, ], 4),
-                    boot_ubound = round(bounds[2L, ], 4), row.names = pars)
+  out <- data.frame(Estimate = unname(estimates),
+                    boot_lbound = bounds[1L, ],
+                    boot_ubound = bounds[2L, ], row.names = pars)
   attr(out, "bootstrap_diagnostics") <- diagnostics
   out
 }

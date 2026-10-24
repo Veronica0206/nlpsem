@@ -76,7 +76,7 @@ test_that("public four-outcome MGM fits and reports independent between-process 
     expect_true(all(is.finite(fit@Estimates$SE)))
     for (pair in c("AB", "AC", "AD", "BC", "BD", "CD")) {
       actual <- fit@Estimates$Estimate[fit@Estimates$Name == paste0(pair, "_psi00")]
-      expected <- round(OpenMx::mxEvalByName(paste0(pair, "_psi"), fit@mxOutput)[1, 1], 4)
+      expected <- OpenMx::mxEvalByName(paste0(pair, "_psi"), fit@mxOutput)[1, 1]
       expect_equal(unname(actual), unname(expected))
     }
     expect_false(isTRUE(all.equal(unname(fit@mxOutput@output$estimate["AD_psi00"]),
@@ -131,14 +131,14 @@ test_that("class-specific NonP MGM parameter tables contain correctly labeled es
         rate <- paste0(prefix, "A_rel_rate2")
         row <- fit@Estimates[fit@Estimates$Name == rate, ]
         expect_equal(nrow(row), 1L)
-        expect_equal(row$Estimate, round(unname(fit@mxOutput@output$estimate[rate]), 4))
-        expect_equal(row$SE, round(unname(fit@mxOutput@output$standardErrors[rate, 1]), 4))
+        expect_equal(row$Estimate, unname(fit@mxOutput@output$estimate[rate]))
+        expect_equal(row$SE, unname(fit@mxOutput@output$standardErrors[rate, 1]))
         cross <- fit@Estimates$Estimate[fit@Estimates$Name == paste0(prefix, "AB_psi00")]
-        expect_equal(cross, round(unname(OpenMx::mxEvalByName(paste0(prefix, "AB_psi"),
-          fit@mxOutput@submodels[[k]])[1, 1]), 4))
+        expect_equal(cross, unname(OpenMx::mxEvalByName(paste0(prefix, "AB_psi"),
+          fit@mxOutput@submodels[[k]])[1, 1]))
         slope <- fit@Estimates$Estimate[fit@Estimates$Name == paste0(prefix, "A_slp_val_est1")]
-        expect_equal(slope, round(unname(OpenMx::mxEvalByName(paste0(prefix, "Aslp_m"),
-          fit@mxOutput@submodels[[k]])[1, 1]), 4))
+        expect_equal(slope, unname(OpenMx::mxEvalByName(paste0(prefix, "Aslp_m"),
+          fit@mxOutput@submodels[[k]])[1, 1]))
       }
     }
   })

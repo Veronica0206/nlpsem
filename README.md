@@ -4,7 +4,7 @@
 [![GitHub repo](https://img.shields.io/badge/GitHub-nlpsem-black)](https://github.com/Veronica0206/nlpsem)
 [![R](https://img.shields.io/badge/R-OpenMx%20package-blue)](https://www.r-project.org/)
 [![DOI](https://img.shields.io/badge/DOI-10.3758%2Fs13428--025--02596--4-blue)](https://doi.org/10.3758/s13428-025-02596-4)
-[![License: GPL >= 3](https://img.shields.io/badge/License-GPL--3%2B-green.svg)](DESCRIPTION)
+[![License: GPL >= 3](https://img.shields.io/badge/License-GPL--3%2B-green.svg)](https://github.com/Veronica0206/nlpsem/blob/main/DESCRIPTION)
 
 `nlpsem` provides tools for fitting linear and nonlinear longitudinal models
 within the structural equation modeling (SEM) framework. The package is built
@@ -12,10 +12,11 @@ on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
-## Phase C development: 1.0.0.9002
+## Development: 1.0.0.9003
 
-This development branch contains the changes through Phase C, based on version
-1.0.0.9001. The published manuscript and existing releases remain unchanged.
+This development branch contains Phase C and the subsequent correctness fixes
+from the independent review. The published manuscript and existing releases
+remain unchanged.
 
 - New fits retain their model specification and fitting provenance through
   `getSpecification()`, including original group labels and retained/dropped rows.
@@ -29,12 +30,18 @@ This development branch contains the changes through Phase C, based on version
   intervals, bootstrap filtering, label-based agreement, and group-specific times.
 - New regression tests, a fitted-model workflow vignette, pkgdown configuration,
   three GitHub Actions workflows, and GPL-3 license text support development.
+- Version 1.0.0.9003 corrects mediation time mapping, starting-value constraints,
+  multivariate covariance construction, unequal observation schedules, kappa
+  intervals, and one-class/multi-digit-class reporting. New estimate and SE
+  tables and numeric interval bounds retain full precision. Older saved tables
+  retain their historical rounding.
 
-Local validation: **1,700 passing checks**, five explicit historical-reference
-exclusions, and **688 model structures** matching the 1.0.0.9001 baseline. Full
-`R CMD check --as-cran` completed with **0 errors, 0 warnings, and 2 notes**.
-See the [validation record](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/.github/VALIDATION-phase-c.md) for scope and limitations.
-Hosted CI results are separate from this local evidence.
+See the [1.0.0.9003 validation record](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/.github/VALIDATION-1.0.0.9003.md)
+for current results, commands, and limitations. The full fitting suite now runs
+on pull requests, alongside three-platform package checks and documentation.
+The historical [Phase C record](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/.github/VALIDATION-phase-c.md) remains available.
+Regression agreement and independent checks of model specification and
+statistical calculations provide complementary evidence.
 
 ```r
 # After fitting a model with this development version:
@@ -192,7 +199,7 @@ Highlights include:
 - synchronized vignettes and saved example objects
 - a new `testthat` test suite and cleaner CRAN-facing documentation
 
-See [NEWS.md](NEWS.md) for a more comprehensive summary of changes from version 0.3.
+See [NEWS.md](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/NEWS.md) for a more comprehensive summary of changes from version 0.3.
 
 ## Documentation
 

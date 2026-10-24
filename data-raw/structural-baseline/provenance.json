@@ -1,0 +1,32 @@
+{
+  "package": "nlpsem",
+  "version": "1.0.0.9002",
+  "source_commit": "31f3d61bb256b12b9ec1b345dc364c8680925fe6",
+  "model_count": 688,
+  "generator": "data-raw/snapshot_models.R",
+  "generator_sha256": "0412420d12050c300b3cb786506db37d21051beceb96256bd4f654e67509a3a0",
+  "original_snapshot_sha256": "65bffd99cc72ccc40ba48d256cda35ef60c4d978b369ebf403930b291449ad0c",
+  "committed_snapshot_sha256": "a508e8d6c8a60f54015458aabdecde97a43c5a686143dd468f44e96b1de44fcd",
+  "storage_change": "Recompressed the existing Phase C snapshot with xz; deserialized content unchanged.",
+  "baseline_environment": {
+    "R": "4.5.3",
+    "OpenMx": "2.22.11",
+    "platform": "macOS 27.0.1, aarch64"
+  },
+  "purpose": "Historical regression comparison; not an independent oracle of statistical correctness.",
+  "comparison_policy": {
+    "expected_model_count": 688,
+    "approved_structural_change": "F5 outcome-specific ADD1 constants with exactly preserved contents and verified per-outcome references.",
+    "numeric_tolerance": 1e-10,
+    "numeric_bound": "abs(current - baseline) <= 1e-10 * max(1, abs(baseline), abs(current)), elementwise",
+    "numeric_allowlist": [
+      "matrices.*.values",
+      "matrices.*.lbound",
+      "matrices.*.ubound",
+      "data.checksum"
+    ],
+    "exact_requirements": "ADD1 contents; numeric types and attributes including dimensions; NA, NaN and infinity values; names, free masks, labels, formulas and all other fields.",
+    "reporting": "Exact, rename-only, roundoff-only, and rename-plus-roundoff model counts; maximum accepted absolute and scaled numeric discrepancies.",
+    "purpose": "Cross-platform floating-point roundoff allowance only; numerical fitting-reference tolerances are unchanged."
+  }
+}

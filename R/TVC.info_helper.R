@@ -57,6 +57,10 @@
         start_X[1:(nTICs + 1), 1:(nTICs + 1)] <- starts[[k]]$BL_starts$covMatrix
         start_X[nTICs + 2, nTICs + 1] <- start_X[nTICs + 1, nTICs + 2] <- starts[[k]]$TVC_starts$covMatrix[2]
         start_X[nTICs + 2, nTICs + 2] <- starts[[k]]$TVC_starts$covMatrix[3]
+        # TICs covary with the TVC baseline factor, but not its slope factor.
+        # Numerical starts, including zero, must not change these constraints.
+        free_X <- matrix(TRUE, nrow = nTICs + 2, ncol = nTICs + 2)
+        free_X[seq_len(nTICs), nTICs + 2] <- free_X[nTICs + 2, seq_len(nTICs)] <- FALSE
         name_X <- matrix(NA, nrow = nTICs + 2, ncol = nTICs + 2)
         name_X[(nrow(name_X) - 1):nrow(name_X), (ncol(name_X) - 1):ncol(name_X)] <-
           matrix(paste0(pfx[k], c("X_psi00", "X_psi01", "X_psi01", "X_psi11")), byrow = TRUE, nrow = 2)
@@ -71,7 +75,7 @@
                          labels = c(paste0(pfx[k], "mux", seq_along(growth_TIC)),
                                     paste0(pfx[k], c("X_mueta0", "X_mueta1"))))
         X_VAR <- mxPath(from = c(growth_TIC, "eta0x", "eta1x"), to = c(growth_TIC, "eta0x", "eta1x"), arrows = 2,
-                        connect = "unique.pairs", free = !(start_X[row(start_X) >= col(start_X)] == 0),
+                        connect = "unique.pairs", free = free_X[row(free_X) >= col(free_X)],
                         values = start_X[row(start_X) >= col(start_X)],
                         labels = name_X[row(name_X) >= col(name_X)])
         X_GF_LOADINGS <- list(mxPath(from = "eta0x", to = paste0("lx", records[1]), arrows = 1, free = FALSE, values = 1),

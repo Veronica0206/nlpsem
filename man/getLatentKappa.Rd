@@ -29,6 +29,12 @@ Categories are matched by their label values, independently of factor-level orde
 Latent class numbers have no intrinsic correspondence across models: align their meanings
 explicitly before calling this function. The function does not permute classes to maximize agreement.
 }
+\details{
+The confidence interval uses the multinomial delta-method variance for
+paired categorical labels, including uncertainty in their empirical marginal
+frequencies. It treats subjects as independent and the supplied labels as observed;
+uncertainty from fitting latent class models or assigning classes is not included.
+}
 \examples{
 # Class memberships from two fitted three-class mixtures shipped with the package
 load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))
