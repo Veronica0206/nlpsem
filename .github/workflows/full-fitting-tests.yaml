@@ -74,6 +74,7 @@ jobs:
           extra-packages: |
             any::pkgload
             any::remotes
+            any::ellipsis
           needs: check
       - name: Install declared minimum testthat
         shell: Rscript {0}
