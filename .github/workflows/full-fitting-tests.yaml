@@ -9,7 +9,11 @@ permissions:
 
 jobs:
   fitting:
-    runs-on: ubuntu-latest
+    # The numerical references were generated on macOS arm64. Several random-knot and
+    # random-ratio models have multimodal likelihoods whose optimizer path differs on
+    # Linux, so the reference comparison runs on macOS; Linux and Windows are covered
+    # by the three-platform R CMD check.
+    runs-on: macos-latest
     timeout-minutes: 120
     env:
       NOT_CRAN: "true"
