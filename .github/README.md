@@ -6,7 +6,7 @@ the specific commit; configuration alone does not establish a successful run.
 | Workflow | Trigger | Work performed |
 |---|---|---|
 | `R-CMD-check.yaml` | Pull requests, pushes to `main`/`master`, or manual dispatch | R-release package checks on Windows, Linux, and macOS, including normal tests, examples, and vignette checks. `NOT_CRAN=false` excludes tests marked `skip_on_cran()`. Warnings fail the job; check logs are retained. |
-| `full-fitting-tests.yaml` | Pull requests or manual dispatch | The complete test suite and structural baseline comparison on Linux R release with `NOT_CRAN=true`. A separate job tests the declared minimum testthat version. Both check the PR head and retain evidence, including on failure. |
+| `full-fitting-tests.yaml` | Pull requests or manual dispatch | The complete test suite and structural baseline comparison on Linux R release with `NOT_CRAN=true`. A separate job tests testthat 3.2.0 with R 4.5.3 (its C APIs are incompatible with R 4.6). Both check the PR head and retain evidence, including on failure. |
 | `pkgdown.yaml` | Pull requests, pushes to `main`/`master`, or manual dispatch | Builds reference pages and articles into a downloadable documentation artifact. No deployment step is configured. |
 
 All workflows request only `contents: read`. Checkout credentials are not retained.

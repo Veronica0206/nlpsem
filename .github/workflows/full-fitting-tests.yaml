@@ -37,7 +37,7 @@ jobs:
         run: |
           set -o pipefail
           Rscript data-raw/test_structure_comparator.R 2>&1 | tee test-results/comparator-tests.log
-          Rscript -e 'source("data-raw/snapshot_models.R")' . test-results/model-structures.rds 2>&1 | tee test-results/structures.log
+          Rscript -e 'source("data-raw/snapshot_models.R")' . test-results/model-structures.rds . replay data-raw/structural-baseline/phase-c-1.0.0.9002-inputs.rds 2>&1 | tee test-results/structures.log
           Rscript data-raw/compare_model_structures.R data-raw/structural-baseline/phase-c-1.0.0.9002.rds test-results/model-structures.rds 2>&1 | tee test-results/structural-comparison.log
       - name: Run all tests including numerical references
         shell: bash
@@ -54,6 +54,7 @@ jobs:
           retention-days: 30
 
   minimum-testthat:
+    name: testthat 3.2.0 / R 4.5.3
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -67,7 +68,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: release
+          # testthat 3.2.0 uses C APIs removed in R 4.6; current-R coverage
+          # remains in the fitting and three-platform package jobs.
+          r-version: "4.5.3"
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:

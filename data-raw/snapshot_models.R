@@ -1,12 +1,27 @@
-# Build (without fitting) a broad 688-specification regression grid through the public wrappers and store a
-# canonical structural representation. Usage: Rscript snapshot_models.R <pkg> <out.rds> [family regex]
-args <- commandArgs(trailingOnly = TRUE); W <- args[1]; out <- args[2]; fam <- if (length(args) >= 3) args[3] else "."
+# Build (without fitting) a 688-specification grid through the public wrappers.
+# Usage: Rscript snapshot_models.R <pkg> <out.rds> [family regex]
+#        [auto|capture|replay] [inputs.rds] [historical-baseline.rds]
+# capture requires an exact match to the historical baseline before saving inputs.
+# replay supplies frozen data/specifications/resolved starts, so construction is
+# tested independently of platform-dependent automatic initialization.
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 2L) stop("Supply package path and output snapshot path")
+W <- args[1]; out <- args[2]; fam <- if (length(args) >= 3) args[3] else "."
+mode <- match.arg(if (length(args) >= 4L) args[4] else "auto", c("auto", "capture", "replay"))
+if (mode != "auto" && length(args) < 5L) stop("Supply an inputs.rds path for capture or replay")
+if (mode == "capture" && length(args) < 6L) stop("Capture requires a historical baseline path")
+inputs <- if (mode == "replay") readRDS(args[5]) else NULL
+if (mode == "replay") {
+  stopifnot(identical(inputs$schema_version, 1L), is.data.frame(inputs$data),
+            length(inputs$specs) == 688L, identical(names(inputs$specs), names(inputs$starts)),
+            all(vapply(inputs$starts, function(x) !is.null(x), logical(1))))
+}
 suppressPackageStartupMessages({pkgload::load_all(W, quiet = TRUE); library(OpenMx)})
 imp <- parent.env(asNamespace("nlpsem"))
 assign("mxRun", function(model, ...) model, envir = imp)
 assign("mxTryHard", function(model, ...) model, envir = imp)
 source(file.path(W, "tests/testthat/helper-golden.R"))
-dat <- .golden_data(200)
+dat <- if (mode == "replay") inputs$data else .golden_data(200)
 
 slot_canon <- function(obj) {
   if (is.null(obj)) return(NULL)
@@ -68,15 +83,33 @@ for (id in names(single)) {
   specs[[paste0("MIX_", id)]] <- list(fn = "getMIX", args = c(list(prop_starts = c(0.5, 0.5), sub_Model = sub_of[[sp$fn]]), a))
   specs[[paste0("MIXc_", id)]] <- list(fn = "getMIX", args = c(list(prop_starts = c(0.5, 0.5), sub_Model = sub_of[[sp$fn]], cluster_TIC = "gx1"), a))
 }
+if (mode == "replay") {
+  if (!identical(specs, inputs$specs)) stop("Replay specifications differ from the historical grid")
+  specs <- inputs$specs
+}
 specs <- specs[grepl(fam, names(specs))]
-cat("specs:", length(specs), "\n")
+if (mode == "capture" && length(specs) != 688L) stop("Capture requires the complete 688-model grid")
+cat("specs:", length(specs), "; input mode:", mode, "\n")
+captured_starts <- stats::setNames(vector("list", length(specs)), names(specs))
 snap <- list(); t0 <- Sys.time()
 for (id in names(specs)) {
   sp <- specs[[id]]; fn <- get(sp$fn, envir = asNamespace("nlpsem"))
   set.seed(20191029)
   calls <- NULL
   res <- tryCatch(withCallingHandlers({
-    fit <- suppressMessages(suppressWarnings(do.call(fn, c(list(dat = dat), sp$args, list(paramOut = FALSE)))))
+    call_args <- c(list(dat = dat), sp$args, list(paramOut = FALSE))
+    if (mode == "replay") call_args$starts <- inputs$starts[[id]]
+    fit <- suppressMessages(suppressWarnings(do.call(fn, call_args)))
+    if (mode == "capture") {
+      metadata <- getSpecification(fit)
+      stopifnot(identical(metadata$fitting$starts_source, "automatic"), !is.null(metadata$fitting$starts))
+      captured_starts[id] <- list(metadata$fitting$starts)
+    }
+    if (mode == "replay") {
+      metadata <- getSpecification(fit)
+      stopifnot(identical(metadata$fitting$starts_source, "user"),
+                identical(metadata$fitting$starts, inputs$starts[[id]]))
+    }
     canon(fit@mxOutput)
   }, error = function(e) calls <<- sys.calls()), error = function(e) list(error = conditionMessage(e),
        trace = paste(vapply(calls, function(cl) substr(paste(deparse(cl), collapse = " "), 1, 160), ""), collapse = "\n")))
@@ -89,3 +122,22 @@ for (e in errs) cat("  ERROR", e, ":", substr(snap[[e]]$error, 1, 120), "\n")
 saveRDS(snap, out); cat("written", out, "\n")
 
 if (length(errs)) quit(status = 1L)
+
+if (mode == "capture") {
+  historical <- readRDS(args[6])
+  if (!identical(snap, historical)) {
+    stop("Captured structures differ from the historical baseline; inputs were not saved. ",
+         paste(all.equal(snap, historical, tolerance = 0), collapse = "; "))
+  }
+  revision <- system2("git", c("-C", shQuote(normalizePath(W)), "rev-parse", "HEAD"), stdout = TRUE)
+  bundle <- list(schema_version = 1L, source_commit = revision,
+                 source_version = as.character(utils::packageVersion("nlpsem")),
+                 session = list(R = as.character(getRversion()), platform = R.version$platform,
+                                OpenMx = as.character(utils::packageVersion("OpenMx")),
+                                pkgload = as.character(utils::packageVersion("pkgload")),
+                                nlpsem = as.character(utils::packageVersion("nlpsem"))),
+                 data = dat, specs = specs, starts = captured_starts)
+  saveRDS(bundle, args[5], compress = "xz")
+  cat("Captured resolved inputs for", length(specs), "models; exact historical equality verified.\n")
+  cat("Inputs written to", args[5], "\n")
+}

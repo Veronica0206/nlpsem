@@ -49,6 +49,10 @@ Tidy; the PDF manual builds successfully. Hosted checks verify the published hea
 The minimum-dependency run clears the inherited LC_ALL environment variable:
 testthat 3.2.0 otherwise emits locale-change warnings under the local R 4.5
 environment. No package warnings were suppressed.
+The hosted minimum-dependency job uses R 4.5.3 because testthat 3.2.0 cannot
+load with R 4.6.1's removed C APIs. Current-R coverage uses modern testthat in
+the main package and full-fitting jobs; the historical minimum is tested as
+an explicit R 4.5.3 combination.
 
 Numeric tables and interval endpoints now carry more digits. Existing serialized
 `@Estimates` tables retain their historical rounding; refitting or recomputing the
@@ -71,6 +75,12 @@ or promoted to make this update pass. Numerical fitting tolerances remain
 
 The historical structural snapshot, hashes, source revision, environment, and
 comparison policy are committed under `data-raw/structural-baseline/`.
+The hosted structural gate replays the exact saved Phase C data, arguments, and
+starting values through the public fitting wrappers. Capture is accepted only
+when all 688 old-source structures exactly match the immutable historical
+snapshot. This avoids conflating platform-dependent automatic initialization
+with changes in model construction. The full numerical fitting suite continues
+to exercise automatic initialization.
 Only the reviewed ADD1 renames are normalized. A bounded 1e-10 scaled numeric
 allowance applies to matrix values/bounds and data checksums for cross-platform
 roundoff; types, dimensions, names, free masks, labels, formulas, and ADD1
@@ -82,7 +92,7 @@ From the repository root:
 ```sh
 mkdir -p test-results
 Rscript -e 'source("data-raw/run_validation_tests.R")' . . test-results/full-tests
-Rscript -e 'source("data-raw/snapshot_models.R")' . test-results/model-structures.rds
+Rscript -e 'source("data-raw/snapshot_models.R")' . test-results/model-structures.rds . replay data-raw/structural-baseline/phase-c-1.0.0.9002-inputs.rds
 Rscript data-raw/test_structure_comparator.R
 Rscript data-raw/compare_model_structures.R data-raw/structural-baseline/phase-c-1.0.0.9002.rds test-results/model-structures.rds
 R CMD build .
