@@ -1,117 +1,110 @@
-#' @title Get Factor Loadings for a Longitudinal Mediation Model with Specified Functional Curves
-#'
-#' @description This function specifies the factor loadings for a longitudinal mediation model with given functional form.
-#'
-#' @param t_var A vector of strings, with each element representing the prefix for column names related to the time
-#' variable for the corresponding longitudinal variable at each study wave. It takes the value passed from \code{getMediation()}.
-#' @param y_var A string specifying the prefix of the column names corresponding to the outcome variable at each study wave.
-#' It takes the value passed from \code{getMediation()}.
-#' @param m_var A string specifying the prefix of the column names corresponding to the mediator variable at each study wave.
-#' It takes the value passed from \code{getMediation()}.
-#' @param x_type A string indicating the type of predictor variable used in the model. Supported values are \code{"baseline"}
-#' and \code{"longitudinal"}. It takes the value passed from \code{getMediation()}.
-#' @param x_var A string specifying the baseline predictor if \code{x_type = "baseline"}, or the prefix of the column names
-#' corresponding to the predictor variable at each study wave if \code{x_type = "longitudinal"}. It takes the value passed from
-#' \code{getMediation()}.
-#' @param curveFun A string specifying the functional form of the growth curve. Supported options include: \code{"linear"}
-#' (or \code{"LIN"}), and \code{"bilinear spline"} (or \code{"BLS"}). It takes the value passed from \code{getMediation()}.
-#' @param y_records A numeric vector specifying indices of the study waves for the outcome variable. It is the first vector
-#' in \code{records} specified in \code{getMediation()}.
-#' @param m_records A numeric vector specifying indices of the study waves for the mediator variable. It is the second vector
-#' in \code{records} specified in \code{getMediation()}.
-#' @param x_records A numeric vector specifying indices of the study waves for the predictor variable. Default value is \code{NULL},
-#' which is for \code{x_type = "baseline"}. If \code{x_type = "longitudinal"}, it is the third vector in \code{records} specified in
-#' \code{getMediation()}.
-#'
-#' @return A list containing the specification of definition variables (i.e., individual measurement occasions) and factor
-#' loadings of a longitudinal mediation model.
-#'
+#' @title Growth-factor loadings of a longitudinal mediation model, one set per prefix
+#' @description \code{pfx = ""} gives the single-group objects; \code{pfx = c("c1", "c2", ...)} the class-specific
+#' ones used by the multiple-group and mixture models. The names of matrices and algebras carry the prefix.
 #' @keywords internal
 #' @noRd
 #'
-getMED.loadings <- function(t_var, y_var, m_var, x_type, x_var, curveFun, y_records, m_records,
-                            x_records = NULL){
-  outDefM <- outDefY <- list()
-  for (j in m_records){
-    outDefM[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
-                             name = paste0("t", m_var, j))
-  }
-  for (j in y_records){
-    outDefY[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[2], j),
-                             name = paste0("t", y_var, j))
-  }
-  if (x_type == "baseline"){
-    if (curveFun %in% c("linear", "LIN")){
-      outLoadsY1 <- outLoadsM1 <- list()
-      for (j in m_records){
-        outLoadsM1[[j]] <- mxAlgebraFromString(paste0("t", m_var, j), name = paste0("L1", j, "M"))
-      }
-      for (j in y_records){
-        outLoadsY1[[j]] <- mxAlgebraFromString(paste0("t", y_var, j), name = paste0("L1", j, "Y"))
-      }
-      outLoads <- list(outLoadsY1, outLoadsM1)
+
+#'
+.loadings_MED_classes <- function(pfx, t_var, y_var, m_var, x_var, x_type, curveFun, y_records, m_records, x_records = NULL){
+  output_CL <- list()
+  for (k in seq_along(pfx)){
+    outPointM <- outPointY <- list()
+    for (j in m_records){
+      outPointM[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
+                                 name = paste0("t", m_var, j))
     }
-    else if (curveFun %in% c("bilinear spline", "BLS")){
-      outLoadsY1 <- outLoadsY2 <- outLoadsM1 <- outLoadsM2 <- list()
-      for (j in m_records){
-        outLoadsM1[[j]] <- mxAlgebraFromString(paste0("min(0, t", m_var, j, " - M_mug)"),
-                                               name = paste0("L1", j, "M"))
-        outLoadsM2[[j]] <- mxAlgebraFromString(paste0("max(0, t", m_var, j, " - M_mug)"),
-                                               name = paste0("L2", j, "M"))
-      }
-      for (j in y_records){
-        outLoadsY1[[j]] <- mxAlgebraFromString(paste0("min(0, t", y_var, j, " - Y_mug)"),
-                                               name = paste0("L1", j, "Y"))
-        outLoadsY2[[j]] <- mxAlgebraFromString(paste0("max(0, t", y_var, j, " - Y_mug)"),
-                                               name = paste0("L2", j, "Y"))
-      }
-      outLoads <- list(outLoadsY1, outLoadsY2, outLoadsM1, outLoadsM2)
+    for (j in y_records){
+      outPointY[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[2], j),
+                                 name = paste0("t", y_var, j))
     }
-    outDef <- list(outDefY, outDefM)
-  }
-  else if (x_type == "longitudinal"){
-    outDefX <- list()
-    for (j in x_records){
-      outDefX[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
-                               name = paste0("t", x_var, j))
+    if (x_type == "baseline"){
+      if (curveFun %in% c("linear", "LIN")){
+        outLoadsY1 <- outLoadsM1 <- list()
+        for (j in m_records){
+          outLoadsM1[[j]] <- mxAlgebraFromString(paste0("t", m_var, j), name = paste0(pfx[k], "L1", j, "M"))
+        }
+        for (j in y_records){
+          outLoadsY1[[j]] <- mxAlgebraFromString(paste0("t", y_var, j), name = paste0(pfx[k], "L1", j, "Y"))
+        }
+        outLoads <- list(outLoadsY1, outLoadsM1)
+      }
+      else if (curveFun %in% c("bilinear spline", "BLS")){
+        outLoadsY1 <- outLoadsY2 <- outLoadsM1 <- outLoadsM2 <- list()
+        for (j in m_records){
+          outLoadsM1[[j]] <- mxAlgebraFromString(paste0("min(0, t", m_var, j, " - ", pfx[k], "M_mug)"),
+                                                 name = paste0(pfx[k], "L1", j, "M"))
+          outLoadsM2[[j]] <- mxAlgebraFromString(paste0("max(0, t", m_var, j, " - ", pfx[k], "M_mug)"),
+                                                 name = paste0(pfx[k], "L2", j, "M"))
+        }
+        for (j in y_records){
+          outLoadsY1[[j]] <- mxAlgebraFromString(paste0("min(0, t", y_var, j, " - ", pfx[k], "Y_mug)"),
+                                                 name = paste0(pfx[k], "L1", j, "Y"))
+          outLoadsY2[[j]] <- mxAlgebraFromString(paste0("max(0, t", y_var, j, " - ", pfx[k], "Y_mug)"),
+                                                 name = paste0(pfx[k], "L2", j, "Y"))
+        }
+        outLoads <- list(outLoadsY1, outLoadsY2, outLoadsM1, outLoadsM2)
+      }
+      outPoint <- list(outPointY, outPointM)
     }
-    if (curveFun %in% c("linear", "LIN")){
-      outLoadsY1 <- outLoadsM1 <- outLoadsX1 <- list()
+    else if (x_type == "longitudinal"){
+      outPointX <- list()
       for (j in x_records){
-        outLoadsX1[[j]] <- mxAlgebraFromString(paste0("t", x_var, j), name = paste0("L1", j, "X"))
+        outPointX[[j]] <- mxMatrix("Full", 1, 1, free = FALSE, labels = paste0("data.", t_var[1], j),
+                                   name = paste0("t", x_var, j))
       }
-      for (j in m_records){
-        outLoadsM1[[j]] <- mxAlgebraFromString(paste0("t", m_var, j), name = paste0("L1", j, "M"))
+      if (curveFun %in% c("linear", "LIN")){
+        outLoadsY1 <- outLoadsM1 <- outLoadsX1 <- list()
+        for (j in x_records){
+          outLoadsX1[[j]] <- mxAlgebraFromString(paste0("t", x_var, j), name = paste0(pfx[k], "L1", j, "X"))
+        }
+        for (j in m_records){
+          outLoadsM1[[j]] <- mxAlgebraFromString(paste0("t", m_var, j), name = paste0(pfx[k], "L1", j, "M"))
+        }
+        for (j in y_records){
+          outLoadsY1[[j]] <- mxAlgebraFromString(paste0("t", y_var, j), name = paste0(pfx[k], "L1", j, "Y"))
+        }
+        outLoads <- list(outLoadsY1, outLoadsM1, outLoadsX1)
       }
-      for (j in y_records){
-        outLoadsY1[[j]] <- mxAlgebraFromString(paste0("t", y_var, j), name = paste0("L1", j, "Y"))
+      else if (curveFun %in% c("bilinear spline", "BLS")){
+        outLoadsY1 <- outLoadsY2 <- outLoadsM1 <- outLoadsM2 <- outLoadsX1 <- outLoadsX2 <- list()
+        for (j in x_records){
+          outLoadsX1[[j]] <- mxAlgebraFromString(paste0("min(0, t", x_var, j, " - ", pfx[k], "X_mug)"),
+                                                 name = paste0(pfx[k], "L1", j, "X"))
+          outLoadsX2[[j]] <- mxAlgebraFromString(paste0("max(0, t", x_var, j, " - ", pfx[k], "X_mug)"),
+                                                 name = paste0(pfx[k], "L2", j, "X"))
+        }
+        for (j in m_records){
+          outLoadsM1[[j]] <- mxAlgebraFromString(paste0("min(0, t", m_var, j, " - ", pfx[k], "M_mug)"),
+                                                 name = paste0(pfx[k], "L1", j, "M"))
+          outLoadsM2[[j]] <- mxAlgebraFromString(paste0("max(0, t", m_var, j, " - ", pfx[k], "M_mug)"),
+                                                 name = paste0(pfx[k], "L2", j, "M"))
+        }
+        for (j in y_records){
+          outLoadsY1[[j]] <- mxAlgebraFromString(paste0("min(0, t", y_var, j, " - ", pfx[k], "Y_mug)"),
+                                                 name = paste0(pfx[k], "L1", j, "Y"))
+          outLoadsY2[[j]] <- mxAlgebraFromString(paste0("max(0, t", y_var, j, " - ", pfx[k], "Y_mug)"),
+                                                 name = paste0(pfx[k], "L2", j, "Y"))
+        }
+        outLoads <- list(outLoadsY1, outLoadsY2, outLoadsM1, outLoadsM2, outLoadsX1, outLoadsX2)
       }
-      outLoads <- list(outLoadsY1, outLoadsM1, outLoadsX1)
+      outPoint <- list(outPointY, outPointM, outPointX)
     }
-    else if (curveFun %in% c("bilinear spline", "BLS")){
-      outLoadsY1 <- outLoadsY2 <- outLoadsM1 <- outLoadsM2 <- outLoadsX1 <- outLoadsX2 <- list()
-      for (j in x_records){
-        outLoadsX1[[j]] <- mxAlgebraFromString(paste0("min(0, t", x_var, j, " - X_mug)"),
-                                               name = paste0("L1", j, "X"))
-        outLoadsX2[[j]] <- mxAlgebraFromString(paste0("max(0, t", x_var, j, " - X_mug)"),
-                                               name = paste0("L2", j, "X"))
-      }
-      for (j in m_records){
-        outLoadsM1[[j]] <- mxAlgebraFromString(paste0("min(0, t", m_var, j, " - M_mug)"),
-                                               name = paste0("L1", j, "M"))
-        outLoadsM2[[j]] <- mxAlgebraFromString(paste0("max(0, t", m_var, j, " - M_mug)"),
-                                               name = paste0("L2", j, "M"))
-      }
-      for (j in y_records){
-        outLoadsY1[[j]] <- mxAlgebraFromString(paste0("min(0, t", y_var, j, " - Y_mug)"),
-                                               name = paste0("L1", j, "Y"))
-        outLoadsY2[[j]] <- mxAlgebraFromString(paste0("max(0, t", y_var, j, " - Y_mug)"),
-                                               name = paste0("L2", j, "Y"))
-      }
-      outLoads <- list(outLoadsY1, outLoadsY2, outLoadsM1, outLoadsM2, outLoadsX1, outLoadsX2)
-    }
-    outDef <- list(outDefY, outDefM, outDefX)
+    output_CL[[k]] <- list(outPoint, outLoads)
   }
-  return(list(outDef, outLoads))
+  return(output_CL)
 }
 
+
+#' @keywords internal
+#' @noRd
+getMED.loadings <- function(t_var, y_var, m_var, x_type, x_var, curveFun, y_records, m_records, x_records = NULL){
+  .loadings_MED_classes(pfx = "", t_var = t_var, y_var = y_var, m_var = m_var, x_var = x_var, x_type = x_type,
+                        curveFun = curveFun, y_records = y_records, m_records = m_records, x_records = x_records)[[1]]
+}
+getMIX_MED.loadings <- function(nClass, t_var, y_var, m_var, x_var, x_type, curveFun, y_records, m_records,
+                                x_records = NULL){
+  .loadings_MED_classes(pfx = paste0("c", seq_len(nClass)), t_var = t_var, y_var = y_var, m_var = m_var, x_var = x_var,
+                        x_type = x_type, curveFun = curveFun, y_records = y_records, m_records = m_records,
+                        x_records = x_records)
+}

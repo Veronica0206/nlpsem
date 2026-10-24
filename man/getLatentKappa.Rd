@@ -25,54 +25,19 @@ The content of these slots can be printed using the \code{printTable()} method f
 \description{
 This function calculates the latent kappa, a measure of agreement between two sets of latent categorical
 labels. It also computes the confidence interval and provides a qualitative interpretation of the agreement level.
+Categories are matched by their label values, independently of factor-level order.
+Latent class numbers have no intrinsic correspondence across models: align their meanings
+explicitly before calling this function. The function does not permute classes to maximize agreement.
 }
 \examples{
-mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-data("RMS_dat")
-RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
-baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-RMS_dat0$gx1 <- scale(RMS_dat0$INCOME)
-RMS_dat0$gx2 <- scale(RMS_dat0$EDU)
-\donttest{
-## Fit a growth mixture model with no TICs
-set.seed(20191029)
-MIX_BLS_LGCM_r <-  getMIX(
-  dat = RMS_dat0, prop_starts = c(0.30, 0.40, 0.30), sub_Model = "LGCM",
-  cluster_TIC = NULL, y_var = "M", t_var = "T", records = 1:9,
-  curveFun = "BLS", intrinsic = FALSE, growth_TIC = NULL, tries = 10
-)
-## Membership of each individual from growth mixture model with no TICs
-label1 <- getPosterior(
-  model = MIX_BLS_LGCM_r@mxOutput, nClass = 3, label = FALSE, cluster_TIC = NULL
-)
-set.seed(20191029)
-## Fit a growth mixture model with growth TICs and cluster TICs
-MIX_BLS_LGCM.TIC_r <-  getMIX(
-  dat = RMS_dat0, prop_starts = c(0.33, 0.34, 0.33), sub_Model = "LGCM",
-  cluster_TIC = c("gx1", "gx2"), y_var = "M", t_var = "T", records = 1:9,
-  curveFun = "BLS", intrinsic = FALSE,
-  growth_TIC = c("ex1", "ex2"), tries = 10
-)
-## Membership of each individual from growth mixture model with growth TICs and cluster TICs
+# Class memberships from two fitted three-class mixtures shipped with the package
+load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))
+label1 <- getPosterior(model = Math_BLS_LGCM3@mxOutput, nClass = 3)@membership
 label2 <- getPosterior(
-  model = MIX_BLS_LGCM.TIC_r@mxOutput, nClass = 3, label = FALSE,
-  cluster_TIC = c("gx1", "gx2")
-)
-## Calculate the agreement between two sets of membership labels
-getLatentKappa(label1 = label1@membership, label2 = label2@membership)
-}
+  model = RM_BLS_PLGCM3@mxOutput, nClass = 3, cluster_TIC = c("gx1", "gx2")
+)@membership
+kappa <- getLatentKappa(label1 = label1, label2 = label2)
+printTable(kappa)
 
 }
 \references{

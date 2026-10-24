@@ -1,0 +1,125 @@
+---
+title: "Working with fitted nlpsem models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Working with fitted nlpsem models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
+library(nlpsem)
+```
+
+Newly fitted models retain the specification used to construct them. You can inspect
+and plot the returned object without repeating its outcome names, curve family, or
+selected waves. The underlying OpenMx model remains available in `fit@mxOutput`.
+
+## Fit a small model
+
+This example generates five measurements for 80 people with a random intercept and
+slope. Times are measured from the first occasion. The example is deliberately small
+so that it can be fitted when this article is built.
+
+```{r fit-model, message=FALSE}
+set.seed(20261024)
+n <- 80L
+times <- 0:4
+intercept <- rnorm(n, mean = 10, sd = 2)
+slope <- rnorm(n, mean = 1.5, sd = 0.3)
+dat <- data.frame(ID = seq_len(n))
+for (j in seq_along(times)) {
+  dat[[paste0("T", j)]] <- times[j]
+  dat[[paste0("Y", j)]] <- intercept + slope * times[j] + rnorm(n, sd = 0.5)
+}
+
+fit <- getLGCM(
+  dat, t_var = "T", y_var = "Y", records = 1:5,
+  curveFun = "LIN", intrinsic = FALSE, paramOut = TRUE
+)
+```
+
+## Inspect the fitted object
+
+The compact print method gives an overview. The summary method delegates to OpenMx,
+so its convergence and fit diagnostics remain available.
+
+```{r inspect-model}
+print(fit)
+summary(fit)
+```
+
+The coefficient method returns the named free parameters at full precision.
+`printTable(fit)` displays the package's estimate table, including derived quantities
+when that model supplies them; these serve different purposes.
+
+```{r estimates}
+coef(fit)
+logLik(fit)
+printTable(fit)
+```
+
+Use `getSpecification()` to inspect the recorded modeling choices and fitting
+provenance. This is useful when returning to a saved analysis or explaining how a
+figure was constructed.
+
+```{r specification}
+provenance <- getSpecification(fit)
+names(provenance)
+provenance$specification
+provenance$versions
+```
+
+The full object also retains resolved starting values, fitting settings, and available
+RNG state. Save the original data together with the fitted object; provenance records
+the specification but is not an automatically replayable call.
+
+## Plot without repeating the specification
+
+The plotting method reads the recorded model specification. Supply only presentation
+choices such as the time label and outcome title.
+
+```{r plot-model, message=FALSE, warning=FALSE, fig.alt="The simulated mean outcome increases from about 10 at baseline to 16 after four years. The fitted linear mean closely follows the smoothed observed mean, with pointwise 95 percent confidence limits on either side."}
+plot(fit, xstarts = 0, xlab = "Years since baseline", outcome = "Simulated outcome")
+```
+
+The intervals describe uncertainty in the model-implied mean at each plotted time.
+They are pointwise intervals, not prediction intervals for individual people or a
+simultaneous confidence band for the entire curve.
+
+For further customization, request the plotting object without drawing it:
+
+```{r collect-plot}
+figures <- plot(fit, draw = FALSE, xstarts = 0, xlab = "Years since baseline",
+                outcome = "Simulated outcome")
+class(figures)
+```
+
+Its `figures` slot contains the ggplot objects. The layout follows `getFigure()`:
+one entry per outcome, with growth-status or change/rate plots within that entry.
+
+## Reuse existing analyses
+
+The fitting functions retain their existing arguments and output slots. Calls that
+work directly with OpenMx models, such as the following, remain available:
+
+```{r existing-api}
+getSummary(model_list = list(fit@mxOutput))
+```
+
+Objects saved by older nlpsem versions may not contain specification metadata. Their
+OpenMx results can still be inspected, but structural choices must be supplied when
+plotting. For example, for an older univariate linear fit:
+
+```{r legacy-plot, eval=FALSE}
+plot(
+  old_fit, sub_Model = "LGCM", y_var = "Y", curveFun = "LIN",
+  t_var = "T", records = 1:5, xstarts = 0,
+  xlab = "Years since baseline", outcome = "Outcome"
+)
+```
+
+Use the specification from the original analysis. Do not infer the selected waves or
+curve family solely from the appearance of a plotted trajectory. See the model-specific
+vignettes for time-varying covariates, multiple outcomes, mediation, groups, and mixtures.

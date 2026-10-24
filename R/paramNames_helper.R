@@ -405,7 +405,8 @@
     btw_names <- .mgm_between_names(y_var, gf$psi_labels)
     c(outcome_names, btw_names)
   } else {
-    # LCSM: add rel_rate, then derived (interleaved by type), then between
+    # LCSM: rel_rate, between-trajectory covariance, then derived quantities.
+    # This order matches getMGM.output() and the class-specific output helper.
     is_nonp <- curveFun %in% c("nonparametric", "NonP")
 
     rel_names <- NULL
@@ -431,9 +432,9 @@
     btw_names <- .mgm_between_names(y_var, gf$psi_labels)
 
     if (is_nonp) {
-      c(outcome_names, rel_names, derived_names, btw_names)
+      c(outcome_names, rel_names, btw_names, derived_names)
     } else {
-      c(outcome_names, derived_names, btw_names)
+      c(outcome_names, btw_names, derived_names)
     }
   }
 }

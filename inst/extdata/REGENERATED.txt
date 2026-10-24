@@ -1,0 +1,8 @@
+Regenerated: 2026-10-24 (scripts in data-raw/, run one by one with out_dir set; see data-raw/README.md)
+R: R version 4.5.3 (2026-03-11)
+OpenMx: 2.22.11
+nlpsem: 1.0.0.9000
+Compared with the 0.4.1 objects: 20 of the 23 fitted models reproduce the previous -2LL exactly (mediation estimates
+within 0.011 at identical -2LL); Math_TVCslp_BLS_f reaches a lower -2LL (42269.243 vs 42457.330); RM_PLGCM.f
+(62609.185 vs 62589.483) and RM_BLS_PLGCM3 (61903.555 vs 61865.287; now labelled R/M) converge to nearby local
+optima of these multimodal likelihoods from the 1.0 start values.

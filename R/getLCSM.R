@@ -52,35 +52,27 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getTVCmodel}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in years)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- (RMS_dat0$T1 - baseT)/12
-#' RMS_dat0$T2 <- (RMS_dat0$T2 - baseT)/12
-#' RMS_dat0$T3 <- (RMS_dat0$T3 - baseT)/12
-#' RMS_dat0$T4 <- (RMS_dat0$T4 - baseT)/12
-#' RMS_dat0$T5 <- (RMS_dat0$T5 - baseT)/12
-#' RMS_dat0$T6 <- (RMS_dat0$T6 - baseT)/12
-#' RMS_dat0$T7 <- (RMS_dat0$T7 - baseT)/12
-#' RMS_dat0$T8 <- (RMS_dat0$T8 - baseT)/12
-#' RMS_dat0$T9 <- (RMS_dat0$T9 - baseT)/12
-#' # Standardized time-invariant covariates
-#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- (RMS_dat0[[paste0("T", j)]] - baseT) / 12
 #'
 #' \donttest{
-#' # Fit nonparametric change score model for reading development
-#' ## Fit model
+#' # Nonparametric latent change score model for reading development
 #' NonP_LCSM <- getLCSM(
 #'   dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "nonparametric",
-#'   intrinsic = FALSE, records = 1:9
-#'   )
+#'   intrinsic = FALSE, records = 1:9, paramOut = TRUE
+#' )
+#' printTable(NonP_LCSM)
 #' }
 #'
 #' @importFrom OpenMx mxTryHard mxRun
@@ -96,8 +88,10 @@ getLCSM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   validate_intrinsic(intrinsic, curveFun, model_type = "LCSM")
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC)
+  metadata <- .capture_fit_metadata(match.call(), "getLCSM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getUNI.initial(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, records = records,
                              growth_TIC = growth_TIC, res_scale = res_scale, intrinsic = intrinsic)
   }
@@ -121,5 +115,6 @@ getLCSM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
   return(model)
 }

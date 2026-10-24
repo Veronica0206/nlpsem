@@ -22,15 +22,15 @@ getLGCM.output <- function(model, growth_TIC, names){
                          model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                          mxEval(beta, model), model@output$estimate[grep("mux", names(model@output$estimate))],
                          model@output$estimate[grep("phi", names(model@output$estimate))], mxEval(Y_mean0, model)), 4)
-    model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+    model.se <- round(c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                         model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                        mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                        model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model)), 4)
+                        mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                        model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE)), 4)
   }
   else if (is.null(growth_TIC)){
     model.est <- round(c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
                          model@output$estimate[grep("Y_residuals", names(model@output$estimate))]), 4)
-    model.se <- round(c(mxSE(Y_mean0, model), mxSE(Y_psi0, model)[row(mxSE(Y_psi0, model)) >= col(mxSE(Y_psi0, model))],
+    model.se <- round(c(mxSE(Y_mean0, model, silent = TRUE), mxSE(Y_psi0, model, silent = TRUE)[row(mxSE(Y_psi0, model, silent = TRUE)) >= col(mxSE(Y_psi0, model, silent = TRUE))],
                         model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))]), 4)
   }
   # Safety net: ensure names and estimates have matching length

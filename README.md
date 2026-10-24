@@ -12,6 +12,43 @@ on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
+## Phase C development: 1.0.0.9002
+
+This development branch contains the changes through Phase C, based on version
+1.0.0.9001. The published manuscript and existing releases remain unchanged.
+
+- New fits retain their model specification and fitting provenance through
+  `getSpecification()`, including original group labels and retained/dropped rows.
+- Standard `print()`, `summary()`, `coef()`, `logLik()`, and `plot()` methods make
+  fitted models easier to inspect. Coefficients retain full precision, AIC/BIC
+  use the OpenMx likelihood counts, and plotting uses the saved specification.
+- Existing S4 slots and legacy saved fits remain compatible. Legacy plotting
+  requires explicit model arguments. Recorded calls are provenance records,
+  not automatically executable replay commands.
+- The earlier correctness fixes cover multivariate indexing, pointwise plot
+  intervals, bootstrap filtering, label-based agreement, and group-specific times.
+- New regression tests, a fitted-model workflow vignette, pkgdown configuration,
+  three GitHub Actions workflows, and GPL-3 license text support development.
+
+Local validation: **1,700 passing checks**, five explicit historical-reference
+exclusions, and **688 model structures** matching the 1.0.0.9001 baseline. Full
+`R CMD check --as-cran` completed with **0 errors, 0 warnings, and 2 notes**.
+See the [validation record](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/.github/VALIDATION-phase-c.md) for scope and limitations.
+Hosted CI results are separate from this local evidence.
+
+```r
+# After fitting a model with this development version:
+print(fit)
+head(coef(fit))
+logLik(fit)
+AIC(fit)
+BIC(fit)
+getSpecification(fit)$specification
+figure <- plot(fit, draw = FALSE)
+```
+
+See `vignette("phase_c_workflow", package = "nlpsem")` for a runnable example.
+
 ## Portfolio positioning
 
 `nlpsem` is a statistical software and measurement-methods asset. It supports nonlinear longitudinal modeling, latent growth and latent change models, mixture modeling, multivariate longitudinal processes, multiple-group comparisons, and psychometric/measurement-science workflows in R.
@@ -103,7 +140,7 @@ To install the development version from GitHub:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("Veronica0206/nlpsem")
+remotes::install_github("Veronica0206/nlpsem", ref = "codex/nlpsem-phase-c-1.0.0.9002")
 ```
 
 ## Quick example
@@ -137,7 +174,7 @@ Math_BLS <- getLGCM(
 printTable(Math_BLS)
 ```
 
-## What is new in version 0.4
+## Earlier changes in version 0.4
 
 Version 0.4 keeps the modeling scope of version 0.3 while substantially
 improving robustness, usability, and documentation.
@@ -162,6 +199,7 @@ See [NEWS.md](NEWS.md) for a more comprehensive summary of changes from version 
 The package includes an overview vignette and scenario-specific example
 vignettes:
 
+- `vignette("phase_c_workflow")`
 - `vignette("nlpsem_overview")`
 - `vignette("getLGCM_examples")`
 - `vignette("getLCSM_examples")`

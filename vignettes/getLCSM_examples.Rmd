@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getLCSM()` function. This function is designed to construct Latent Change Score Models (LCSMs) using one of four different functional forms: quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LCSMs can be fitted as intrinsically nonlinear models. Moreover, the function provides the flexibility to be constructed with or without the incorporation of time-invariant covariates (TICs).
 vignette: >
-  %\VignetteIndexEntry{getLCSM_examples}
+  %\VignetteIndexEntry{Examples of Latent Change Score Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -67,7 +67,7 @@ Read_LCSM_NonP_TIC <- getLCSM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading change from the first selected occasion over time in years from a nonparametric change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading growth rate over time in years from a nonparametric change-score model, with pointwise 95 percent confidence limits.", "Reading change from the first selected occasion over time in years from a nonparametric change-score model with time-invariant covariates, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading growth rate over time in years from a nonparametric change-score model with time-invariant covariates, with pointwise 95 percent confidence limits.")}
 getSummary(model_list = list(Read_LCSM_NonP@mxOutput, Read_LCSM_NonP_TIC@mxOutput))
 Figure1 <- getFigure(
   model = Read_LCSM_NonP@mxOutput, sub_Model = "LCSM", y_var = "R", curveFun = "NonP", 
@@ -102,7 +102,7 @@ Read_LCSM_JB_r <- getLCSM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading change from the first selected occasion over time in years from a quadratic change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading growth rate over time in years from a quadratic change-score model, with pointwise 95 percent confidence limits.", "Reading change from the first selected occasion over time in years from a negative-exponential change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading growth rate over time in years from a negative-exponential change-score model, with pointwise 95 percent confidence limits.", "Reading change from the first selected occasion over time in years from a Jenss-Bayley change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading growth rate over time in years from a Jenss-Bayley change-score model, with pointwise 95 percent confidence limits.")}
 Figure3 <- getFigure(
   model = Read_LCSM_QUAD@mxOutput, sub_Model = "LCSM", y_var = "R", curveFun = "QUAD", 
   y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",

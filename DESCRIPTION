@@ -1,7 +1,7 @@
 Package: nlpsem
 Type: Package
 Title: Nonlinear Longitudinal Process in Structural Equation Modeling
-Version: 0.4
+Version: 1.0.0.9002
 Authors@R: c(person(given = "Jin",
            family = "Liu",
            role = c("aut", "cre"),
@@ -12,7 +12,7 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.0.0), OpenMx (>= 2.21.8)
 Imports: ggplot2, dplyr, tidyr, stringr, Matrix, nnet, readr, methods,
-    grDevices, stats, utils
+        grDevices, graphics, stats, utils, rlang (>= 0.4.0)
 RoxygenNote: 7.3.3
 URL: https://github.com/Veronica0206/nlpsem
 BugReports: https://github.com/Veronica0206/nlpsem/issues
@@ -20,6 +20,3 @@ Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2026-03-19 23:20:54 UTC; veronica
-Author: Jin Liu [aut, cre]
-Maintainer: Jin Liu <Veronica.Liu0206@gmail.com>

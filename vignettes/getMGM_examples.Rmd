@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getMGM()` function. This function is designed to construct multivariate Latent Growth Curve Models (LGCMs) or Latent Change Score Models (LCSMs). The supported functional forms of LGCMs include linear, quadratic, negative exponential, Jenss-Bayley, and bilinear spline. LCSMs support quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LGCMs/LCSMs, as well as bilinear spline LGCMs, can be fitted as intrinsically nonlinear models. 
 vignette: >
-  %\VignetteIndexEntry{getMGM_examples}
+  %\VignetteIndexEntry{Examples of Multivariate Longitudinal Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -58,7 +58,7 @@ RM_PLGCM.r <- getMGM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading mean trajectory over months from a bivariate bilinear spline growth model with fixed knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a bivariate bilinear spline growth model with fixed knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure1 <- getFigure(
   model = RM_PLGCM.r@mxOutput, sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", 
   y_model = "LGCM", t_var = c("T", "T"), records = list(1:9, 1:9), xstarts = xstarts, 
@@ -76,7 +76,7 @@ RM_PLGCM.f <- getMGM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading mean trajectory over months from a bivariate bilinear spline growth model with random knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a bivariate bilinear spline growth model with random knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure2 <- getFigure(
   model = RM_PLGCM.f@mxOutput, sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", 
   y_model = "LGCM", t_var = c("T", "T"), records = list(1:9, 1:9), xstarts = xstarts, 

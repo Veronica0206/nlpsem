@@ -35,49 +35,17 @@
 #' @export
 #'
 #' @examples
-#' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' data("RMS_dat")
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
-#' RMS_dat0 <- RMS_dat
-#' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-#' RMS_dat0$gx1 <- scale(RMS_dat0$INCOME)
-#' RMS_dat0$gx2 <- scale(RMS_dat0$EDU)
-#' \donttest{
-#' # Fit longitudinal mixture group model of bilinear spline functional form with fixed knot but no
-#' # cluster TICs or growth TICs
-#' set.seed(20191029)
-#' MIX_BLS_LGCM_r <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.30, 0.40, 0.30), sub_Model = "LGCM",
-#'   cluster_TIC = NULL, y_var = "M", t_var = "T", records = 1:9, curveFun = "BLS",
-#'   intrinsic = FALSE, growth_TIC = NULL, tries = 10
+#' # Fitted mixture models shipped with the package
+#' load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))
+#' # Three-class bilinear spline mixture without cluster-forming covariates
+#' post1 <- getPosterior(model = Math_BLS_LGCM3@mxOutput, nClass = 3)
+#' head(post1@prob)
+#' post1@entropy
+#' # Three-class bivariate mixture with cluster-forming covariates
+#' post2 <- getPosterior(
+#'   model = RM_BLS_PLGCM3@mxOutput, nClass = 3, cluster_TIC = c("gx1", "gx2")
 #' )
-#' label1 <- getPosterior(
-#'   model = MIX_BLS_LGCM_r@mxOutput, nClass = 3, label = FALSE, cluster_TIC = NULL
-#' )
-#' # Fit longitudinal mixture group model of bilinear spline functional form with fixed knot, cluster
-#' # TICs, and growth TICs
-#' set.seed(20191029)
-#' MIX_BLS_LGCM.TIC_r <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.33, 0.34, 0.33), sub_Model = "LGCM",
-#'   cluster_TIC = c("gx1", "gx2"), y_var = "M", t_var = "T", records = 1:9,
-#'   curveFun = "BLS", intrinsic = FALSE,
-#'   growth_TIC = c("ex1", "ex2"), tries = 10
-#' )
-#' label2 <- getPosterior(
-#'   model = MIX_BLS_LGCM.TIC_r@mxOutput, nClass = 3, label = FALSE, cluster_TIC = c("gx1", "gx2")
-#' )
-#' }
+#' table(post2@membership)
 #'
 #' @importFrom OpenMx mxEval
 #' @importFrom methods new

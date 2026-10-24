@@ -11,11 +11,12 @@
 #' @param p_values A logical flag indicating whether to calculate p-values. Default is \code{TRUE}.
 #' @param CI A logical flag indicating whether to compute confidence intervals. Default is \code{TRUE}.
 #' @param CI_type A string specifying the type of confidence interval to compute. Supported options include
-#' \code{"Wald"}, \code{"likelihood"}, \code{"bootstrap"}, or \code{"all"}. Default is \code{"Wald"}.
-#' @param rep An integer specifying the number of replications for bootstrap. This is applicable if \code{CI_type} is
-#' \code{"bootstrap"} or \code{"all"}. Default is \code{NA}.
-#' @param conf.level A numeric value representing the confidence level for confidence interval calculation. Default is
-#' \code{0.95}.
+#' \code{"Wald"}, \code{"likelihood"}, \code{"bootstrap"}, or \code{"all"}. Default is \code{"Wald"}. An
+#' unrecognized value triggers an informative error.
+#' @param rep An integer specifying the number of replications for bootstrap. A positive integer must be
+#' supplied when \code{CI_type} is \code{"bootstrap"} or \code{"all"}. Default is \code{NA}.
+#' @param conf.level A numeric value representing the confidence level for confidence interval calculation. It applies
+#' to Wald, likelihood-based, and bootstrap confidence intervals. Default is \code{0.95}.
 #'
 #' @return An object of class \code{StatsOutput} with potential slots:
 #' \itemize{
@@ -25,6 +26,10 @@
 #'   \item \code{bootstrap}: Contains a data frame with bootstrap confidence intervals (when specified).
 #' }
 #' The content of these slots can be printed using the \code{printTable()} method for S4 objects.
+#' Bootstrap intervals use only replications with an acceptable OpenMx status and finite
+#' parameter estimates. Discarded replications trigger a warning; fewer than two usable
+#' replications trigger an error. The bootstrap data frame has a \code{bootstrap_diagnostics}
+#' attribute recording requested, attempted, successful and discarded counts and status frequencies.
 #'
 #' @references
 #' \itemize{
@@ -41,49 +46,18 @@
 #' @export
 #'
 #' @examples
-#' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
-#' data("RMS_dat")
-#' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
-#' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' # Standardized time-invariant covariates
-#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-#' \donttest{
-#' # Fit bilinear spline latent growth curve model (fixed knots)
-#' BLS_LGCM_r <- getLGCM(
-#'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS", intrinsic = FALSE,
-#'   records = 1:9, paramOut = TRUE)
-#' ## Generate P value and Wald confidence intervals
-#' getEstimateStats(
-#'   est_in = BLS_LGCM_r@Estimates, CI_type = "Wald"
-#'   )
-#' }
+#' # Fitted bilinear spline latent growth curve models shipped with the package
+#' load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
+#' # p values and Wald confidence intervals
+#' stats_wald <- getEstimateStats(est_in = Math_LGCM_TIC_BLS_f@Estimates, CI_type = "Wald")
+#' printTable(stats_wald)
 #' \dontrun{
-#' # Fit bilinear spline latent growth curve model (random knots) with time-invariant covariates for
-#' # mathematics development
-#' ## Fit the model
-#' set.seed(20191029)
-#' BLS_LGCM.TIC_f <- getLGCM(
-#'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS", intrinsic = TRUE, records = 1:9,
-#'   growth_TIC = c("ex1", "ex2"), tries = 20, paramOut = TRUE
-#'   )
-#' ## Change optimizer to "SLSQP" for getting likelihood-based confidence interval
+#' # Likelihood-based and bootstrap intervals re-optimize the model; this takes several minutes
 #' mxOption(model = NULL, key = "Default optimizer", "SLSQP", reset = FALSE)
-#' ## Generate P value and all three types of confidence intervals
 #' getEstimateStats(
-#'   model = BLS_LGCM.TIC_f@mxOutput, est_in = BLS_LGCM.TIC_f@Estimates, CI_type = "all", rep = 20
-#'   )
+#'   model = Math_LGCM_TIC_BLS_f@mxOutput, est_in = Math_LGCM_TIC_BLS_f@Estimates,
+#'   CI_type = "all", rep = 20
+#' )
 #' }
 #'
 #' @importFrom OpenMx omxGetParameters mxTryHard mxModel mxCI mxBootstrap
@@ -93,6 +67,14 @@
 #'
 getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, CI_type = "Wald", rep = NA,
                              conf.level = 0.95){
+  CI_type <- match.arg(CI_type, c("Wald", "likelihood", "bootstrap", "all"))
+  if (CI) .ci_probs(conf.level)
+  if (CI && CI_type %in% c("bootstrap", "all")){
+    if (!is.numeric(rep) || length(rep) != 1 || !is.finite(rep) ||
+        rep < 1 || rep != floor(rep) || rep > .Machine$integer.max){
+      stop("A positive integer must be provided via 'rep' when bootstrap CIs are requested (e.g., rep = 1000).")
+    }
+  }
   est_out_wald <- est_in[, -1]
   rownames(est_out_wald) <- est_in$Name
   if (p_values){
@@ -111,26 +93,18 @@ getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, C
     est_out
   }
   # Helper: compute likelihood-based CIs
-  .get_likelihood_CI <- function(model) {
+  .get_likelihood_CI <- function(model, conf.level) {
     free_para <- omxGetParameters(model = model)
-    model_CI <- mxTryHard(mxModel(model = model, mxCI(names(free_para))), intervals = TRUE)
+    model_CI <- mxTryHard(mxModel(model = model, mxCI(names(free_para), interval = conf.level)), intervals = TRUE)
     est_out_lik <- as.data.frame(round(model_CI$output$confidenceIntervals, 4))[, c(2, 1, 3)]
     names(est_out_lik) <- c("Estimate", "lik_lbound", "lik_ubound")
     est_out_lik
   }
   # Helper: compute bootstrap CIs
-  .get_bootstrap_CI <- function(model, rep) {
+  .get_bootstrap_CI <- function(model, rep, conf.level) {
     boot <- mxBootstrap(model, replications = rep)
-    boot_raw <- boot$compute$output$raw %>%
-      select(-seed, -fit, -statusCode)
-    boot_CI <- as.data.frame(t(sapply(boot_raw, function(x) quantile(x, c(0.025, 0.975)))))
-    boot_CI$name <- row.names(boot_CI)
-    boot_est <- summary(boot)$parameters
-    est_out_boot <- data.frame(round(boot_est %>% select(name, Estimate) %>% left_join(boot_CI, by = c("name" = "name")) %>%
-                                       select(-name), 4))
-    names(est_out_boot) <- c("Estimate", "boot_lbound", "boot_ubound")
-    rownames(est_out_boot) <- row.names(boot_CI)
-    est_out_boot
+    .bootstrap_percentile_CI(boot$compute$output$raw, boot$compute$OK,
+                             omxGetParameters(model), rep, conf.level)
   }
   if (CI){
     if (CI_type == "Wald"){
@@ -139,19 +113,19 @@ getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, C
     }
     else if (CI_type == "likelihood"){
       if (is.null(model)) stop("A fitted mxModel object must be provided via 'model' for likelihood-based CIs.")
-      est_out_lik <- .get_likelihood_CI(model)
+      est_out_lik <- .get_likelihood_CI(model, conf.level)
       statOut <- new("StatsOutput", likelihood = est_out_lik)
     }
     else if (CI_type == "bootstrap"){
       if (is.null(model)) stop("A fitted mxModel object must be provided via 'model' for bootstrap CIs.")
-      est_out_boot <- .get_bootstrap_CI(model, rep)
+      est_out_boot <- .get_bootstrap_CI(model, rep, conf.level)
       statOut <- new("StatsOutput", bootstrap = est_out_boot)
     }
     else if (CI_type == "all"){
       if (is.null(model)) stop("A fitted mxModel object must be provided via 'model' for likelihood-based and bootstrap CIs.")
       est_out_wald <- .add_wald_CI(est_out_wald, est_in, conf.level)
-      est_out_lik <- .get_likelihood_CI(model)
-      est_out_boot <- .get_bootstrap_CI(model, rep)
+      est_out_lik <- .get_likelihood_CI(model, conf.level)
+      est_out_boot <- .get_bootstrap_CI(model, rep, conf.level)
       statOut <- new("StatsOutput", wald = est_out_wald, likelihood = est_out_lik, bootstrap = est_out_boot)
     }
   }
@@ -159,4 +133,43 @@ getEstimateStats <- function(model = NULL, est_in, p_values = TRUE, CI = TRUE, C
     statOut <- new("StatsOutput", wald = est_out_wald)
   }
   return(statOut)
+}
+
+## Lower and upper tail probabilities for a two-sided interval at the requested confidence level.
+.ci_probs <- function(conf.level){
+  if (!is.numeric(conf.level) || length(conf.level) != 1 || !is.finite(conf.level) || conf.level <= 0 || conf.level >= 1){
+    stop("conf.level must be a single number strictly between 0 and 1.")
+  }
+  c((1 - conf.level) / 2, 1 - (1 - conf.level) / 2)
+}
+
+# Match by parameter name, and use the same accepted-status set as the OpenMx
+# bootstrap compute plan. Never let a failed fit or non-finite estimate enter a quantile.
+.bootstrap_percentile_CI <- function(raw, accepted, estimates, requested, conf.level) {
+  probs <- .ci_probs(conf.level)
+  pars <- names(estimates)
+  if (!is.data.frame(raw) || !length(pars) ||
+      !all(c("statusCode", pars) %in% names(raw)) || !length(accepted)) {
+    stop("Bootstrap results are missing parameter estimates or convergence statuses.")
+  }
+  values <- as.matrix(raw[, pars, drop = FALSE])
+  usable <- as.character(raw$statusCode) %in% as.character(accepted) &
+    rowSums(!is.finite(values)) == 0
+  diagnostics <- list(requested = requested, attempted = nrow(raw),
+                      successful = sum(usable), discarded = sum(!usable),
+                      status_counts = table(raw$statusCode, useNA = "ifany"))
+  if (sum(usable) < 2L) {
+    stop(sprintf("Only %d of %d bootstrap replications were usable; at least two are needed for intervals.",
+                 sum(usable), nrow(raw)))
+  }
+  if (any(!usable)) {
+    warning(sprintf("Discarded %d of %d bootstrap replications with unacceptable status or non-finite estimates; intervals use %d successful replications.",
+                    sum(!usable), nrow(raw), sum(usable)), call. = FALSE)
+  }
+  bounds <- vapply(seq_along(pars), function(j) quantile(values[usable, j], probs), numeric(2))
+  out <- data.frame(Estimate = round(unname(estimates), 4),
+                    boot_lbound = round(bounds[1L, ], 4),
+                    boot_ubound = round(bounds[2L, ], 4), row.names = pars)
+  attr(out, "bootstrap_diagnostics") <- diagnostics
+  out
 }

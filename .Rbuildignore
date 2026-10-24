@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.Rhistory$
+^\.DS_Store$
+^data-raw$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^LICENSE\.md$
+^test-results$

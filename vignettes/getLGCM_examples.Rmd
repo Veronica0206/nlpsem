@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getLGCM()` function. This function is designed to construct Latent Growth Curve Models (LGCMs) using one of five different functional forms: linear, quadratic, negative exponential, Jenss-Bayley, and bilinear spline. Notably, the negative exponential, Jenss-Bayley, and bilinear spline LGCMs can be fitted as intrinsically nonlinear models. Moreover, the function provides the flexibility to be constructed with or without the incorporation of time-invariant covariates (TICs).
 vignette: >
-  %\VignetteIndexEntry{getLGCM_examples}
+  %\VignetteIndexEntry{Examples of Latent Growth Curve Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -82,7 +82,7 @@ Math_LGCM_TIC_BLS_f <- getLGCM(
   )
 ```
 
-```{r}
+```{r, fig.alt = "Mathematics mean trajectory over months from a bilinear spline growth model with a random knot and time-invariant covariates, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits."}
 Math_LGCM_TIC_BLS_f@Estimates
 Figure1 <- getFigure(
   model = Math_LGCM_TIC_BLS_f@mxOutput, nClass = NULL, cluster_TIC = NULL, sub_Model = "LGCM",

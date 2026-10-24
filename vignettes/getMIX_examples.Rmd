@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getMIX()` function. This function is designed for the construction of longitudinal mixture models. The models produced by getLGCM(), getLCSM(), getTVCmodel(), getMGM(), and getMediation() can all serve as sub-models within a longitudinal mixture model.
 vignette: >
-  %\VignetteIndexEntry{getMIX_examples}
+  %\VignetteIndexEntry{Examples of Longitudinal Mixture Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -73,7 +73,7 @@ Math_BLS_LGCM3 <- getMIX(
 )
 ```
 
-```{r}
+```{r, fig.alt = c("Mathematics mean trajectory over months from a one-class bilinear spline growth model, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a two-class bilinear spline growth model, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a three-class bilinear spline growth model, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure1 <- getFigure(
   model = Math_BLS_LGCM1@mxOutput, nClass = NULL, cluster_TIC = NULL, sub_Model = "LGCM",
   y_var = "M", curveFun = "BLS", y_model = "LGCM", t_var = "T", records = 1:9,
@@ -110,7 +110,7 @@ RM_BLS_PLGCM3 <- getMIX(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading mean trajectory over months from a three-class bivariate bilinear spline growth model, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a three-class bivariate bilinear spline growth model, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure4 <- getFigure(
   model = RM_BLS_PLGCM3@mxOutput, nClass = 3, cluster_TIC = c("gx1", "gx2"), 
   sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", y_model = "LGCM",

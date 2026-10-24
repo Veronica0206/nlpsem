@@ -27,13 +27,14 @@ package, which contains a dataframe with point estimates and standard errors.}
 \item{CI}{A logical flag indicating whether to compute confidence intervals. Default is \code{TRUE}.}
 
 \item{CI_type}{A string specifying the type of confidence interval to compute. Supported options include
-\code{"Wald"}, \code{"likelihood"}, \code{"bootstrap"}, or \code{"all"}. Default is \code{"Wald"}.}
+\code{"Wald"}, \code{"likelihood"}, \code{"bootstrap"}, or \code{"all"}. Default is \code{"Wald"}. An
+unrecognized value triggers an informative error.}
 
-\item{rep}{An integer specifying the number of replications for bootstrap. This is applicable if \code{CI_type} is
-\code{"bootstrap"} or \code{"all"}. Default is \code{NA}.}
+\item{rep}{An integer specifying the number of replications for bootstrap. A positive integer must be
+supplied when \code{CI_type} is \code{"bootstrap"} or \code{"all"}. Default is \code{NA}.}
 
-\item{conf.level}{A numeric value representing the confidence level for confidence interval calculation. Default is
-\code{0.95}.}
+\item{conf.level}{A numeric value representing the confidence level for confidence interval calculation. It applies
+to Wald, likelihood-based, and bootstrap confidence intervals. Default is \code{0.95}.}
 }
 \value{
 An object of class \code{StatsOutput} with potential slots:
@@ -44,55 +45,28 @@ An object of class \code{StatsOutput} with potential slots:
   \item \code{bootstrap}: Contains a data frame with bootstrap confidence intervals (when specified).
 }
 The content of these slots can be printed using the \code{printTable()} method for S4 objects.
+Bootstrap intervals use only replications with an acceptable OpenMx status and finite
+parameter estimates. Discarded replications trigger a warning; fewer than two usable
+replications trigger an error. The bootstrap data frame has a \code{bootstrap_diagnostics}
+attribute recording requested, attempted, successful and discarded counts and status frequencies.
 }
 \description{
 This function calculates p-values and confidence intervals (CIs) of parameters for a given model. It supports
 different types of CIs, including Wald CIs, likelihood-based CIs, bootstrap CIs, or all three.
 }
 \examples{
-mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
-data("RMS_dat")
-RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
-baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-# Standardized time-invariant covariates
-RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-\donttest{
-# Fit bilinear spline latent growth curve model (fixed knots)
-BLS_LGCM_r <- getLGCM(
-  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS", intrinsic = FALSE,
-  records = 1:9, paramOut = TRUE)
-## Generate P value and Wald confidence intervals
-getEstimateStats(
-  est_in = BLS_LGCM_r@Estimates, CI_type = "Wald"
-  )
-}
+# Fitted bilinear spline latent growth curve models shipped with the package
+load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
+# p values and Wald confidence intervals
+stats_wald <- getEstimateStats(est_in = Math_LGCM_TIC_BLS_f@Estimates, CI_type = "Wald")
+printTable(stats_wald)
 \dontrun{
-# Fit bilinear spline latent growth curve model (random knots) with time-invariant covariates for
-# mathematics development
-## Fit the model
-set.seed(20191029)
-BLS_LGCM.TIC_f <- getLGCM(
-  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS", intrinsic = TRUE, records = 1:9,
-  growth_TIC = c("ex1", "ex2"), tries = 20, paramOut = TRUE
-  )
-## Change optimizer to "SLSQP" for getting likelihood-based confidence interval
+# Likelihood-based and bootstrap intervals re-optimize the model; this takes several minutes
 mxOption(model = NULL, key = "Default optimizer", "SLSQP", reset = FALSE)
-## Generate P value and all three types of confidence intervals
 getEstimateStats(
-  model = BLS_LGCM.TIC_f@mxOutput, est_in = BLS_LGCM.TIC_f@Estimates, CI_type = "all", rep = 20
-  )
+  model = Math_LGCM_TIC_BLS_f@mxOutput, est_in = Math_LGCM_TIC_BLS_f@Estimates,
+  CI_type = "all", rep = 20
+)
 }
 
 }

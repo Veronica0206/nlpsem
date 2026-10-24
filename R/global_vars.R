@@ -34,6 +34,7 @@ utils::globalVariables(c(
   "mediator_r22", "mediator_rr", "mediator_rr2", "mediator_rrr", "muX", "mux",
   "objective", "r_loads", "s_loads", "total", "weightsV", "seed", "fit", "statusCode",
   "name", "Estimate", "ID", "time", "value", "Class", "Model", "No_Params", "X.2ll",
-  "Prop", "matches", "pivot_wider"
+  "Prop", "matches", "pivot_wider", "Y_hat", "Y_hat_l", "Y_hat_u",
+  "cY_hat", "cY_hat_l", "cY_hat_u", "dY_hat", "dY_hat_l", "dY_hat_u"
 ))
 

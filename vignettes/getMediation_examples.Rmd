@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getMediation()` function. This function is designed to construct longitudinal mediation models, which evaluate how a baseline or longitudinal predictor affect the outcome process, mediated by an intermediary process.
 vignette: >
-  %\VignetteIndexEntry{getMediation_examples}
+  %\VignetteIndexEntry{Examples of Longitudinal Mediation Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

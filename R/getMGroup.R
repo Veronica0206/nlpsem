@@ -13,7 +13,10 @@
 #' @param dat A wide-format data frame, with each row corresponding to a unique ID. It contains the observed variables with
 #' repeated measurements and occasions for each longitudinal process, time-invariant covariates (TICs) if any, and a variable
 #' that indicates manifested group.
-#' @param grp_var A string specifying the column that indicates manifested classes.
+#' @param grp_var A string specifying the column that indicates manifested classes. Any coding (numeric, character,
+#' or factor) is accepted: the distinct non-missing values are sorted and relabelled \code{1, 2, ...} in that order for
+#' estimation and in the output, and a message reports the mapping when the original codes differ. Rows with a missing
+#' group value are removed with a warning.
 #' @param sub_Model A string that specifies the sub-model for manifested classes. Supported sub-models include \code{"LGCM"}
 #' (for latent growth curve models), \code{"LCSM"} (for latent change score models), \code{"TVC"} (for latent growth curve
 #' models or latent change score models with a time-varying covariate), \code{"MGM"} (for multivariate latent growth curve
@@ -60,8 +63,8 @@
 #' applied as fallback.
 #' @param res_cor An optional list where each element is a (vector of) numeric initial value(s) for residual correlation in each
 #' class. Applicable when the sub_Model is \code{"TVC"} (when \code{decompose != 0}), \code{"MGM"}, or \code{"MED"}. Default is
-#' \code{NULL}, in which case data-driven residual correlation estimation is used. If data-driven estimation fails, a heuristic
-#' of \code{0.3} is applied as fallback.
+#' \code{NULL}, in which case the residual correlations of \code{"TVC"} and \code{"MGM"} models are estimated from the
+#' per-person curve residuals (with \code{0.3} as fallback) and those of \code{"MED"} models start at \code{0.3}.
 #' @param tries An integer specifying the number of additional optimization attempts. Default is \code{NULL}.
 #' @param OKStatus An integer (vector) specifying acceptable status codes for convergence. Default is \code{0}.
 #' @param jitterD A string specifying the distribution for jitter. Supported values are: \code{"runif"} (uniform
@@ -88,36 +91,36 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getLCSM}}, \code{\link{getMIX}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 #' data("RMS_dat")
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' RMS_dat0 <- RMS_dat
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
+#' # Standardized time-invariant covariates
 #' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 #' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-
-#' \donttest{
-#' # Fit longitudinal multiple group model of bilinear spline functional form with fixed knot
-#' MGroup_BLS_LGCM.TIC_f <-  getMGroup(
-#'   dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
-#'   records = 1:9, curveFun = "BLS", intrinsic = FALSE
-#' )
 #'
-#' # Fit longitudinal multiple group model of bilinear spline functional form with random knot
+#' \donttest{
+#' # Multiple-group bilinear spline model with a fixed knot, groups defined by sex
+#' MGroup_BLS_LGCM_r <- getMGroup(
+#'   dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
+#'   records = 1:9, curveFun = "BLS", intrinsic = FALSE, paramOut = TRUE
+#' )
+#' printTable(MGroup_BLS_LGCM_r)
+#' }
+#' \dontrun{
+#' # Random knot with time-invariant covariates and 10 extra optimization attempts;
+#' # this takes several minutes
 #' set.seed(20191029)
-#' MGroup_BLS_LGCM.TIC_f <-  getMGroup(
+#' MGroup_BLS_LGCM.TIC_f <- getMGroup(
 #'   dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
 #'   records = 1:9, curveFun = "BLS", intrinsic = TRUE,
 #'   growth_TIC = c("ex1", "ex2"), tries = 10, paramOut = TRUE
@@ -146,11 +149,16 @@ getMGroup <- function(dat, grp_var, sub_Model, t_var, records, y_var, curveFun, 
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC, TVC = TVC, m_var = m_var,
                    x_var = x_var, x_type = x_type, grp_var = grp_var)
-  grp_values <- dat[, grp_var]
-  grp_values <- grp_values[!is.na(grp_values)]
-  nClass <- length(unique(grp_values))
+  metadata <- .capture_fit_metadata(match.call(), "getMGroup", environment(), dat)
+  ## Downstream helpers index the groups 1..K: drop rows without a group and recode the grouping
+  ## variable by the sorted order of its distinct values (a message reports the mapping).
+  grp_recode <- .recode_group_codes(dat[[grp_var]], grp_var = grp_var)
+  dat <- dat[!is.na(grp_recode$codes), , drop = FALSE]
+  dat[[grp_var]] <- grp_recode$codes[!is.na(grp_recode$codes)]
+  nClass <- grp_recode$nClass
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getMGroup.initial(dat = dat, grp_var = grp_var, nClass = nClass, sub_Model = sub_Model, t_var = t_var,
                                 y_var = y_var, curveFun = curveFun, intrinsic = intrinsic, records = records, m_var = m_var, x_var = x_var,
                                 x_type = x_type, TVC = TVC, decompose = decompose, growth_TIC = growth_TIC,
@@ -183,6 +191,7 @@ getMGroup <- function(dat, grp_var, sub_Model, t_var, records, y_var, curveFun, 
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, nClass = nClass, group_recode = grp_recode, frame = environment())
   return(model)
 }
 

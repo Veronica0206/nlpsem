@@ -1,0 +1,67 @@
+title: nlpsem
+template:
+  bootstrap: 5
+development:
+  mode: devel
+destination: docs
+
+home:
+  title: Nonlinear longitudinal models with OpenMx
+  description: >
+    Fit, inspect, and visualize longitudinal growth, change-score, mediation,
+    multiple-group, and mixture models.
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/phase_c_workflow.html
+
+reference:
+  - title: Fit longitudinal models
+    contents:
+      - getLGCM
+      - getLCSM
+      - getTVCmodel
+      - getMGM
+      - getMediation
+      - getMGroup
+      - getMIX
+  - title: Inspect and visualize fitted models
+    contents:
+      - getSpecification
+      - fit-methods
+      - getFigure
+      - matches("^(ModelSummary|printTable)")
+      - "show,figOutput-method"
+  - title: Inference, comparison, and individual results
+    contents:
+      - getEstimateStats
+      - getSummary
+      - getLRT
+      - getIndFS
+      - getPosterior
+      - getLatentKappa
+  - title: Example data and output classes
+    contents:
+      - RMS_dat
+      - ends_with("-class")
+
+articles:
+  - title: Start here
+    navbar: ~
+    contents:
+      - phase_c_workflow
+      - nlpsem_overview
+  - title: Modeling guides
+    contents:
+      - getLGCM_examples
+      - getLCSM_examples
+      - getTVCmodel_examples
+      - getMGM_examples
+      - getMediation_examples
+      - getMGroup_examples
+      - getMIX_examples

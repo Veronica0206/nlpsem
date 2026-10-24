@@ -106,6 +106,49 @@
   out
 }
 
+## Helper: residual-correlation starts between longitudinal processes, from the per-person curve residuals
+## that getUNI.GF() attaches to its growth factors ("residuals" attribute). Residuals are paired occasion by
+## occasion over the records the two processes share. Centring the raw scores at the person mean (the 0.4
+## heuristic) leaves the growth trend in the deviations, so two processes that grow together looked almost
+## perfectly correlated (r > 0.9 on the shipped example data although the fitted residual correlation is 0.24);
+## that start made the class-specific multivariate models unfittable. Falls back to 0.3 with a warning when
+## a pair has too few jointly observed residuals.
+.residual_correlation_starts <- function(res_list, labels = seq_along(res_list), fallback = 0.3, clamp = 0.9,
+                                         records = NULL){
+  n <- length(res_list)
+  out <- numeric(0)
+  if (n < 2) return(out)
+  for (i in seq_len(n - 1)){
+    for (j in (i + 1):n){
+      ri <- res_list[[i]]; rj <- res_list[[j]]
+      r <- NA_real_
+      if (is.matrix(ri) && is.matrix(rj) && nrow(ri) == nrow(rj)){
+        # Multivariate outcomes may have different record sets. Match the actual
+        # occasions, just as the residual covariance paths in the model do.
+        if (is.null(records)){
+          common <- seq_len(min(ncol(ri), ncol(rj)))
+          ii <- jj <- common
+        } else{
+          common <- intersect(records[[i]], records[[j]])
+          ii <- match(common, records[[i]])
+          jj <- match(common, records[[j]])
+        }
+        ri <- ri[, ii, drop = FALSE]; rj <- rj[, jj, drop = FALSE]
+        ok <- is.finite(ri) & is.finite(rj)
+        if (sum(ok) > 2) r <- suppressWarnings(stats::cor(ri[ok], rj[ok]))
+      }
+      if (!is.finite(r)){
+        warning("Residual correlation start for ", labels[i], " and ", labels[j],
+                " could not be estimated from the per-person curve residuals; falling back to ", fallback, ".",
+                call. = FALSE)
+        r <- fallback
+      }
+      out <- c(out, max(min(r, clamp), -clamp))
+    }
+  }
+  out
+}
+
 ## Helper: names for cluster-TIC multinomial coefficients in output.
 .cluster_tic_param_names <- function(nClass, cluster_TIC){
   coef_labels <- c("0", seq_along(cluster_TIC))
@@ -128,4 +171,35 @@
   reduced_cov <- starts$covMatrix[keep_idx, keep_idx, drop = FALSE] * shrink
   starts$covMatrix[keep_idx, keep_idx] <- .ensure_pd(reduced_cov, label = "class-specific fixed-knot multivariate starts")
   starts
+}
+
+## Helper: provisional class labels for mixture starts. k-means runs on the persons whose
+## growth-factor starts are complete; the remaining persons are assigned to the nearest
+## class centre over their finite coordinates (or to the largest class when none is finite).
+## Classes are ordered by the mean of their centres so labels are reproducible across runs.
+.provisional_class_labels <- function(growth_factor, nClass){
+  gf <- as.matrix(growth_factor)
+  complete <- stats::complete.cases(gf)
+  if (sum(complete) < nClass){
+    stop("Only ", sum(complete), " person(s) have complete growth-factor starts; at least ", nClass,
+         " are needed to form the provisional classes of a mixture model.")
+  }
+  km <- kmeans(x = gf[complete, , drop = FALSE], centers = nClass, iter.max = 100)
+  order_indices <- order(apply(km$centers, 1, mean))
+  labels <- rep(NA_integer_, nrow(gf))
+  labels[complete] <- match(km$cluster, order_indices)
+  if (any(!complete)){
+    centers <- km$centers[order_indices, , drop = FALSE]
+    largest <- which.max(tabulate(labels[complete], nbins = nClass))
+    for (i in which(!complete)){
+      ok <- is.finite(gf[i, ])
+      if (!any(ok)){
+        labels[i] <- largest
+      } else{
+        d2 <- colSums((t(centers[, ok, drop = FALSE]) - gf[i, ok])^2)
+        labels[i] <- which.min(d2)
+      }
+    }
+  }
+  labels
 }

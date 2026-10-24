@@ -22,7 +22,7 @@
 #' @keywords internal
 #' @noRd
 #'
-#' @importFrom stats coef nls nls.control residuals median
+#' @importFrom stats coef residuals median
 #'
 .flatten_curve_data <- function(dat_traj, dat_time) {
   measures <- as.numeric(as.matrix(dat_traj))
@@ -144,6 +144,24 @@
   sort(unique(mids))
 }
 
+.curve_fit_residuals <- function(measures, times, basis_fun, param, coef) {
+  # Observed minus fitted at every occasion of one person (NA where the occasion is missing or no fit exists).
+  res <- rep(NA_real_, length(measures))
+  if (!is.finite(param) || length(coef) == 0 || any(!is.finite(coef))) return(res)
+  ok <- is.finite(measures) & is.finite(times)
+  if (!any(ok)) return(res)
+  basis <- basis_fun(times[ok], param)
+  if (is.null(dim(basis))) basis <- matrix(basis, ncol = 1)
+  design <- cbind(1, basis)
+  if (ncol(design) != length(coef)) return(res)
+  res[ok] <- measures[ok] - drop(design %*% coef)
+  res
+}
+
+# Besides the growth factors, getUNI.GF() attaches two attributes: "mean_res_var" (median over persons of
+# the per-person residual variance) and "residuals" (persons x occasions matrix of observed minus fitted
+# values from the individual curve fits). The residual matrix feeds .residual_correlation_starts().
+
 getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
   # Calculate individual growth factors eta0 (initial values) and eta1 (slopes) for linear trajectories.
   if (curveFun %in% c("linear", "LIN")){
@@ -151,12 +169,18 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
     coef_mat <- t(apply(cbind(dat_traj, dat_time), 1, function(ind){
       measures <- ind[1:nT]
       times <- ind[-(1:nT)]
+      # A person with fewer than two complete occasions cannot support a linear fit
+      if (sum(is.finite(measures) & is.finite(times)) < 2){
+        return(c(eta0 = NA_real_, eta1 = NA_real_, res_var = NA_real_, rep(NA_real_, nT)))
+      }
       ind_model <- lm(measures ~ times)
+      fitted <- unname(coef(ind_model)[1] + coef(ind_model)[2] * times)
       c(eta0 = unname(coef(ind_model)[1]), eta1 = unname(coef(ind_model)[2]),
-        res_var = mean(residuals(ind_model)^2))
+        res_var = mean(residuals(ind_model)^2), unname(measures - fitted))
     }))
     growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, ncol(coef_mat)], na.rm = TRUE)
+    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 3], na.rm = TRUE)
+    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:3), drop = FALSE])
   }
   # Calculate individual growth factors eta0 (initial values), eta1 (linear slopes), and eta2 (quadratic slopes)
   # for quadratic trajectories.
@@ -165,13 +189,19 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
     coef_mat <- t(apply(cbind(dat_traj, dat_time), 1, function(ind){
       measures <- ind[1:nT]
       times <- ind[-(1:nT)]
+      # A person with fewer than three complete occasions cannot support a quadratic fit
+      if (sum(is.finite(measures) & is.finite(times)) < 3){
+        return(c(eta0 = NA_real_, eta1 = NA_real_, eta2 = NA_real_, res_var = NA_real_, rep(NA_real_, nT)))
+      }
       times_sq <- times^2
       ind_model <- lm(measures ~ times + times_sq)
+      fitted <- unname(coef(ind_model)[1] + coef(ind_model)[2] * times + coef(ind_model)[3] * times_sq)
       c(eta0 = unname(coef(ind_model)[1]), eta1 = unname(coef(ind_model)[2]),
-        eta2 = unname(coef(ind_model)[3]), res_var = mean(residuals(ind_model)^2))
+        eta2 = unname(coef(ind_model)[3]), res_var = mean(residuals(ind_model)^2), unname(measures - fitted))
     }))
     growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], eta2 = coef_mat[, 3])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, ncol(coef_mat)], na.rm = TRUE)
+    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 4], na.rm = TRUE)
+    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:4), drop = FALSE])
   }
   # Calculate individual growth factors eta0 (initial values), eta1 (asymptotic change between final and initial
   # values), and gamma (growth rate parameter) for negative exponential trajectories.
@@ -191,10 +221,12 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
       times <- as.numeric(ind[-(1:nT)])
       person_fit <- .grid_search_curve(measures, times, .exp_param_grid(times, anchor = c_anchor), basis_fun)
       c(eta0 = person_fit$coef[1], eta1 = person_fit$coef[2], gamma = person_fit$param,
-        res_var = person_fit$res_var)
+        res_var = person_fit$res_var,
+        .curve_fit_residuals(measures, times, basis_fun, person_fit$param, person_fit$coef))
     }))
     growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], gamma = coef_mat[, 3])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, ncol(coef_mat)], na.rm = TRUE)
+    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 4], na.rm = TRUE)
+    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:4), drop = FALSE])
   }
   # Calculate individual growth factors eta0 (initial values), eta1 (slope of linear asymptote), eta2 (change
   # between intercept of linear asymptote and initial status), and gamma (growth acceleration parameter) for
@@ -224,11 +256,13 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
         gamma_start <- person_fit$param
       }
       c(eta0 = refit$coef[1], eta1 = refit$coef[2], eta2 = refit$coef[3],
-        gamma = gamma_start, res_var = refit$res_var)
+        gamma = gamma_start, res_var = refit$res_var,
+        .curve_fit_residuals(measures, times, basis_fun, gamma_start, refit$coef))
     }))
     growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], eta2 = coef_mat[, 3],
                                 gamma = coef_mat[, 4])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, ncol(coef_mat)], na.rm = TRUE)
+    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 5], na.rm = TRUE)
+    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:5), drop = FALSE])
   }
   # Calculate individual growth factors eta0 (initial values), eta1 (slopes in the 1st stage), eta2 (slopes in
   # the 2nd stage), and gamma (knot locations) for bilinear spline trajectories.
@@ -248,11 +282,13 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
       times <- as.numeric(ind[-(1:nT)])
       person_fit <- .grid_search_curve(measures, times, .bls_knot_grid(times, anchor = knot_anchor), basis_fun)
       c(eta0 = person_fit$coef[1], eta1 = person_fit$coef[2], eta2 = person_fit$coef[3],
-        gamma = person_fit$param, res_var = person_fit$res_var)
+        gamma = person_fit$param, res_var = person_fit$res_var,
+        .curve_fit_residuals(measures, times, basis_fun, person_fit$param, person_fit$coef))
     }))
     growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], eta2 = coef_mat[, 3],
                                 gamma = coef_mat[, 4])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, ncol(coef_mat)], na.rm = TRUE)
+    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 5], na.rm = TRUE)
+    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:5), drop = FALSE])
   }
   # Calculate individual growth factors eta0 (initial values) and eta1 (slopes in the 1st time interval) for
   # nonparametric trajectories.
@@ -279,6 +315,7 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
     }
     res_var_per_person <- rowMeans((as.matrix(dat_traj) - fitted_vals)^2, na.rm = TRUE)
     attr(growth_factor, "mean_res_var") <- median(res_var_per_person, na.rm = TRUE)
+    attr(growth_factor, "residuals") <- unname(as.matrix(dat_traj) - fitted_vals)
   }
   return(growth_factor)
 }

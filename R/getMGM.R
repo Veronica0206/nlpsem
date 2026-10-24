@@ -57,39 +57,37 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getMGroup}}, \code{\link{getMIX}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
 #'
 #' \donttest{
-#' # Fit linear multivariate latent growth curve model
+#' # Linear multivariate latent growth curve model for reading and mathematics
 #' LIN_PLGCM_f <- getMGM(
 #'   dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "LIN",
-#'   intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM"
-#'   )
-#' # Fit bilinear spline multivariate latent growth curve model (random knots)
-#' ## Fit model
+#'   intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM", paramOut = TRUE
+#' )
+#' printTable(LIN_PLGCM_f)
+#' }
+#' \dontrun{
+#' # Bilinear spline multivariate model with random knots and 20 extra optimization
+#' # attempts; this takes several minutes
 #' set.seed(20191029)
 #' BLS_PLGCM_f <- getMGM(
-#'   dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "BLS", intrinsic = TRUE,
-#'   records = list(1:9, 1:9), y_model = "LGCM",
+#'   dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "BLS",
+#'   intrinsic = TRUE, records = list(1:9, 1:9), y_model = "LGCM",
 #'   tries = 20, paramOut = TRUE
-#'   )
+#' )
 #' printTable(BLS_PLGCM_f)
 #' }
 #'
@@ -110,8 +108,10 @@ getMGM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, y_mod
   validate_intrinsic(intrinsic, curveFun, model_type = "general")
   validate_curveFun_ymodel(curveFun, y_model)
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records)
+  metadata <- .capture_fit_metadata(match.call(), "getMGM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getMULTI.initial(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, records = records,
                                res_scale = res_scale, res_cor = res_cor, intrinsic = intrinsic)
   }
@@ -135,5 +135,6 @@ getMGM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, y_mod
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
   return(model)
 }

@@ -81,9 +81,7 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
     if (curveFun %in% c("Jenss-Bayley", "JB")){
       uni_GF[, 3] <- abs(uni_GF[, 3])
     }
-    out_Kmeans <- kmeans(x = uni_GF, centers = nClass, iter.max = 100)
-    order_indices <- order(apply(out_Kmeans$centers, 1, mean))
-    dat$label <- match(out_Kmeans$cluster, order_indices)
+    dat$label <- .provisional_class_labels(uni_GF, nClass)
     for (k in 1:nClass){
       starts[[k]] <- getUNI.initial(dat = dat[dat$label == k, ], t_var = t_var, y_var = y_var, curveFun = curveFun,
                                     records = records, growth_TIC = growth_TIC, res_scale = .safe_k(res_scale, k),
@@ -103,9 +101,7 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
     # Calculate the number of time points
     nT <- length(records)
     growth_factor <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
-    out_Kmeans <- kmeans(x = growth_factor, centers = nClass, iter.max = 100)
-    order_indices <- order(apply(out_Kmeans$centers, 1, mean))
-    dat$label <- match(out_Kmeans$cluster, order_indices)
+    dat$label <- .provisional_class_labels(growth_factor, nClass)
     for (k in 1:nClass){
       if (decompose == 0){
         starts[[k]] <- getTVC.initial(dat = dat[dat$label == k, ], t_var = t_var, y_var = y_var, curveFun = curveFun,
@@ -137,14 +133,15 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
       uni_GF[[traj]] <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
     }
     uni_GF_dat <- do.call(cbind, uni_GF)
-    out_Kmeans <- kmeans(x = uni_GF_dat, centers = nClass, iter.max = 100)
-    order_indices <- order(apply(out_Kmeans$centers, 1, mean))
-    dat$label <- match(out_Kmeans$cluster, order_indices)
+    dat$label <- .provisional_class_labels(uni_GF_dat, nClass)
     for (k in 1:nClass){
       class_dat <- dat[dat$label == k, ]
       starts[[k]] <- getMULTI.initial(dat = class_dat, t_var = t_var, y_var = y_var,
                                       curveFun = curveFun, records = records, res_scale = .safe_k(res_scale, k),
                                       res_cor = .safe_k(res_cor, k), intrinsic = intrinsic)
+      # Damp the class-specific fixed-knot covariance starts as getMGroup.initial() does: each provisional
+      # class is a smaller sample, and its data-driven transformed covariance is too large to start from.
+      starts[[k]] <- .stabilize_class_specific_mgm_starts(starts[[k]], curveFun = curveFun, intrinsic = intrinsic)
       # For mixture models, inflate data-driven residual to help class separation during optimization
       if (is.null(.safe_k(res_scale, k))){
         starts[[k]]$residuals <- starts[[k]]$residuals * 2
@@ -168,9 +165,7 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
       uni_GF[[traj]] <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
     }
     uni_GF_dat <- do.call(cbind, uni_GF)
-    out_Kmeans <- kmeans(x = uni_GF_dat, centers = nClass, iter.max = 100)
-    order_indices <- order(apply(out_Kmeans$centers, 1, mean))
-    dat$label <- match(out_Kmeans$cluster, order_indices)
+    dat$label <- .provisional_class_labels(uni_GF_dat, nClass)
     for (k in 1:nClass){
       starts[[k]] <- getMED.initial(dat = dat[dat$label == k, ], t_var = t_var, y_var = y_var, m_var = m_var,
                                     x_var = x_var, x_type = x_type, curveFun = curveFun, records = records,

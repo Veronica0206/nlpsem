@@ -276,3 +276,33 @@ validate_columns <- function(dat, t_var, y_var, records,
   }
   invisible(NULL)
 }
+
+#' Recode a grouping variable to consecutive integer codes 1..K
+#'
+#' Multiple-group helpers select each group with \code{dat[, grp_var] == k}, so the codes must be
+#' \code{1, ..., K}. Distinct non-missing values are sorted and mapped to their rank.
+#' @param x The grouping variable (numeric, character, or factor).
+#' @param grp_var Column name, used in messages.
+#' @return A list with \code{codes} (integer, \code{NA} where \code{x} is missing), \code{nClass},
+#'   and \code{levels} (the original values in the order of the new codes).
+#' @keywords internal
+#' @noRd
+.recode_group_codes <- function(x, grp_var = "grp_var") {
+  missing <- is.na(x)
+  levels <- sort(unique(x[!missing]))
+  if (length(levels) < 2) {
+    stop("The grouping variable '", grp_var, "' must have at least two distinct non-missing values.")
+  }
+  codes <- match(x, levels)
+  if (any(missing)) {
+    warning(sum(missing), " row(s) with a missing value in '", grp_var,
+            "' were removed before fitting the multiple-group model.", call. = FALSE)
+  }
+  already_consecutive <- is.numeric(levels) &&
+    isTRUE(all.equal(as.numeric(levels), as.numeric(seq_along(levels))))
+  if (!already_consecutive) {
+    message("Groups in '", grp_var, "' are recoded for estimation: ",
+            paste(sprintf("%s -> %d", as.character(levels), seq_along(levels)), collapse = ", "))
+  }
+  list(codes = as.integer(codes), nClass = length(levels), levels = levels)
+}

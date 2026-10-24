@@ -60,8 +60,8 @@
 #' applied as fallback.
 #' @param res_cor An optional list where each element is a (vector of) numeric initial value(s) for residual correlation in each
 #' class. Applicable when the sub_Model is \code{"TVC"} (when \code{decompose != 0}), \code{"MGM"}, or \code{"MED"}. Default is
-#' \code{NULL}, in which case data-driven residual correlation estimation is used. If data-driven estimation fails, a heuristic
-#' of \code{0.3} is applied as fallback.
+#' \code{NULL}, in which case the residual correlations of \code{"TVC"} and \code{"MGM"} models are estimated from the
+#' per-person curve residuals (with \code{0.3} as fallback) and those of \code{"MED"} models start at \code{0.3}.
 #' @param tries An integer specifying the number of additional optimization attempts. Default is \code{NULL}.
 #' @param OKStatus An integer (vector) specifying acceptable status codes for convergence. Default is \code{0}.
 #' @param jitterD A string specifying the distribution for jitter. Supported values are: \code{"runif"} (uniform
@@ -95,43 +95,45 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getLCSM}}, \code{\link{getMGroup}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
+#' # Standardized time-invariant covariates
 #' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 #' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+#' # Standardized cluster-forming covariates
 #' RMS_dat0$gx1 <- scale(RMS_dat0$INCOME)
 #' RMS_dat0$gx2 <- scale(RMS_dat0$EDU)
+#'
 #' \donttest{
-#' # Fit longitudinal mixture group model of bilinear spline functional form with fixed knot
-#' # (2 classes)
-#' MIX_BLS_LGCM.TIC_r <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.45, 0.55), sub_Model = "LGCM",
-#'   cluster_TIC = NULL, y_var = "M", t_var = "T", records = 1:9,
-#'   curveFun = "BLS", intrinsic = FALSE
-#'   )
-#' # Fit longitudinal mixture group model of bilinear spline functional form with fixed knot
-#' # (3 classes)
+#' # Two-class mixture of linear latent growth curve models
 #' set.seed(20191029)
-#' MIX_BLS_LGCM.TIC_r <-  getMIX(
+#' MIX_LIN_LGCM <- getMIX(
+#'   dat = RMS_dat0, prop_starts = c(0.45, 0.55), sub_Model = "LGCM",
+#'   y_var = "M", t_var = "T", records = 1:9, curveFun = "LIN", intrinsic = FALSE,
+#'   paramOut = TRUE
+#' )
+#' printTable(MIX_LIN_LGCM)
+#' }
+#' \dontrun{
+#' # Three-class bilinear spline mixture with cluster-forming and growth covariates and
+#' # 10 extra optimization attempts; this takes several minutes
+#' set.seed(20191029)
+#' MIX_BLS_LGCM.TIC_r <- getMIX(
 #'   dat = RMS_dat0, prop_starts = c(0.33, 0.34, 0.33), sub_Model = "LGCM",
 #'   cluster_TIC = c("gx1", "gx2"), y_var = "M", t_var = "T", records = 1:9,
-#'   curveFun = "BLS", intrinsic = FALSE,
-#'   growth_TIC = c("ex1", "ex2"), tries = 10, paramOut = TRUE
+#'   curveFun = "BLS", intrinsic = FALSE, growth_TIC = c("ex1", "ex2"),
+#'   tries = 10, paramOut = TRUE
 #' )
 #' printTable(MIX_BLS_LGCM.TIC_r)
 #' }
@@ -158,8 +160,10 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
                    growth_TIC = growth_TIC, TVC = TVC, m_var = m_var,
                    x_var = x_var, x_type = x_type, cluster_TIC = cluster_TIC)
   nClass <- length(prop_starts)
+  metadata <- .capture_fit_metadata(match.call(), "getMIX", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getMIX.initial(dat = dat, nClass = nClass, prop_starts = prop_starts, sub_Model = sub_Model,
                              cluster_TIC = cluster_TIC, t_var = t_var, y_var = y_var, curveFun = curveFun,
                              records = records, m_var = m_var, x_var = x_var, x_type = x_type, TVC = TVC,
@@ -194,5 +198,6 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, nClass = nClass, frame = environment())
   return(model)
 }

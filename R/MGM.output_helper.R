@@ -32,9 +32,9 @@ getMGM.output <- function(model, y_var, records, curveFun, y_model, names){
     psi_btw_est <- psi_btw_se <- res_btw_est <- res_btw_se <- outcome_est <- outcome_se <- btw_est <- btw_se <- list()
   for (traj in seq_along(y_var)){
     mean_est[[length(mean_est) + 1]] <- mxEvalByName(paste0(y_var[traj], "_mean0"), model = model)
-    mean_se[[length(mean_se) + 1]] <- mxSE(paste0(y_var[traj], "_mean0"), model, forceName = TRUE)
+    mean_se[[length(mean_se) + 1]] <- mxSE(paste0(y_var[traj], "_mean0"), model, forceName = TRUE, silent = TRUE)
     psi_est[[length(psi_est) + 1]] <- mxEvalByName(paste0(y_var[traj], "_psi0"), model = model)
-    psi_se[[length(psi_se) + 1]] <- mxSE(paste0(y_var[traj], "_psi0"), model, forceName = TRUE)
+    psi_se[[length(psi_se) + 1]] <- mxSE(paste0(y_var[traj], "_psi0"), model, forceName = TRUE, silent = TRUE)
     res_est[[length(res_est) + 1]] <- model@output$estimate[grep(paste0(y_var[traj], "_residuals"), names(model@output$estimate))]
     res_se[[length(res_se) + 1]] <- model@output$standardErrors[, 1][grep(paste0(y_var[traj], "_residuals"),
                                                                           names(model@output$standardErrors[, 1]))]
@@ -45,11 +45,11 @@ getMGM.output <- function(model, y_var, records, curveFun, y_model, names){
   }
   for (traj_i in 1:(length(y_var) - 1)){
     for (traj_j in traj_i:(length(y_var) - 1)){
-      pair_idx <- traj_i + traj_j - 1
+      pair_idx <- .outcome_pair_index(traj_i, traj_j + 1L, length(y_var))
       psi_btw_est[[pair_idx]] <- mxEvalByName(paste0(y_var[traj_i], y_var[traj_j + 1],
                                                      "_psi"), model = model)
       psi_btw_se[[pair_idx]] <- mxSE(paste0(y_var[traj_i], y_var[traj_j + 1], "_psi"),
-                                     model, forceName = TRUE)
+                                     model, forceName = TRUE, silent = TRUE)
       res_btw_est[[length(res_btw_est) + 1]] <- model@output$estimate[grep(paste0(y_var[traj_i], y_var[traj_j + 1], "_RES"), names(model@output$estimate))]
       res_btw_se[[length(res_btw_se) + 1]] <- model@output$standardErrors[, 1][grep(paste0(y_var[traj_i], y_var[traj_j + 1], "_RES"),
                                                                                     names(model@output$standardErrors[, 1]))]
@@ -72,12 +72,12 @@ getMGM.output <- function(model, y_var, records, curveFun, y_model, names){
       chg_inv_v.est_L[[traj]] <- mxEvalByName(paste0(y_var[traj], "chg_inv_v"), model = model)
       chg_bl_m.est_L[[traj]] <- mxEvalByName(paste0(y_var[traj], "chg_bl_m"), model = model)
       chg_bl_v.est_L[[traj]] <- diag(mxEvalByName(paste0(y_var[traj], "chg_bl_v"), model = model))
-      slp_m.se_L[[traj]] <- mxSE(paste0(y_var[traj], "slp_m"), model, forceName = TRUE)
-      slp_v.se_L[[traj]] <- diag(mxSE(paste0(y_var[traj], "slp_v"), model, forceName = TRUE))
-      chg_inv_m.se_L[[traj]] <- mxSE(paste0(y_var[traj], "chg_inv_m"), model, forceName = TRUE)
-      chg_inv_v.se_L[[traj]] <- mxSE(paste0(y_var[traj], "chg_inv_v"), model, forceName = TRUE)
-      chg_bl_m.se_L[[traj]] <- mxSE(paste0(y_var[traj], "chg_bl_m"), model, forceName = TRUE)
-      chg_bl_v.se_L[[traj]] <- diag(mxSE(paste0(y_var[traj], "chg_bl_v"), model, forceName = TRUE))
+      slp_m.se_L[[traj]] <- mxSE(paste0(y_var[traj], "slp_m"), model, forceName = TRUE, silent = TRUE)
+      slp_v.se_L[[traj]] <- diag(mxSE(paste0(y_var[traj], "slp_v"), model, forceName = TRUE, silent = TRUE))
+      chg_inv_m.se_L[[traj]] <- mxSE(paste0(y_var[traj], "chg_inv_m"), model, forceName = TRUE, silent = TRUE)
+      chg_inv_v.se_L[[traj]] <- mxSE(paste0(y_var[traj], "chg_inv_v"), model, forceName = TRUE, silent = TRUE)
+      chg_bl_m.se_L[[traj]] <- mxSE(paste0(y_var[traj], "chg_bl_m"), model, forceName = TRUE, silent = TRUE)
+      chg_bl_v.se_L[[traj]] <- diag(mxSE(paste0(y_var[traj], "chg_bl_v"), model, forceName = TRUE, silent = TRUE))
       if (curveFun %in% c("nonparametric", "NonP")){
         rel_m_est_L[[traj]] <- model@output$estimate[grep(paste0(y_var[traj], "_rel_rate"),
                                                           names(model@output$estimate))]
