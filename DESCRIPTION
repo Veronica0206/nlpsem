@@ -1,7 +1,7 @@
 Package: nlpsem
 Type: Package
 Title: Nonlinear Longitudinal Process in Structural Equation Modeling
-Version: 1.0.0.9004
+Version: 1.0.0.9005
 Authors@R: c(person(given = "Jin",
            family = "Liu",
            role = c("aut", "cre"),

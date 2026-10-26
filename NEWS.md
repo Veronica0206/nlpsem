@@ -1,3 +1,19 @@
+# nlpsem 1.0.0.9005 (NLS initialization development update)
+
+* Restores per-person nonlinear least-squares initialization with `stats::nls()`
+  for EXP, JB and BLS trajectories, following the 0.3 formulas. The shared
+  initializer supplies the same method across the seven model families.
+* Retains the current residual-data interface and records individual NLS failures
+  and heuristic fallbacks. A fallback is not reported as NLS convergence.
+* Corrects the historical BLS second-slope seed indexing and handles missing or
+  reordered observations explicitly. The final SEM optimizer is unchanged.
+* Matched numerical comparisons use CSOLNP on both platforms and identical
+  serialized unfitted models. Earlier grid-initialized reference results remain
+  historical evidence and are not replaced automatically.
+* Fit diagnostics now distinguish cross-process covariance blocks from complete
+  covariance matrices. Cross blocks are reported separately and their joint RAM
+  covariance is checked; legitimate asymmetry is no longer flagged as invalid.
+
 # nlpsem 1.0.0.9004 (development review fixes)
 
 * Mediation residual covariance paths now match explicit wave IDs, including

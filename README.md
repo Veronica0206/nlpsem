@@ -12,9 +12,16 @@ on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
-## Development 1.0.0.9004
+## Development 1.0.0.9005
 
-This development update fixes mediation wave/covariance starts, one-class mixture
+EXP, Jenss-Bayley and bilinear spline starting values now use per-person
+`stats::nls()` with the 0.3 curve formulas and default Gauss-Newton algorithm.
+The shared initializer supplies this method to all model families. Failed NLS
+fits use recorded heuristic fallbacks; they are not counted as NLS convergence.
+The final SEM optimizer is unchanged. The matched comparison protocol explicitly
+uses CSOLNP and identical saved unfitted models on each platform.
+
+The preceding development update fixes mediation wave/covariance starts, one-class mixture
 post-processing, posterior normalization and class-count validation, multivariate
 summary columns, parameter names and confidence-interval labels. It adds opt-in
 `getDiagnostics()` checks for stored covariance admissibility, Hessian and standard
@@ -28,7 +35,7 @@ getSpecification(fit)$specification
 plot(fit, draw = FALSE)
 ```
 
-The [release preparation record](.github/VALIDATION-1.0.0.9004.md) separates completed
+The [NLS validation record](.github/VALIDATION-1.0.0.9005.md) separates completed
 checks from outstanding numerical qualification. Existing examples and numerical
 reference fixtures remain historical evidence. In particular, the saved
 `Math_TVCchgBL_BLS_r` example is inadmissible despite optimizer status 0; see the TVC

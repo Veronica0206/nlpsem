@@ -24,138 +24,146 @@
 #'
 #' @importFrom stats coef residuals median
 #'
-.flatten_curve_data <- function(dat_traj, dat_time) {
-  measures <- as.numeric(as.matrix(dat_traj))
-  times <- as.numeric(as.matrix(dat_time))
-  keep <- is.finite(measures) & is.finite(times)
-  list(measures = measures[keep], times = times[keep])
-}
-
-.fit_basis_curve <- function(measures, times, basis_fun, param) {
-  keep <- is.finite(measures) & is.finite(times)
-  y <- as.numeric(measures[keep])
-  t <- as.numeric(times[keep])
-  if (length(y) < 2) {
-    return(list(coef = numeric(0), rss = Inf, res_var = NA_real_, kappa = Inf))
-  }
-
-  basis <- basis_fun(t, param)
-  if (is.null(dim(basis))) basis <- matrix(basis, ncol = 1)
-  design <- cbind(Intercept = 1, basis)
-  fit <- stats::lm.fit(x = design, y = y)
-  coef <- fit$coefficients
-  coef[!is.finite(coef)] <- 0
-  fitted <- drop(design %*% coef)
-  design_kappa <- suppressWarnings(kappa(design))
-  if (!is.finite(design_kappa)) design_kappa <- Inf
-
-  list(
-    coef = as.numeric(coef),
-    rss = sum((y - fitted)^2),
-    res_var = mean((y - fitted)^2),
-    kappa = design_kappa
-  )
-}
-
-.grid_curve_fits <- function(measures, times, param_grid, basis_fun) {
-  param_grid <- sort(unique(param_grid[is.finite(param_grid)]))
-  if (length(param_grid) == 0) {
-    return(list(list(param = NA_real_, coef = numeric(0), rss = Inf, res_var = NA_real_, kappa = Inf)))
-  }
-
-  lapply(param_grid, function(param) c(list(param = param), .fit_basis_curve(measures, times, basis_fun, param)))
-}
-
-.grid_search_curve <- function(measures, times, param_grid, basis_fun) {
-  fits <- .grid_curve_fits(measures, times, param_grid, basis_fun)
-  rss <- vapply(fits, `[[`, numeric(1), "rss")
-  fits[[which.min(rss)]]
-}
-
-.select_stable_curve_fit <- function(fits, rss_tol = 0.001) {
-  if (length(fits) == 0) {
-    return(list(param = NA_real_, coef = numeric(0), rss = Inf, res_var = NA_real_, kappa = Inf))
-  }
-
-  rss <- vapply(fits, `[[`, numeric(1), "rss")
-  params <- vapply(fits, `[[`, numeric(1), "param")
-  kappas <- vapply(fits, `[[`, numeric(1), "kappa")
-  min_rss <- min(rss)
-  keep <- which(rss <= min_rss * (1 + rss_tol))
-  if (length(keep) == 0) keep <- which.min(rss)
-  keep <- keep[order(kappas[keep], -abs(params[keep]), rss[keep])]
-  fits[[keep[1]]]
-}
-
-.shrink_curve_param <- function(anchor, param, anchor_weight = 0.75) {
-  if (!is.finite(anchor)) return(param)
-  if (!is.finite(param)) return(anchor)
-  anchor_weight * anchor + (1 - anchor_weight) * param
-}
-
 .curve_span <- function(times) {
   rng <- range(times[is.finite(times)])
   span <- diff(rng)
   if (!is.finite(span) || span <= 0) 1 else span
 }
 
-.exp_param_grid <- function(times, anchor = NULL) {
-  span <- .curve_span(times)
-  lower <- max(1e-6, 1e-4 / span)
-  upper <- max(lower * 25, 5 / span)
-
-  if (is.null(anchor) || !is.finite(anchor) || anchor <= 0) {
-    exp(seq(log(lower), log(upper), length.out = 25))
-  } else {
-    local_lower <- max(lower, anchor / 4)
-    local_upper <- min(upper, anchor * 4)
-    unique(c(anchor, exp(seq(log(local_lower), log(local_upper), length.out = 15))))
-  }
+# Restore the 0.3 per-person nonlinear least-squares policy. The explicitly
+# recorded controls are stats::nls defaults, including the default Gauss-Newton
+# algorithm. Neither this policy nor a failed NLS fit changes the SEM optimizer.
+.nls_initialization_control <- function() {
+  stats::nls.control(maxiter = 50L, tol = 1e-5, minFactor = 1 / 1024,
+                    printEval = FALSE, warnOnly = FALSE)
 }
 
-.jb_param_grid <- function(times, anchor = NULL) {
-  span <- .curve_span(times)
-  max_abs <- max(0.05, 3 / span)
-  min_abs <- max(1e-4 / span, max_abs / 100)
-
-  if (is.null(anchor) || !is.finite(anchor) || abs(anchor) < min_abs) {
-    pos <- exp(seq(log(min_abs), log(max_abs), length.out = 15))
-    unique(c(-rev(pos), pos))
-  } else {
-    delta <- max(abs(anchor) * 1.5, max_abs / 4)
-    local_grid <- seq(max(-max_abs, anchor - delta), min(max_abs, anchor + delta), length.out = 21)
-    local_grid <- local_grid[abs(local_grid) >= min_abs]
-    if (length(local_grid) == 0) local_grid <- c(sign(anchor) * min_abs, anchor)
-    unique(local_grid)
-  }
+.fit_nls_initialization <- function(formula, data, start) {
+  stats::nls(formula, data = data, start = start, algorithm = "default",
+             control = .nls_initialization_control())
 }
 
-.bls_knot_grid <- function(times, anchor = NULL) {
-  times <- sort(unique(times[is.finite(times)]))
-  if (length(times) < 2) return(times)
-
-  mids <- (times[-1] + times[-length(times)]) / 2
-  if (length(mids) > 15) {
-    mids <- unique(as.numeric(stats::quantile(mids, probs = seq(0.15, 0.85, length.out = 15), names = FALSE)))
+# Historical seeds with bounded handling of incomplete/repeated occasions.
+# Complete observations are sorted by time for seed calculation. Repeated times
+# are averaged only for finite-difference seeds; NLS uses every complete pair.
+.nls_curve_seed <- function(measures, times, curve) {
+  unique_times <- sort(unique(times))
+  y <- vapply(unique_times, function(t) mean(measures[times == t]), numeric(1))
+  t <- unique_times
+  n <- length(t)
+  if (n < 2L || !all(is.finite(y))) return(NULL)
+  span <- t[n] - t[1L]
+  slope <- (y[n] - y[1L]) / span
+  regression_slope <- function(x, response) {
+    if (length(x) < 2L || length(unique(x)) < 2L || any(!is.finite(response))) return(NA_real_)
+    unname(stats::coef(stats::lm(response ~ x))[2L])
   }
-  if (!is.null(anchor) && is.finite(anchor) && anchor > min(times) && anchor < max(times)) {
-    mids <- c(mids, anchor)
+  if (curve == "EXP") {
+    rate <- abs(regression_slope(t[-n], log(abs(diff(y) / diff(t)) + 1e-9)))
+    # Two occasions or a constant finite-difference slope cannot identify the
+    # nonlinear rate. A finite time-scale seed is reported as a heuristic.
+    if (!is.finite(rate) || rate <= 0) rate <- 1 / span
+    return(list(a = y[1L], b = y[n] - y[1L], c = rate))
   }
-  sort(unique(mids))
+  if (curve == "JB") {
+    rate <- if (n >= 3L) {
+      -regression_slope(t[-c(1L, n)], diff(y, differences = 2) / (diff(t)^2)[-1L])
+    } else NA_real_
+    if (!is.finite(rate)) rate <- -1 / span
+    return(list(a = y[1L], b = slope, c = y[n] - y[1L], d = rate))
+  }
+  knot <- (t[1L] + t[n]) / 2
+  # Use indices in the original sorted vector, not indices in a filtered vector.
+  # This corrects the historical right-segment index mapping.
+  left <- which(t <= knot)
+  right <- which(t >= knot)
+  left_end <- utils::tail(left, 1L)
+  right_start <- right[1L]
+  first <- if (left_end > 1L) (y[left_end] - y[1L]) / (t[left_end] - t[1L]) else slope
+  second <- if (right_start < n) (y[n] - y[right_start]) / (t[n] - t[right_start]) else slope
+  list(a = y[1L], b = first, c = second, d = knot)
 }
 
-.curve_fit_residuals <- function(measures, times, basis_fun, param, coef) {
-  # Observed minus fitted at every occasion of one person (NA where the occasion is missing or no fit exists).
-  res <- rep(NA_real_, length(measures))
-  if (!is.finite(param) || length(coef) == 0 || any(!is.finite(coef))) return(res)
-  ok <- is.finite(measures) & is.finite(times)
-  if (!any(ok)) return(res)
-  basis <- basis_fun(times[ok], param)
-  if (is.null(dim(basis))) basis <- matrix(basis, ncol = 1)
-  design <- cbind(1, basis)
-  if (ncol(design) != length(coef)) return(res)
-  res[ok] <- measures[ok] - drop(design %*% coef)
-  res
+.nls_curve_growth_factors <- function(dat_traj, dat_time, nT, curve) {
+  columns <- if (curve == "EXP") c("eta0", "eta1", "gamma") else c("eta0", "eta1", "eta2", "gamma")
+  n <- nrow(dat_traj)
+  factors <- matrix(NA_real_, nrow = n, ncol = length(columns), dimnames = list(NULL, columns))
+  residual_matrix <- matrix(NA_real_, nrow = n, ncol = nT)
+  residual_variances <- rep(NA_real_, n)
+  audit <- data.frame(person = seq_len(n), method = rep("unavailable", n),
+                      nls_converged = rep(FALSE, n), fallback_reason = rep("", n),
+                      attempts = integer(n), n_complete = integer(n), warnings = rep("", n),
+                      stringsAsFactors = FALSE)
+  formula <- switch(EXPR = curve,
+    EXP = measures ~ a + b * (1 - exp(-c * times)),
+    JB = measures ~ a + b * times + c * (exp(d * times) - 1),
+    BLS = measures ~ a + b * pmin(times, d) + c * pmax(times - d, 0))
+  evaluate <- switch(EXPR = curve,
+    EXP = function(t, p) p[1L] + p[2L] * (1 - exp(-p[3L] * t)),
+    JB = function(t, p) p[1L] + p[2L] * t + p[3L] * (exp(p[4L] * t) - 1),
+    BLS = function(t, p) p[1L] + p[2L] * pmin(t, p[4L]) + p[3L] * pmax(t - p[4L], 0))
+  for (i in seq_len(n)) {
+    measures <- as.numeric(dat_traj[i, ])
+    times <- as.numeric(dat_time[i, ])
+    complete <- is.finite(measures) & is.finite(times)
+    audit$n_complete[i] <- sum(complete)
+    order_complete <- which(complete)[order(times[complete])]
+    y <- measures[order_complete]
+    t <- times[order_complete]
+    seed <- .nls_curve_seed(y, t, curve)
+    if (is.null(seed)) {
+      audit$fallback_reason[i] <- "Fewer than two distinct complete times; no finite heuristic start"
+      next
+    }
+    coefficients <- unlist(seed, use.names = FALSE)
+    warning_messages <- character()
+    error_message <- ""
+    fit <- NULL
+    if (length(unique(t)) < length(seed)) {
+      error_message <- "Too few distinct complete times for the nonlinear parameter count"
+    } else {
+      audit$attempts[i] <- 1L
+      fit <- withCallingHandlers(tryCatch(
+        .fit_nls_initialization(formula, data.frame(measures = y, times = t), seed),
+        error = function(e) { error_message <<- conditionMessage(e); NULL }),
+        warning = function(w) { warning_messages <<- c(warning_messages, conditionMessage(w)); invokeRestart("muffleWarning") })
+    }
+    if (!is.null(fit)) {
+      estimate <- as.numeric(stats::coef(fit))
+      fitted_values <- suppressWarnings(evaluate(t, estimate))
+      converged <- isTRUE(fit$convInfo$isConv)
+      if (converged && length(estimate) == length(seed) &&
+          all(is.finite(estimate)) && all(is.finite(fitted_values))) {
+        coefficients <- estimate
+        audit$method[i] <- "nls"
+        audit$nls_converged[i] <- TRUE
+      } else {
+        error_message <- if (!converged) "NLS did not converge" else "NLS returned nonfinite coefficients or fitted values"
+      }
+    }
+    audit$warnings[i] <- paste(unique(warning_messages), collapse = "; ")
+    if (!audit$nls_converged[i]) {
+      audit$method[i] <- "heuristic_fallback"
+      audit$fallback_reason[i] <- error_message
+    }
+    fitted_values <- suppressWarnings(evaluate(times[complete], coefficients))
+    if (any(!is.finite(coefficients)) || any(!is.finite(fitted_values))) {
+      audit$method[i] <- "unavailable"
+      audit$fallback_reason[i] <- paste(audit$fallback_reason[i], "Heuristic coefficients or fitted values are nonfinite", sep = "; ")
+      next
+    }
+    factors[i, ] <- coefficients
+    residual_matrix[i, complete] <- measures[complete] - fitted_values
+    residual_variances[i] <- mean(residual_matrix[i, complete]^2)
+  }
+  result <- as.data.frame(factors)
+  attr(result, "mean_res_var") <- if (any(is.finite(residual_variances))) {
+    stats::median(residual_variances[is.finite(residual_variances)])
+  } else NA_real_
+  attr(result, "residuals") <- residual_matrix
+  attr(result, "initialization") <- list(method = "per_person_nls", algorithm = "default",
+                                         control = .nls_initialization_control(), rows = audit)
+  result
 }
 
 # Besides the growth factors, getUNI.GF() attaches two attributes: "mean_res_var" (median over persons of
@@ -203,92 +211,17 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
     attr(growth_factor, "mean_res_var") <- median(coef_mat[, 4], na.rm = TRUE)
     attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:4), drop = FALSE])
   }
-  # Calculate individual growth factors eta0 (initial values), eta1 (asymptotic change between final and initial
-  # values), and gamma (growth rate parameter) for negative exponential trajectories.
+  # Nonlinear growth factors use the same per-person NLS policy in every model
+  # family. The retained audit distinguishes converged NLS fits from heuristic
+  # fallbacks; no grid-search values are silently substituted.
   else if (curveFun %in% c("negative exponential", "EXP")){
-    basis_fun <- function(t, param) 1 - exp(-param * t)
-    pooled_data <- .flatten_curve_data(dat_traj, dat_time)
-    pooled_fit <- .grid_search_curve(
-      pooled_data$measures,
-      pooled_data$times,
-      .exp_param_grid(pooled_data$times),
-      basis_fun
-    )
-    c_anchor <- pooled_fit$param
-
-    coef_mat <- t(apply(cbind(dat_traj, dat_time), 1, function(ind){
-      measures <- as.numeric(ind[1:nT])
-      times <- as.numeric(ind[-(1:nT)])
-      person_fit <- .grid_search_curve(measures, times, .exp_param_grid(times, anchor = c_anchor), basis_fun)
-      c(eta0 = person_fit$coef[1], eta1 = person_fit$coef[2], gamma = person_fit$param,
-        res_var = person_fit$res_var,
-        .curve_fit_residuals(measures, times, basis_fun, person_fit$param, person_fit$coef))
-    }))
-    growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], gamma = coef_mat[, 3])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 4], na.rm = TRUE)
-    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:4), drop = FALSE])
+    growth_factor <- .nls_curve_growth_factors(dat_traj, dat_time, nT, "EXP")
   }
-  # Calculate individual growth factors eta0 (initial values), eta1 (slope of linear asymptote), eta2 (change
-  # between intercept of linear asymptote and initial status), and gamma (growth acceleration parameter) for
-  # Jenss-Bayley trajectories.
   else if (curveFun %in% c("Jenss-Bayley", "JB")){
-    basis_fun <- function(t, param) cbind(t, exp(param * t) - 1)
-    pooled_data <- .flatten_curve_data(dat_traj, dat_time)
-    pooled_fit <- .select_stable_curve_fit(.grid_curve_fits(
-      pooled_data$measures,
-      pooled_data$times,
-      .jb_param_grid(pooled_data$times),
-      basis_fun
-    ), rss_tol = 0.001)
-    gamma_anchor <- pooled_fit$param
-
-    coef_mat <- t(apply(cbind(dat_traj, dat_time), 1, function(ind){
-      measures <- as.numeric(ind[1:nT])
-      times <- as.numeric(ind[-(1:nT)])
-      person_fit <- .select_stable_curve_fit(
-        .grid_curve_fits(measures, times, .jb_param_grid(times, anchor = gamma_anchor), basis_fun),
-        rss_tol = 0.01
-      )
-      gamma_start <- .shrink_curve_param(gamma_anchor, person_fit$param, anchor_weight = 0.75)
-      refit <- .fit_basis_curve(measures, times, basis_fun, gamma_start)
-      if (length(refit$coef) < 3 || any(!is.finite(refit$coef[1:3]))) {
-        refit <- person_fit
-        gamma_start <- person_fit$param
-      }
-      c(eta0 = refit$coef[1], eta1 = refit$coef[2], eta2 = refit$coef[3],
-        gamma = gamma_start, res_var = refit$res_var,
-        .curve_fit_residuals(measures, times, basis_fun, gamma_start, refit$coef))
-    }))
-    growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], eta2 = coef_mat[, 3],
-                                gamma = coef_mat[, 4])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 5], na.rm = TRUE)
-    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:5), drop = FALSE])
+    growth_factor <- .nls_curve_growth_factors(dat_traj, dat_time, nT, "JB")
   }
-  # Calculate individual growth factors eta0 (initial values), eta1 (slopes in the 1st stage), eta2 (slopes in
-  # the 2nd stage), and gamma (knot locations) for bilinear spline trajectories.
   else if (curveFun %in% c("bilinear spline", "BLS")){
-    basis_fun <- function(t, param) cbind(pmin(t, param), pmax(t - param, 0))
-    pooled_data <- .flatten_curve_data(dat_traj, dat_time)
-    pooled_fit <- .grid_search_curve(
-      pooled_data$measures,
-      pooled_data$times,
-      .bls_knot_grid(pooled_data$times),
-      basis_fun
-    )
-    knot_anchor <- pooled_fit$param
-
-    coef_mat <- t(apply(cbind(dat_traj, dat_time), 1, function(ind){
-      measures <- as.numeric(ind[1:nT])
-      times <- as.numeric(ind[-(1:nT)])
-      person_fit <- .grid_search_curve(measures, times, .bls_knot_grid(times, anchor = knot_anchor), basis_fun)
-      c(eta0 = person_fit$coef[1], eta1 = person_fit$coef[2], eta2 = person_fit$coef[3],
-        gamma = person_fit$param, res_var = person_fit$res_var,
-        .curve_fit_residuals(measures, times, basis_fun, person_fit$param, person_fit$coef))
-    }))
-    growth_factor <- data.frame(eta0 = coef_mat[, 1], eta1 = coef_mat[, 2], eta2 = coef_mat[, 3],
-                                gamma = coef_mat[, 4])
-    attr(growth_factor, "mean_res_var") <- median(coef_mat[, 5], na.rm = TRUE)
-    attr(growth_factor, "residuals") <- unname(coef_mat[, -(1:5), drop = FALSE])
+    growth_factor <- .nls_curve_growth_factors(dat_traj, dat_time, nT, "BLS")
   }
   # Calculate individual growth factors eta0 (initial values) and eta1 (slopes in the 1st time interval) for
   # nonparametric trajectories.

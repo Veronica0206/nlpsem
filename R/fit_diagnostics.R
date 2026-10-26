@@ -10,6 +10,7 @@
 #' eigenvalue checks after diagonal scaling. Default is \code{1e-8}.
 #'
 #' @return A list with \code{optimizer}, a \code{covariance} data frame,
+#' a \code{cross_covariances} data frame recording recognized cross blocks,
 #' \code{hessian}, \code{standard_errors}, \code{component_sizes},
 #' \code{issues}, \code{repeated_starts}, and \code{limitations}.
 #' Each covariance row identifies its model, matrix and block. The raw and
@@ -24,7 +25,13 @@
 #' cover the stored S matrix and its latent
 #' disturbance and manifest residual blocks, including jointly fitted children.
 #' Cached nlpsem covariance algebras ending in \code{_psi0}, \code{_psi_r} or
-#' \code{_psi_s} are also inspected. Covariance matrices depending on definition
+#' \code{_psi_s} are also inspected. Scalar-label block algebras are matched to
+#' their positions in RAM S. A block joining distinct variable sets is reported
+#' separately in \code{cross_covariances}: its entries may be negative and it need not be
+#' symmetric. Admissibility is checked on the assembled joint RAM S, not on
+#' the cross block alone. This structural matching does not infer roles from
+#' outcome-name lengths or from the numerical symmetry of a fitted block.
+#' Covariance matrices depending on definition
 #' variables are not evaluated for individual rows. Other expectation types,
 #' missing cached results and unfitted models are marked unavailable.
 #'
@@ -79,7 +86,7 @@ getDiagnostics <- function(object, tolerance = 1e-8) {
   if (!is.na(status) && status != 0L) issues <- c(issues, paste("Optimizer status is", status))
   if (!fitted) issues <- c(issues, "A finite fitted likelihood and optimizer status are not both available")
 
-  rows <- list()
+  rows <- cross_rows <- list()
   add <- function(model, matrix, block, values = NULL, unavailable = NULL) {
     check <- .diagnostic_matrix(values, tolerance)
     if (!is.null(unavailable)) {
@@ -122,7 +129,30 @@ getDiagnostics <- function(object, tolerance = 1e-8) {
       for (name in covariances) {
         unavailable <- if (!jointly_fitted) "Model has no fitted results" else if (
           .diagnostic_has_definition_variables(model, name)) "Definition-variable covariance requires row-specific evaluation" else NULL
-        add(path, name, "Stored covariance algebra", model@algebras[[name]]@result, unavailable)
+        values <- model@algebras[[name]]@result
+        cross <- if (!is.null(S)) {
+          .diagnostic_cross_covariance(model@algebras[[name]]@formula, S@labels)
+        } else NULL
+        if (is.null(cross)) {
+          add(path, name, "Stored covariance algebra", values, unavailable)
+        } else {
+          stored <- is.matrix(values) && length(values) &&
+            identical(dim(values), c(length(cross$rows), length(cross$columns)))
+          finite <- stored && all(is.finite(values))
+          joint_available <- jointly_fitted && !.diagnostic_has_definition_variables(model, ref)
+          cross_status <- if (!is.null(unavailable) || !stored) "unavailable" else if (!finite) "nonfinite" else if (
+            joint_available) "joint_covariance_checked" else "joint_covariance_unavailable"
+          cross_rows[[length(cross_rows) + 1L]] <<- data.frame(model = path, matrix = name,
+            rows = length(cross$rows), columns = length(cross$columns),
+            row_variables = paste(cross$rows, collapse = ", "),
+            column_variables = paste(cross$columns, collapse = ", "),
+            status = cross_status,
+            detail = if (cross_status == "joint_covariance_checked") {
+              "Cross-covariance of distinct RAM variable sets; admissibility is checked in the full RAM S matrix"
+            } else "Cross-covariance of distinct RAM variable sets; inspect its stored-result status and RAM S availability",
+            stringsAsFactors = FALSE)
+          if (cross_status == "nonfinite") issues <<- c(issues, paste0("Cross-covariance problem: ", path, "/", name, " (nonfinite)"))
+        }
       }
     } else if (!length(model@submodels)) {
       add(path, NA_character_, "Covariance", unavailable = "Only stored RAM covariance matrices are supported")
@@ -136,6 +166,9 @@ getDiagnostics <- function(object, tolerance = 1e-8) {
     model = character(), matrix = character(), block = character(), dimension = integer(),
     status = character(), minimum_variance = numeric(), minimum_eigenvalue = numeric(),
     scaled_minimum_eigenvalue = numeric(), negative_variances = character(), detail = character())
+  cross_covariances <- if (length(cross_rows)) do.call(rbind, cross_rows) else data.frame(
+    model = character(), matrix = character(), rows = integer(), columns = integer(),
+    row_variables = character(), column_variables = character(), status = character(), detail = character())
   bad_covariance <- covariance$status %in% c("indefinite", "negative_variance", "nonfinite", "not_symmetric")
   if (any(bad_covariance)) issues <- c(issues, paste0("Covariance problem: ",
     covariance$model[bad_covariance], "/", covariance$matrix[bad_covariance], " (",
@@ -195,13 +228,53 @@ getDiagnostics <- function(object, tolerance = 1e-8) {
   }
   list(optimizer = list(status = status, status_zero = if (is.na(status)) NA else status == 0L,
                          finite_likelihood = length(fit) == 1L && is.finite(fit)),
-       covariance = covariance, hessian = hessian, standard_errors = standard_errors,
+       covariance = covariance, cross_covariances = cross_covariances,
+       hessian = hessian, standard_errors = standard_errors,
        component_sizes = component_sizes, issues = unique(issues),
        repeated_starts = "not_assessed",
        limitations = c("No refitting or statistical acceptance is performed",
          "Definition-variable covariances and other unsupported expectations are not fully checked",
          "Identification, global optimality, repeated-start stability, and interval calibration are not established",
          "Stored outputs can be stale if a fitted model was manually modified"))
+}
+
+# Recognize scalar-label blocks by their placement in S, not by their names or
+# fitted values. A covariance block is a principal submatrix; a cross block
+# occupies two disjoint variable sets and is assessed within the joint S.
+.diagnostic_cross_covariance <- function(formula, labels) {
+  scalar_grid <- function(expr) {
+    if (is.symbol(expr)) return(matrix(as.character(expr), 1L, 1L))
+    if (!is.call(expr) || !as.character(expr[[1L]]) %in% c("rbind", "cbind")) return(NULL)
+    parts <- lapply(as.list(expr)[-1L], scalar_grid)
+    if (!length(parts) || any(vapply(parts, is.null, logical(1)))) return(NULL)
+    bind <- as.character(expr[[1L]])
+    sizes <- vapply(parts, if (bind == "rbind") ncol else nrow, integer(1))
+    if (length(unique(sizes)) != 1L) return(NULL)
+    do.call(bind, parts)
+  }
+  grid <- scalar_grid(formula)
+  if (is.null(grid) || !is.matrix(labels)) return(NULL)
+  first <- which(!is.na(labels) & labels == grid[1L, 1L], arr.ind = TRUE)
+  if (!nrow(first)) return(NULL)
+  found <- list()
+  for (i in seq_len(nrow(first))) {
+    rows <- lapply(grid[, 1L], function(label) which(!is.na(labels[, first[i, 2L]]) & labels[, first[i, 2L]] == label))
+    columns <- lapply(grid[1L, ], function(label) which(!is.na(labels[first[i, 1L], ]) & labels[first[i, 1L], ] == label))
+    # Equality-constrained or otherwise ambiguous mappings are not guessed.
+    if (any(lengths(rows) != 1L) || any(lengths(columns) != 1L)) next
+    rows <- unlist(rows, use.names = FALSE)
+    columns <- unlist(columns, use.names = FALSE)
+    if (anyDuplicated(rows) || anyDuplicated(columns) ||
+        !identical(unname(labels[rows, columns, drop = FALSE]), unname(grid))) next
+    # A principal (or overlapping) block must not be exempted from checking.
+    if (length(intersect(rows, columns))) return(NULL)
+    found[[length(found) + 1L]] <- list(rows = rows, columns = columns)
+  }
+  if (!length(found)) return(NULL)
+  result <- found[[1L]]
+  result$rows <- if (is.null(rownames(labels))) as.character(result$rows) else rownames(labels)[result$rows]
+  result$columns <- if (is.null(colnames(labels))) as.character(result$columns) else colnames(labels)[result$columns]
+  result
 }
 
 # Inspect stored expressions, following references so indirect definition

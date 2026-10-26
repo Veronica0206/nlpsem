@@ -136,3 +136,77 @@ test_that("jointly fitted children and mixture component sizes are inspected", {
   expect_true(any(grepl("Second", output$covariance$model[output$covariance$status == "negative_variance"])))
   expect_identical(output$component_sizes$status, "not_applicable")
 })
+
+# A stored-results fixture with a known joint covariance. It does not fit or
+# silently recompute cached algebras; the independent joint matrix is explicit.
+.diagnostics_cross_fixture <- function(prefix = "") {
+  variables <- c("Reading0", "Reading1", "Math0", "Math1")
+  left <- matrix(paste0(prefix, c("read00", "read01", "read01", "read11")), 2L)
+  right <- matrix(paste0(prefix, c("math00", "math01", "math01", "math11")), 2L)
+  cross_labels <- matrix(paste0(prefix, c("cross00", "cross10", "cross01", "cross11")), 2L)
+  labels <- rbind(cbind(left, cross_labels), cbind(t(cross_labels), right))
+  cross <- matrix(c(-.2, .3, .1, -.1), 2L)
+  joint <- rbind(cbind(diag(2), cross), cbind(t(cross), diag(2)))
+  block_algebra <- function(grid, name) {
+    text <- paste0("rbind(", paste(apply(grid, 1L, function(row) {
+      paste0("cbind(", paste(row, collapse = ","), ")")
+    }), collapse = ","), ")")
+    OpenMx::mxAlgebraFromString(text, name = name)
+  }
+  cross_name <- paste0(prefix, "ReadingEfficiencyMathReasoning_psi_s")
+  left_name <- paste0(prefix, "ReadingEfficiency_psi_s")
+  model <- OpenMx::mxModel("crossBlockExample", type = "RAM",
+    manifestVars = "Y", latentVars = variables,
+    OpenMx::mxPath(from = variables, to = variables, connect = "unique.pairs",
+      arrows = 2, free = FALSE, values = joint[lower.tri(joint, diag = TRUE)],
+      labels = labels[lower.tri(labels, diag = TRUE)]),
+    OpenMx::mxPath("Y", arrows = 2, free = FALSE, values = 1),
+    block_algebra(cross_labels, cross_name), block_algebra(left, left_name))
+  model@algebras[[cross_name]]@result <- cross
+  model@algebras[[left_name]]@result <- diag(2)
+  model@output <- list(Minus2LogLikelihood = 1, status = list(code = 0L))
+  list(model = model, cross_name = cross_name, left_name = left_name,
+       variables = variables, joint = joint)
+}
+
+test_that("cross blocks use their joint covariance regardless of names or class prefixes", {
+  for (prefix in c("", "c12")) {
+    fixture <- .diagnostics_cross_fixture(prefix)
+    expect_gt(min(eigen(fixture$joint, symmetric = TRUE)$values), 0)
+    output <- getDiagnostics(fixture$model)
+    expect_true(all(output$covariance$status == "positive_definite"))
+    expect_false(fixture$cross_name %in% output$covariance$matrix)
+    expect_identical(output$cross_covariances$matrix, fixture$cross_name)
+    expect_identical(output$cross_covariances$status, "joint_covariance_checked")
+    expect_identical(output$cross_covariances$row_variables, "Reading0, Reading1")
+    expect_identical(output$cross_covariances$column_variables, "Math0, Math1")
+    expect_length(output$issues, 0L)
+    parent <- OpenMx::mxModel("joint", OpenMx::mxRename(fixture$model, "Class12"))
+    parent@output <- fixture$model@output
+    child <- getDiagnostics(parent)
+    expect_identical(child$cross_covariances$model, "joint/Class12")
+    expect_length(child$issues, 0L)
+  }
+})
+
+test_that("valid marginal blocks cannot conceal an inadmissible joint covariance", {
+  fixture <- .diagnostics_cross_fixture("c123")
+  model <- fixture$model
+  cross <- matrix(c(-1.2, .3, .1, -1.1), 2L)
+  joint <- rbind(cbind(diag(2), cross), cbind(t(cross), diag(2)))
+  expect_lt(min(eigen(joint, symmetric = TRUE)$values), 0)
+  model@matrices$S@values[fixture$variables, fixture$variables] <- joint
+  model@algebras[[fixture$cross_name]]@result <- cross
+  output <- getDiagnostics(model)
+  expect_true(all(subset(output$covariance, matrix == "S" & block != "Manifest residuals")$status == "indefinite"))
+  expect_identical(subset(output$covariance, matrix == fixture$left_name)$status, "positive_definite")
+  expect_true(any(grepl("Covariance problem", output$issues, fixed = TRUE)))
+  expect_identical(output$cross_covariances$status, "joint_covariance_checked")
+
+  # Numerical asymmetry alone never exempts a genuine covariance algebra.
+  model <- fixture$model
+  model@algebras[[fixture$left_name]]@result[1L, 2L] <- .2
+  output <- getDiagnostics(model)
+  expect_identical(subset(output$covariance, matrix == fixture$left_name)$status, "not_symmetric")
+  expect_true(any(grepl(fixture$left_name, output$issues, fixed = TRUE)))
+})

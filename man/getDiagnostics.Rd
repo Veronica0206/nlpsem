@@ -14,6 +14,7 @@ eigenvalue checks after diagonal scaling. Default is \code{1e-8}.}
 }
 \value{
 A list with \code{optimizer}, a \code{covariance} data frame,
+a \code{cross_covariances} data frame recording recognized cross blocks,
 \code{hessian}, \code{standard_errors}, \code{component_sizes},
 \code{issues}, \code{repeated_starts}, and \code{limitations}.
 Each covariance row identifies its model, matrix and block. The raw and
@@ -34,7 +35,13 @@ are outside this diagnostic's current scope. For fitted RAM models, checks
 cover the stored S matrix and its latent
 disturbance and manifest residual blocks, including jointly fitted children.
 Cached nlpsem covariance algebras ending in \code{_psi0}, \code{_psi_r} or
-\code{_psi_s} are also inspected. Covariance matrices depending on definition
+\code{_psi_s} are also inspected. Scalar-label block algebras are matched to
+their positions in RAM S. A block joining distinct variable sets is reported
+separately in \code{cross_covariances}: its entries may be negative and it need not be
+symmetric. Admissibility is checked on the assembled joint RAM S, not on
+the cross block alone. This structural matching does not infer roles from
+outcome-name lengths or from the numerical symmetry of a fitted block.
+Covariance matrices depending on definition
 variables are not evaluated for individual rows. Other expectation types,
 missing cached results and unfitted models are marked unavailable.
 
