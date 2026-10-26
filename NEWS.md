@@ -13,6 +13,10 @@
   under `fitting$standardization`. `options(nlpsem.standardize = FALSE)` fits on the raw scale.
 * On the 200-person reference sample with CSOLNP on macOS and Linux, all six QUAD and seven of
   eight EXP cases pass the basic diagnostic screen on both platforms, with -2LL agreeing within 4e-9.
+* The fitting-layer reference values (`tests/testthat/golden/fit_golden.rds`) were regenerated with
+  1.0.0.9006 on macOS. The QUAD and EXP references are unchanged. The four JB references fit the
+  nearly linear math scores and stop with status 6; they are excluded explicitly, and three
+  bilinear spline references that did not converge before now do.
   The random-ratio EXP fits reach the 1.0.0.9000 reference likelihoods that the 9005 raw-scale
   fits missed. JB fits improve but stop with status 6: their random slope and acceleration terms
   are nearly collinear on this sample.

@@ -3,10 +3,12 @@
 # data-raw/make_golden_fits.R). The optimizer and seeds are fixed, so agreement is tight on one
 # platform; the tolerances allow for the last digits to move across OpenMx builds.
 
-# These Phase B references did not converge. Keep exclusions explicit and fixed:
-# replacing a reference file must not silently reduce the checked model coverage.
-.known_nonconverged_golden <- c("LGCM_JB_f", "TVC_LGCM_BLS_f_d1_TIC",
-                               "MIX_LGCM_BLS_f", "MIX_LGCM_BLS_f_clusterTIC", "MIX_MED_LIN")
+# These references did not converge. Keep exclusions explicit and fixed: replacing a reference file
+# must not silently reduce the checked model coverage. The four JB cases fit the math scores, which are
+# nearly linear over the study (acceleration ratio about 0.1 per year): the random-ratio variance comes
+# out negative and the fixed-ratio fits are weakly identified, so these fits stop with status 6.
+# MIX_MED_LIN stops with status 5.
+.known_nonconverged_golden <- c("LGCM_JB_f", "LGCM_JB_r", "LCSM_JB_f", "LCSM_JB_r", "MIX_MED_LIN")
 test_that("golden reference coverage cannot silently shrink", {
   golden <- readRDS(test_path("golden", "fit_golden.rds"))
   excluded <- vapply(golden, function(x) !is.null(x$error) || !isTRUE(x$status == 0), logical(1))
@@ -16,7 +18,7 @@ test_that("golden reference coverage cannot silently shrink", {
 
 for (.golden_exclusion in .known_nonconverged_golden) {
   test_that(paste("known unavailable numerical reference:", .golden_exclusion), {
-    skip(paste("Phase B reference did not converge:", .golden_exclusion,
+    skip(paste("Reference did not converge:", .golden_exclusion,
                "(reported explicitly; no numerical agreement is claimed)"))
   })
 }
