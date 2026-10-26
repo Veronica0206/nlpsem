@@ -1,3 +1,23 @@
+# nlpsem 1.0.0.9006 (standardized fitting development update)
+
+* Quadratic, negative exponential and Jenss-Bayley models, with fixed or random ratios, are
+  fitted to standardized data and converted back exactly in `getLGCM()`, `getLCSM()`,
+  `getTVCmodel()`, `getMGM()`, `getMGroup()` and `getMIX()`. Each outcome is centred and scaled
+  at its first recorded occasion, a TVC is scaled, and time is divided by the mean of its last
+  recorded occasion. The model starts from the raw-scale starting values, mapped exactly, and the
+  optimizer and retry settings are unchanged.
+* The estimates, Hessian, parameter covariance matrix, standard errors and -2 log-likelihood are
+  converted back exactly. The unit factor of every free parameter was checked against the
+  likelihood on all 480 QUAD/EXP/JB specifications of the structural grid; the largest relative
+  mismatch was 1.5e-15. `getSpecification()` records the centres, scales and condition numbers
+  under `fitting$standardization`. `options(nlpsem.standardize = FALSE)` fits on the raw scale.
+* On the 200-person reference sample with CSOLNP on macOS and Linux, all six QUAD and seven of
+  eight EXP cases pass the basic diagnostic screen on both platforms, with -2LL agreeing within 4e-9.
+  The random-ratio EXP fits reach the 1.0.0.9000 reference likelihoods that the 9005 raw-scale
+  fits missed. JB fits improve but stop with status 6: their random slope and acceleration terms
+  are nearly collinear on this sample.
+* Mediation, linear, nonparametric and bilinear spline models are fitted as before.
+
 # nlpsem 1.0.0.9005 (NLS initialization development update)
 
 * Restores per-person nonlinear least-squares initialization with `stats::nls()`

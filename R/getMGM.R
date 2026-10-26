@@ -63,6 +63,19 @@
 #' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
 #' \code{logLik()} and \code{plot()} methods are available.
 #'
+#' @section Standardized fitting:
+#' Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
+#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+#' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+#' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+#' growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+#' matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+#' same model in the original units; only the numerical conditioning of the optimization differs.
+#' \code{getSpecification()} records the centres, scales and condition numbers under
+#' \code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+#'
 #' @export
 #'
 #' @examples
@@ -125,13 +138,21 @@ getMGM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, y_mod
   ### Obtain manifest and latent variables, paths of the longitudinal outcomes
   model_mx <- getMGM.mxModel(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
                              records = records, y_model = y_model, starts = starts)
-  if (!is.null(tries)){
-    model <- mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
-                        loc = loc, scale = scale)
-  }
-  else{
-    model <- mxRun(model_mx)
-  }
+  ## Quadratic, negative exponential and Jenss-Bayley models are fitted on the standardized scale and
+  ## converted back exactly (see ?getLGCM, Details); other forms are fitted as built.
+  fit_std <- .fit_model(model_mx, run = function(model_mx){
+    if (!is.null(tries)){
+      mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
+                loc = loc, scale = scale)
+    }
+    else{
+      mxRun(model_mx)
+    }
+  }, plan = .std_plan(dat, "MGM", curveFun, y_var, records, t_var),
+  build = function(plan) getMGM.mxModel(dat = .std_data(dat, plan), t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
+                               records = records, y_model = y_model, starts = starts))
+  model <- fit_std$model
+  metadata$fitting$standardization <- fit_std$standardization
   if(paramOut){
     if (is.null(names)) names <- .auto_names_MGM(curveFun, intrinsic, y_var, records, y_model)
     MGM_output <- getMGM.output(model = model, y_var = y_var, records = records, curveFun = curveFun, y_model = y_model,

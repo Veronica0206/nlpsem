@@ -108,6 +108,21 @@ New fits retain their resolved model specification and fitting provenance.
 Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
 \code{logLik()} and \code{plot()} methods are available.
 }
+\section{Standardized fitting}{
+
+Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+centred at the mean and divided by the standard deviation of its first recorded occasion, a
+time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+same model in the original units; only the numerical conditioning of the optimization differs.
+\code{getSpecification()} records the centres, scales and condition numbers under
+\code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+}
+
 \examples{
 mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
 # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in years)

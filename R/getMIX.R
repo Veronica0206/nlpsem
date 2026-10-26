@@ -101,6 +101,19 @@
 #' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
 #' \code{logLik()} and \code{plot()} methods are available.
 #'
+#' @section Standardized fitting:
+#' Latent growth curve, latent change score, TVC and multivariate sub-models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
+#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+#' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+#' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+#' growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+#' matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+#' same model in the original units; only the numerical conditioning of the optimization differs.
+#' \code{getSpecification()} records the centres, scales and condition numbers under
+#' \code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+#'
 #' @export
 #'
 #' @examples
@@ -184,13 +197,24 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
                              TVC = TVC, decompose = decompose, growth_TIC = growth_TIC, starts = starts,
                              res_cor = res_cor)
   ## Optimize the constructed mixture model
-  if (!is.null(tries)){
-    model <- mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
-                        loc = loc, scale = scale)
-  }
-  else{
-    model <- mxRun(model_mx)
-  }
+  ## Quadratic, negative exponential and Jenss-Bayley models are fitted on the standardized scale and
+  ## converted back exactly (see ?getLGCM, Details); other forms are fitted as built.
+  fit_std <- .fit_model(model_mx, run = function(model_mx){
+    if (!is.null(tries)){
+      mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
+                loc = loc, scale = scale)
+    }
+    else{
+      mxRun(model_mx)
+    }
+  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose),
+  build = function(plan) getMIX.mxModel(dat = .std_data(dat, plan), nClass = nClass, sub_Model = sub_Model, cluster_TIC = cluster_TIC,
+                               t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
+                               records = records, y_model = y_model, m_var = m_var, x_var = x_var, x_type = x_type,
+                               TVC = TVC, decompose = decompose, growth_TIC = growth_TIC, starts = starts,
+                               res_cor = res_cor))
+  model <- fit_std$model
+  metadata$fitting$standardization <- fit_std$standardization
   ## Print out the point estimates and standard errors for the parameters of interest
   if(paramOut){
     if (is.null(names)) {
