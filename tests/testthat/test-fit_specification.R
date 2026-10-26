@@ -112,7 +112,8 @@ test_that("all seven public fitters attach a portable canonical specification", 
     expect_true(is.na(info$diagnostics$minus2LL))
     expect_identical(info$versions$OpenMx, as.character(packageVersion("OpenMx")))
     expect_identical(info$versions$nlpsem, as.character(packageVersion("nlpsem")))
-    expect_match(info$versions$R, as.character(getRversion()), fixed = TRUE)
+    # R.version.string, which on development builds carries no version number
+    expect_identical(info$versions$R, R.version.string)
     expect_false(.fit_specification_contains(info, is.environment))
     expect_false(.fit_specification_contains(info, is.function))
     expect_false(.fit_specification_contains(info, function(x) identical(x, dat)))
