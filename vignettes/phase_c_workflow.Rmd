@@ -50,6 +50,20 @@ print(fit)
 summary(fit)
 ```
 
+Optimizer completion does not establish statistical admissibility. Inspect stored
+covariance matrices, uncertainty information and component sizes without refitting:
+
+```{r fit-diagnostics}
+diagnostics <- getDiagnostics(fit)
+diagnostics
+```
+
+A materially negative variance or indefinite latent covariance requires investigation.
+Small boundary eigenvalues need scale-aware interpretation. Missing Hessian or standard
+error information means that check is unavailable. These checks do not establish global
+optimality: repeat fitting with defensible alternative starts and compare admissible
+solutions. Keep the seed, optimizer and package versions with the analysis.
+
 The coefficient method returns the named free parameters at full precision.
 `printTable(fit)` displays the package's estimate table, including derived quantities
 when that model supplies them; these serve different purposes.

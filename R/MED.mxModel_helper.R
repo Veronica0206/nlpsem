@@ -31,8 +31,6 @@
       }
       manifests <- c(unlist(traj_list), x_var)
       var0 <- c(starts[[k]]$Y$residuals, starts[[k]]$M$residuals)
-      var_1 <- c(starts[[k]]$Y$residuals)
-      var_2 <- c(starts[[k]]$M$residuals)
     }
     else if (x_type == "longitudinal"){
       y_records <- records[[1]]
@@ -45,27 +43,29 @@
       }
       manifests <- unlist(traj_list)
       var0 <- c(starts[[k]]$Y$residuals, starts[[k]]$M$residuals, starts[[k]]$X$residuals)
-      var_1 <- c(starts[[k]]$Y$residuals, starts[[k]]$Y$residuals, starts[[k]]$M$residuals)
-      var_2 <- c(starts[[k]]$M$residuals, starts[[k]]$X$residuals, starts[[k]]$X$residuals)
     }
     for (traj in seq_along(traj_var)){
       RES[[length(RES) + 1]] <- mxPath(from = traj_list[[traj]], to = traj_list[[traj]], arrows = 2, free = TRUE, values = var0[traj],
                                        labels = paste0(pfx[k], traj_var[traj], "_residuals"))
     }
-    for (traj_i in 1:(length(traj_var) - 1)){
-      for (traj_j in traj_i:(length(traj_var) - 1)){
-        if (setequal(readr::parse_number(traj_list[[traj_i]]), readr::parse_number(traj_list[[traj_j + 1]]))){
-          COV[[length(COV) + 1]] <- mxPath(from = traj_list[[traj_i]], to = traj_list[[traj_j + 1]],
-                                           arrows = 2, free = TRUE, values = res_cor[[k]][traj_i + traj_j - 1] * sqrt(var_1[traj_i] * var_2[traj_j]),
-                                           labels = paste0(pfx[k], traj_var[traj_i], traj_var[traj_j + 1], "_RES"))
+    # Pair contemporaneous residuals by the supplied record IDs, independently
+    # of column ordering or digits in variable prefixes. Every process pair
+    # has one freely estimated residual covariance and therefore needs a shared
+    # record; silently omitting it would change the output/model contract.
+    for (traj_i in seq_len(length(traj_var) - 1L)){
+      for (traj_j in seq.int(traj_i + 1L, length(traj_var))){
+        common_records <- intersect(records[[traj_i]], records[[traj_j]])
+        if (!length(common_records)){
+          stop("Mediation processes '", traj_var[traj_i], "' and '", traj_var[traj_j],
+               "' must share at least one record ID to estimate their residual covariance.",
+               call. = FALSE)
         }
-        else{
-          T_common <- Reduce(intersect, list(readr::parse_number(traj_list[[traj_i]]), readr::parse_number(traj_list[[traj_j + 1]])))
-          COV[[length(COV) + 1]] <- mxPath(from = paste0(traj_var[traj_i], T_common),
-                                           to = paste0(traj_var[traj_j + 1], T_common),
-                                           arrows = 2, free = TRUE, values = res_cor[[k]][traj_i + traj_j - 1] * sqrt(var_1[traj_i] * var_2[traj_j]),
-                                           labels = paste0(pfx[k], traj_var[traj_i], traj_var[traj_j + 1], "_RES"))
-        }
+        pair <- .outcome_pair_index(traj_i, traj_j, length(traj_var))
+        COV[[pair]] <- mxPath(from = paste0(traj_var[traj_i], common_records),
+                              to = paste0(traj_var[traj_j], common_records),
+                              arrows = 2, free = TRUE,
+                              values = res_cor[[k]][pair] * sqrt(var0[traj_i] * var0[traj_j]),
+                              labels = paste0(pfx[k], traj_var[traj_i], traj_var[traj_j], "_RES"))
       }
     }
     RES_L[[k]] <- RES

@@ -12,13 +12,18 @@ permissions:
 
 jobs:
   check:
-    name: R release / ${{ matrix.os }}
+    name: R ${{ matrix.r }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - {os: ubuntu-latest, r: release}
+          - {os: windows-latest, r: release}
+          - {os: macos-latest, r: release}
+          - {os: ubuntu-latest, r: devel}
+          - {os: ubuntu-latest, r: oldrel-1}
     env:
       NOT_CRAN: "false"
       R_KEEP_PKG_SOURCE: "yes"
@@ -31,7 +36,7 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: release
+          r-version: ${{ matrix.r }}
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -45,4 +50,4 @@ jobs:
           build_args: '"--no-manual"'
           error-on: '"warning"'
           upload-results: true
-          artifact-name: check-${{ matrix.os }}-r-release
+          artifact-name: check-${{ matrix.os }}-r-${{ matrix.r }}

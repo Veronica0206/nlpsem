@@ -162,6 +162,11 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
                    growth_TIC = growth_TIC, TVC = TVC, m_var = m_var,
                    x_var = x_var, x_type = x_type, cluster_TIC = cluster_TIC)
   nClass <- length(prop_starts)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_subModel(sub_Model, curveFun, intrinsic, growth_TIC,
+                                         records, y_model, decompose, y_var, m_var, x_type, x_var)
+    names <- .validate_output_names(names, length(expected_names))
+  }
   metadata <- .capture_fit_metadata(match.call(), "getMIX", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){

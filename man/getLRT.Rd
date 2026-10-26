@@ -22,19 +22,38 @@ A data frame containing the number of free parameters, estimated likelihood (-2l
 in log-likelihood and degrees of freedom, p-values, AIC, and BIC for both the full and reduced models.
 }
 \description{
-This function performs the likelihood ratio test (LRT) to compare a full model (an intrinsically nonlinear
-longitudinal model) with a corresponding parsimonious alternative (a non-intrinsically nonlinear longitudinal model).
-It also provides an option to perform bootstrapping for the comparison.
+Wraps OpenMx model comparison for a fitted full model and a
+corresponding reduced model, with optional parametric bootstrapping. A returned
+p-value is meaningful only when the comparison satisfies the required assumptions.
+}
+\details{
+Both models must use the same observations and observed variables,
+and the reduced model must be nested in the full model. Neither this wrapper
+nor OpenMx establishes mathematical nesting automatically. Inspect
+\code{getDiagnostics()} and check solution stability before interpreting results.
+The ordinary chi-square reference requires the usual likelihood regularity
+conditions; boundary parameters, unidentified parameters, and latent class
+enumeration can violate these conditions.
+
+In particular, random-knot and fixed-knot bilinear spline fits use different
+smooth/absolute-value loading formulas, and latent covariances are not generally
+constrained to be positive semidefinite. Their automatic comparison is not a
+validated significance test for a random-knot effect. Establish the null model,
+admissible parameter space and calibration for the intended analysis.
+
+\code{boot = TRUE} delegates to \code{OpenMx::mxCompare()}. It does not
+repair invalid models or non-nesting. Use enough successful replications to
+control Monte Carlo error, and inspect bootstrap fitting behavior. A reported
+zero bootstrap p-value is bounded by the simulation resolution, not evidence
+of a probability exactly equal to zero.
 }
 \examples{
-# Fitted bilinear spline models shipped with the package: random knot (full) versus
-# fixed knot (reduced)
+# Historical comparison output: inspect the assumptions in Details before
+# interpreting the p-value for these nonlinear models.
 load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
 comparison <- getLRT(full = Math_LGCM_BLS_f@mxOutput,
                      reduced = Math_LGCM_BLS_r@mxOutput)
-stopifnot(comparison["Reduced Model", "Diff in DoF"] == 4,
-          is.finite(comparison["Reduced Model", "p.values"]))
-comparison
+comparison[, c("# of Free Param", "-2loglik", "AIC", "BIC")]
 
 }
 \seealso{

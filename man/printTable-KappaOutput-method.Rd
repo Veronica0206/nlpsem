@@ -2,7 +2,7 @@
 % Please edit documentation in R/StandardMethods.R
 \name{printTable,KappaOutput-method}
 \alias{printTable,KappaOutput-method}
-\title{S4 Method for printing kappa statistic with 95\% CI and judgement for agreement.}
+\title{S4 Method for printing kappa statistic with a confidence interval and judgement for agreement.}
 \usage{
 \S4method{printTable}{KappaOutput}(object)
 }
@@ -14,5 +14,5 @@ Called for its side effect of printing kappa statistic with confidence interval
 and agreement judgment. Returns the object invisibly.
 }
 \description{
-Method for printing kappa statistic with 95\% CI and judgement for agreement.
+Method for printing kappa statistic with a confidence interval and judgement for agreement.
 }

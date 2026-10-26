@@ -18,6 +18,13 @@ has_data <- nzchar(system.file("extdata", "getMediation_examples.RData", package
 knitr::opts_chunk$set(eval = has_data)
 ```
 
+The saved examples below were generated with nlpsem 1.0.0.9000 and are retained
+for historical reproducibility. Rendering this guide does not refit its disabled
+model-fitting chunks. Refit with the current version for a new analysis, use
+`getDiagnostics()` to check admissibility and uncertainty, and compare multiple
+starts for difficult nonlinear or mixture models. These historical examples are
+not evidence of final V1.0.0 numerical qualification.
+
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
 library(nlpsem)

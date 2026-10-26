@@ -9,14 +9,15 @@ getPosterior(model, nClass, label = FALSE, cluster_TIC = NULL)
 \arguments{
 \item{model}{A fitted mxModel object. Specifically, this should be the \code{mxOutput} slot from the output of \code{getMIX()}.}
 
-\item{nClass}{An integer representing the predefined number of latent classes in the model.}
+\item{nClass}{A positive integer equal to the number of latent classes in the fitted model.}
 
 \item{label}{A logical value indicating whether the data contains true labels, which are often available in a simulated data set.
 Default is FALSE.}
 
 \item{cluster_TIC}{A string or character vector representing the column name(s) for time-invariant covariate(s)
-indicating cluster formations. Default is \code{NULL}, indicating that no such time-invariant covariates are present
-in the model.}
+indicating cluster formations. Default is \code{NULL}, which recovers the fitted
+cluster covariates from the model when present.
+An explicit vector must match the fitted covariates in their original order.}
 }
 \value{
 An object of class \code{postOutput}. Depending on the \code{label} argument, the object may contain the following slots:
@@ -31,6 +32,14 @@ The content of these slots can be printed using the \code{printTable()} method f
 \description{
 This function computes posterior probabilities, cluster assignments, and model entropy for a given mixture model
 with a predefined number of classes. If the true labels are available, it can also compute the model accuracy.
+}
+\details{
+Probabilities are normalized in log space to avoid overflow or underflow
+from class weights. Nonfinite or negative component likelihoods, and observations
+with zero likelihood in every class, produce an informative error. Entropy is
+numeric NA for a one-class model. With \code{label = TRUE}, the observed
+\code{class} labels must already use the fitted class numbering; labels are not
+permuted to maximize accuracy.
 }
 \examples{
 # Fitted mixture models shipped with the package

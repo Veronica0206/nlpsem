@@ -8,7 +8,8 @@ getIndFS(model, FS_type = "Regression")
 }
 \arguments{
 \item{model}{A fitted mxModel object. Specifically, this should be the \code{mxOutput} slot from the result returned by
-one of the estimation functions provided by this package.}
+a single-process or multivariate model with one RAM or LISREL expectation
+and its own raw data. Multiple-group and mixture parent models are not supported.}
 
 \item{FS_type}{A string specifying the type of factor scores to compute. Supported options include \code{"ML"} (for
 Maximum Likelihood), \code{"WeightedML"} (for Weighted Maximum Likelihood), and \code{"Regression"}. Default is \code{"Regression"}.}

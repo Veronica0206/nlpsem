@@ -250,7 +250,6 @@
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "TVC_v"), names(model@output$standardErrors[, 1]))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))])
           }
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (y_model == "LCSM"){
           if (curveFun %in% c("nonparametric", "NonP")){
@@ -397,7 +396,6 @@
                                        diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
           }
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
       }
       else if (decompose != 0){
@@ -478,7 +476,6 @@
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "kappa"), names(model@output$standardErrors[, 1]))],
                                      model@output$standardErrors[, 1][grep(paste0("c", k, "Cov_XYres"), names(model@output$standardErrors[, 1]))])
           }
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (y_model == "LCSM"){
           X_slp_m.est <- X_slp_m.se <- rep(0, length(records) - 1)
@@ -683,7 +680,6 @@
                                        diag(mxSE(paste0("Class", k, ".c", k, "Ychg_bl_v"), model, forceName = TRUE, silent = TRUE)))
             }
           }
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
       }
     }
@@ -721,7 +717,6 @@
       if (y_model == "LGCM"){
         model.est[[k]] <- c(unlist(outcome_est), unlist(btw_est))
         model.se[[k]] <- c(unlist(outcome_se), unlist(btw_se))
-        est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
       }
       else if (y_model == "LCSM"){
         slp_m.est_L <- slp_v.est_L <- slp_cov.est_L <- chg_inv_m.est_L <- chg_inv_v.est_L <- chg_bl_m.est_L <- chg_bl_v.est_L <-
@@ -759,7 +754,6 @@
           model.se[[k]] <- c(unlist(outcome_se), unlist(btw_se), unlist(slp_m.se_L), unlist(slp_v.se_L), unlist(chg_inv_m.se_L),
                                    unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L))
         }
-        est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
       }
     }
     else if (sub_Model == "MED"){
@@ -797,7 +791,6 @@
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "Y_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "M_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")])
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (curveFun %in% c("bilinear spline", "BLS")){
           model.est[[k]] <- c(model@output$estimate[grep(paste0("c", k, "muX"), names(model@output$estimate))],
@@ -832,7 +825,6 @@
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "Y_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "M_residuals")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")])
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
       }
       if (x_type == "longitudinal"){
@@ -875,7 +867,6 @@
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YX_RES")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "MX_RES")])
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
         else if (curveFun %in% c("bilinear spline", "BLS")){
           model.est[[k]] <- c(mxEvalByName(paste0("c", k, "X_mean"), model = model@submodels[[k]]),
@@ -916,11 +907,12 @@
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YM_RES")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "YX_RES")],
                                    model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0("c", k, "MX_RES")])
-          est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
         }
       }
     }
-    est[[k]] <- data.frame(Name = paste0("c", k, names), Estimate = model.est[[k]], SE = model.se[[k]])
+    class_names <- .validate_output_names(names, length(model.est[[k]]))
+    est[[k]] <- data.frame(Name = paste0("c", k, class_names),
+                           Estimate = model.est[[k]], SE = model.se[[k]])
   }
   estimate_out <- do.call(rbind.data.frame, est)
   # A one-class model has no free membership coefficients or softmax weights.
@@ -940,6 +932,7 @@
                               SE = unname(model@output$standardErrors[w_labels, 1]))
     estimate_out <- rbind(estimate_out, est.weights)
   }
+  .validate_output_names(estimate_out$Name, nrow(estimate_out))
   return(estimate_out)
 }
 

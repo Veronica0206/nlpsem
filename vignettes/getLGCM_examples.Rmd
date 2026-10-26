@@ -18,6 +18,13 @@ has_data <- nzchar(system.file("extdata", "getLGCM_examples.RData", package = "n
 knitr::opts_chunk$set(eval = has_data)
 ```
 
+The saved examples below were generated with nlpsem 1.0.0.9000 and are retained
+for historical reproducibility. Rendering this guide does not refit its disabled
+model-fitting chunks. Refit with the current version for a new analysis, use
+`getDiagnostics()` to check admissibility and uncertainty, and compare multiple
+starts for difficult nonlinear or mixture models. These historical examples are
+not evidence of final V1.0.0 numerical qualification.
+
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
 library(nlpsem)
@@ -71,7 +78,14 @@ getLRT(
   )
 ```
 
-The output illustrates a difference of $4$ degrees of freedom between the full model (bilinear spline LGCM with a random knot) and the reduced model (bilinear spline LGCM with a fixed knot). This difference arises from the knot variance and its covariance with the intercept and the two slopes. A Likelihood Ratio Test (LRT) returns a p-value of less than $0.0001$, which is indicative of the test favoring the full model. Additionally, both the Akaike Information Criterion (AIC) and the Bayesian Information Criterion (BIC) corroborate this preference, suggesting the superiority of the full model over the reduced one.
+The stored comparison has four additional parameters for the random-knot model.
+Its likelihood and AIC/BIC summarize these particular fitted solutions. The ordinary
+chi-square p-value is not a validated significance test for the random-knot effect:
+the loading formulas use different smoothing, latent covariance admissibility must
+be checked, and the null model's regularity conditions require justification. See
+`?getLRT` for nesting, same-data and bootstrap requirements. Bootstrapping does not
+automatically correct non-nesting or an inadmissible fitted model. Use
+`getDiagnostics()` and repeated starts before interpreting either solution.
 
 ## Example 2: Fit the full bilinear spline LGCM to assess the development of mathematics skill from Kindergarten to Grade 5. This model includes two growth time-invariant covariates (TICs), baseline values of teacher-reported approach to learning and attentional focus. Point estimates and corresponding standard errors (SEs) of all parameters are presented within the original parameter space. The plot of the growth status of mathematics ability is also provided.
 ```{r, message = FALSE, eval = FALSE}

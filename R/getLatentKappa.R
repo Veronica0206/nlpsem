@@ -10,6 +10,8 @@
 #' paired categorical labels, including uncertainty in their empirical marginal
 #' frequencies. It treats subjects as independent and the supplied labels as observed;
 #' uncertainty from fitting latent class models or assigning classes is not included.
+#' The requested confidence level is retained as an attribute for printing. Older
+#' objects without this attribute are printed without assuming a confidence level.
 #'
 #' @param label1 A factor vector representing the first set of latent categorical labels.
 #' @param label2 A factor vector representing the second set of latent categorical labels.
@@ -93,5 +95,6 @@ getLatentKappa <- function(label1, label2, conf.level = 0.95){
   KappaOut <- new("KappaOutput",
                   kappa_value = paste0(round(kappa, 4), " (", kappaL, ", ", kappaU, ")"),
                   judgment = judge)
+  attr(KappaOut, "conf.level") <- conf.level
   return(KappaOut)
 }

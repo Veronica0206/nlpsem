@@ -18,6 +18,13 @@ has_data <- nzchar(system.file("extdata", "getTVCmodel_examples.RData", package 
 knitr::opts_chunk$set(eval = has_data)
 ```
 
+The saved examples below were generated with nlpsem 1.0.0.9000 and are retained
+for historical reproducibility. Rendering this guide does not refit its disabled
+model-fitting chunks. Refit with the current version for a new analysis, use
+`getDiagnostics()` to check admissibility and uncertainty, and compare multiple
+starts for difficult nonlinear or mixture models. These historical examples are
+not evidence of final V1.0.0 numerical qualification.
+
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
 library(nlpsem)
@@ -130,6 +137,7 @@ Figure4 <- getFigure(
   outcome = "Mathematics"
 )
 show(Figure4)
+# This historical example is inadmissible; the plot is illustrative only.
 Figure5 <- getFigure(
   model = Math_TVCchgBL_BLS_r@mxOutput, sub_Model = "TVC", y_var = "M", curveFun = "BLS", 
   y_model = "LGCM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
@@ -137,3 +145,18 @@ Figure5 <- getFigure(
 )
 show(Figure5)
 ```
+
+## Diagnose the historical change-from-baseline example
+
+The saved `Math_TVCchgBL_BLS_r` example has optimizer status 0 but a materially
+negative latent residual variance (`Y_psi22`, approximately -1.3955). It must not
+be interpreted as an admissible fitted random-effects model. The figure illustrates
+the plotting API, not acceptance of this solution. Inspect the recorded diagnostics:
+
+```{r historical-diagnostics}
+getDiagnostics(Math_TVCchgBL_BLS_r)
+```
+
+Refitting, model revision, and stability/admissibility checks are required before
+using this specification for substantive inference. No covariance constraint has
+been silently imposed to replace the historical model.

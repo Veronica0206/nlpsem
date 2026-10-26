@@ -4,7 +4,8 @@
 #' types of factor scores: maximum likelihood, weighted maximum likelihood, and regression.
 #'
 #' @param model A fitted mxModel object. Specifically, this should be the \code{mxOutput} slot from the result returned by
-#' one of the estimation functions provided by this package.
+#' a single-process or multivariate model with one RAM or LISREL expectation
+#' and its own raw data. Multiple-group and mixture parent models are not supported.
 #' @param FS_type A string specifying the type of factor scores to compute. Supported options include \code{"ML"} (for
 #' Maximum Likelihood), \code{"WeightedML"} (for Weighted Maximum Likelihood), and \code{"Regression"}. Default is \code{"Regression"}.
 #'
@@ -50,8 +51,29 @@
 #' @importFrom methods new
 #'
 getIndFS <- function(model, FS_type = "Regression"){
+  if (!is.character(FS_type) || length(FS_type) != 1L || is.na(FS_type) ||
+      !FS_type %in% c("ML", "WeightedML", "Regression")) {
+    stop("FS_type must be one of 'ML', 'WeightedML', or 'Regression'.", call. = FALSE)
+  }
+  if (!methods::is(model, "MxModel")) {
+    stop("model must be a fitted OpenMx model (fit@mxOutput).", call. = FALSE)
+  }
+  if (length(model@submodels) ||
+      !(methods::is(model@expectation, "MxExpectationRAM") ||
+        methods::is(model@expectation, "MxExpectationLISREL")) ||
+      is.null(model$data) || !identical(model$data$type, "raw")) {
+    stop("getIndFS supports a single RAM or LISREL model with its own raw data; multiple-group and mixture parent models are not supported.", call. = FALSE)
+  }
+  if (is.null(model@output$estimate)) {
+    stop("model must be fitted before factor scoring.", call. = FALSE)
+  }
   out <- mxFactorScores(model = .prepare_FS_model(model), type = FS_type)
-  FSOut <- new("FSOutput", scores_est = out[, , 1], scores_se = out[, , 2])
+  # Keep matrix dimensions for a single person or latent variable.
+  estimates <- matrix(out[, , 1], nrow = dim(out)[1], ncol = dim(out)[2],
+                      dimnames = dimnames(out)[1:2])
+  errors <- matrix(out[, , 2], nrow = dim(out)[1], ncol = dim(out)[2],
+                   dimnames = dimnames(out)[1:2])
+  FSOut <- new("FSOutput", scores_est = estimates, scores_se = errors)
   return(FSOut)
 }
 

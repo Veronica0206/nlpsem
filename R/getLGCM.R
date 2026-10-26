@@ -99,6 +99,10 @@ getLGCM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   validate_intrinsic(intrinsic, curveFun, model_type = "LGCM")
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_LGCM(curveFun, intrinsic, growth_TIC)
+    names <- .validate_output_names(names, length(expected_names))
+  }
   metadata <- .capture_fit_metadata(match.call(), "getLGCM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){

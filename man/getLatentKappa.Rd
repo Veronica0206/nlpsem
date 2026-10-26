@@ -34,6 +34,8 @@ The confidence interval uses the multinomial delta-method variance for
 paired categorical labels, including uncertainty in their empirical marginal
 frequencies. It treats subjects as independent and the supplied labels as observed;
 uncertainty from fitting latent class models or assigning classes is not included.
+The requested confidence level is retained as an attribute for printing. Older
+objects without this attribute are printed without assuming a confidence level.
 }
 \examples{
 # Class memberships from two fitted three-class mixtures shipped with the package

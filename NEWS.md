@@ -1,3 +1,34 @@
+# nlpsem 1.0.0.9004 (development review fixes)
+
+* Mediation residual covariance paths now match explicit wave IDs, including
+  reordered schedules and outcome prefixes containing digits. Longitudinal M-X
+  covariance starts use the M and X residual variances. Disjoint process schedules
+  are rejected clearly because the current mediation output requires a covariance
+  for every process pair.
+* One-class mixture posterior calculations return numeric missing entropy; their
+  summaries and plots work. Posterior normalization uses log space, validates the
+  fitted class count, and rejects invalid likelihood rows or mismatched covariates.
+* Multivariate summaries have one proportion column per class, combine residual
+  schemas by name, and retain absent values as NA. Displaying models together does
+  not establish that their information criteria are statistically comparable.
+* Parameter names must have valid, unique entries and the correct length instead
+  of being silently recycled or padded. The documented LCSM core-name convention
+  is retained.
+* Kappa output retains and prints the requested confidence level. Legacy objects
+  without that metadata do not assume 95%. Table/show methods honor their
+  documented invisible return values without changing S4 slots.
+* Factor scoring rejects unsupported mixture/multiple-group parent models clearly
+  and preserves matrix dimensions for a single person or latent factor.
+* New opt-in `getDiagnostics()` inspects stored covariance admissibility, Hessian
+  and standard-error information, and mixture component sizes. It does not refit,
+  impose constraints, or establish global optimality or repeated-start stability.
+* The guides identify historical fitted objects and the inadmissible stored TVC
+  example. LRT documentation states nesting, same-data and regularity requirements
+  and removes an unqualified random-knot significance claim.
+* Example-data reconstruction now has verified input hashes and named-variable
+  mappings. R-devel and R-oldrel jobs are prepared for hosted checking. This remains
+  a development candidate; scientific qualification and V1 publication are pending.
+
 # nlpsem 1.0.0.9003 (development correctness update)
 
 * Corrected mediation time prefixes to follow outcome, mediator, and predictor

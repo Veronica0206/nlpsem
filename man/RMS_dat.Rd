@@ -41,8 +41,11 @@ data, please visit the NCES data products page at \url{https://nces.ed.gov/ecls/
 }
 \details{
 The ECLS-K:2011 offers a comprehensive and detailed set of information about children's early life experiences,
-focusing on children's health, development, education, and experiences in the years leading up to kindergarten.
+following children's health, development, education, and experiences from kindergarten through fifth grade.
 
+The preparation script excludes incomplete records on selected variables and
+samples 500 complete cases without replacement using seed 20191029. This
+teaching sample is not a representative population analysis sample by default.
 The sample dataset included in this package is used for demonstrating the functionality of the package's functions and
 it does not include survey weights. In real analysis, the complex survey weights provided by NCES should be utilized
 appropriately, for instance, as done in R packages such as \code{lavaan.survey} or \code{EdSurvey} if not using SEM.

@@ -22,6 +22,15 @@ for each model. A plain \code{data.frame} is returned for both \code{HetModels =
 This function summarizes the model fit statistics for a list of fitted models. The summary includes the
 number of parameters, estimated likelihood (-2ll), AIC, BIC, and other relevant statistics.
 }
+\details{
+Residual columns are combined by name, with NA where a model does not
+contain that parameter. For heterogeneous models, each class has one proportion
+column regardless of the number of longitudinal outcomes. Mixture proportions
+count maximum-posterior assignments; multiple-group proportions count observations.
+A summary table does not establish that its models are statistically comparable:
+compare information criteria only for appropriate models fitted to the same data
+and observed variables.
+}
 \examples{
 # Fitted models shipped with the package: one-, two- and three-class bilinear spline models
 load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))

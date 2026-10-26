@@ -252,4 +252,65 @@ pass("numeric allowance cannot exceed the documented bound", {
                       error = function(e) conditionMessage(e))
   stopifnot(grepl("numeric_tolerance must be between 0 and 1e-10", message, fixed = TRUE))
 })
+# Build a small structural fixture carrying the same reviewed S/M/R contract
+# as the immutable longitudinal mediation cases, without loading/replacing them.
+med_fixture <- function(prefix = "") {
+  vars <- c("S1", "M1", "R1")
+  values <- matrix(c(1, .6, .9, .6, 4, .9, .9, .9, 9), 3L, dimnames = list(vars, vars))
+  labels <- matrix(paste0(prefix, c("S_residuals", "SM_RES", "SR_RES", "SM_RES",
+                                    "M_residuals", "MR_RES", "SR_RES", "MR_RES", "R_residuals")), 3L)
+  old <- list(matrices = list(S = list(values = values, labels = labels,
+                                       free = matrix(TRUE, 3L, 3L))), submodels = list())
+  new <- old
+  new$matrices$S$values[cbind(c(2L, 3L), c(3L, 2L))] <- 1.8
+  list(old = old, new = new)
+}
+compare_med <- function(old, new, id = "MED_LIN_longitudinal") {
+  invisible(capture.output(result <- compare_model_structures(setNames(list(old), id),
+    setNames(list(new), id), expected_count = 1L)))
+  result
+}
+reject_med <- function(label, old, new, id = "MED_LIN_longitudinal") {
+  message <- tryCatch({compare_med(old, new, id); NA_character_}, error = conditionMessage)
+  if (is.na(message)) stop(label, ": unexpected acceptance")
+  pass(label, TRUE)
+}
+g <- med_fixture()
+pass("MED M-X start correction is derived from unchanged residual variances", {
+  x <- compare_med(g$old, g$new)
+  stopifnot(x$exact == 0L, x$approved_mediation_starts == 1L,
+            x$mediation_starts_only == 1L, x$approved_renames == 0L)
+})
+pass("MED start correction recurses through class models", {
+  a <- med_fixture("c1"); b <- med_fixture("c2")
+  old <- list(submodels = list(Class1 = a$old, Class2 = b$old))
+  new <- list(submodels = list(Class1 = a$new, Class2 = b$new))
+  for (container in c("MGroup", "MIX", "MIXc")) {
+    x <- compare_med(old, new, paste0(container, "_MED_BLS_longitudinal"))
+    stopifnot(x$approved_mediation_starts == 1L, length(x$mediation_start_scopes) == 2L)
+  }
+})
+reject_med("MED correction is restricted to approved model identifiers", g$old, g$new,
+           "MED_LIN_baseline")
+for (bad_value in c(.9 + 1e-6, 1.8 + 1e-6, -1.8, NA_real_)) {
+  bad <- g$new
+  bad$matrices$S$values[2, 3] <- bad_value
+  reject_med("MED wrong/asymmetric covariance correction is rejected", g$old, bad)
+}
+bad <- g$new
+bad$matrices$S$free[2, 3] <- FALSE
+reject_med("MED correction does not permit changed constraints", g$old, bad)
+bad <- g$new
+bad$matrices$S$labels[2, 3] <- "different"
+reject_med("MED correction does not permit changed labels", g$old, bad)
+bad <- g$new
+bad$matrices$S$values[2, 2] <- 4.1
+reject_med("MED correction does not permit changed residual variance", g$old, bad)
+bad <- g$new
+bad$matrices$S$values[1, 2] <- .61
+reject_med("MED correction does not permit another changed covariance", g$old, bad)
+bad <- g$new
+bad$matrices$S$values[2, 2] <- 9
+bad$matrices$S$values[cbind(c(2L, 3L), c(3L, 2L))] <- 2.7
+reject_med("MED changing variance and covariance consistently still fails", g$old, bad)
 cat("All", checks, "structural comparator self-tests passed.\n")

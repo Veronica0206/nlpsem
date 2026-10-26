@@ -33,16 +33,7 @@ getLGCM.output <- function(model, growth_TIC, names){
     model.se <- c(mxSE(Y_mean0, model, silent = TRUE), mxSE(Y_psi0, model, silent = TRUE)[row(mxSE(Y_psi0, model, silent = TRUE)) >= col(mxSE(Y_psi0, model, silent = TRUE))],
                         model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))])
   }
-  # Safety net: ensure names and estimates have matching length
-  if (length(names) != length(model.est)){
-    warning("Number of parameter names (", length(names), ") does not match number of estimates (",
-            length(model.est), "). Auto-padding with generic labels.")
-    if (length(names) < length(model.est)){
-      names <- c(names, paste0("param_", seq(length(names) + 1, length(model.est))))
-    } else {
-      names <- names[seq_len(length(model.est))]
-    }
-  }
+  names <- .validate_output_names(names, length(model.est))
   estimate_out <- data.frame(Name = names, Estimate = model.est, SE = model.se)
   return(estimate_out)
 }

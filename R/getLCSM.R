@@ -88,6 +88,11 @@ getLCSM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   validate_intrinsic(intrinsic, curveFun, model_type = "LCSM")
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_LCSM(curveFun, intrinsic, growth_TIC, length(records))
+    derived_names <- utils::tail(expected_names, 6L * (length(records) - 1L))
+    names <- .validate_output_names(names, length(expected_names), derived_names)
+  }
   metadata <- .capture_fit_metadata(match.call(), "getLCSM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){

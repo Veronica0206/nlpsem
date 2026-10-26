@@ -110,6 +110,10 @@ getMGM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, y_mod
   validate_intrinsic(intrinsic, curveFun, model_type = "general")
   validate_curveFun_ymodel(curveFun, y_model)
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_MGM(curveFun, intrinsic, y_var, records, y_model)
+    names <- .validate_output_names(names, length(expected_names))
+  }
   metadata <- .capture_fit_metadata(match.call(), "getMGM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){

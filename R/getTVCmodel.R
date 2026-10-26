@@ -122,6 +122,10 @@ getTVCmodel <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, 
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC, TVC = TVC)
 
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_TVC(curveFun, intrinsic, records, y_model, decompose, growth_TIC)
+    names <- .validate_output_names(names, length(expected_names))
+  }
   metadata <- .capture_fit_metadata(match.call(), "getTVCmodel", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){

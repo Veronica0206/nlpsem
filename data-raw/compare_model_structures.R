@@ -1,7 +1,8 @@
 # Compare the historical Phase C grid with a newly generated snapshot.
 # Usage: Rscript data-raw/compare_model_structures.R baseline.rds current.rds
-# Only the F5 split of an identical ADD1 constant into process-specific constants
-# is normalized. A 1e-10 * max(1, abs(old), abs(new)) elementwise allowance covers
+# Approved changes are the F5 split of identical ADD1 constants and the
+# reviewed longitudinal MED M-X residual starting covariance correction. No
+# free masks, labels, dimensions or formulas are normalized for the latter. A 1e-10 * max(1, abs(old), abs(new)) elementwise allowance covers
 # cross-platform roundoff in numeric matrix values/bounds and data checksums only.
 # ADD1 constants, types,
 # dimensions, free masks, labels, and formulas remain exact.
@@ -19,6 +20,7 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
     stop("Model names differ or are not unique")
   }
   renamed <- character()
+  mediation_starts <- character()
   normalize <- function(old, new, path) {
     if (!is.null(old$error) || !is.null(new$error)) stop("Construction error at ", path)
     if (!is.null(old$matrices$ADD1) && is.null(new$matrices$ADD1)) {
@@ -63,6 +65,48 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
       new$matrices <- new$matrices[order(names(new$matrices))]
       renamed <<- c(renamed, path)
     }
+    # The immutable 688-case grid uses S (outcome), M (mediator), R
+    # (predictor), and the default residual correlation 0.3. The old builder
+    # used var(S) instead of var(M) only for M-R covariance starts. Approve
+    # only these named cases and cells, after checking both formulas against
+    # unchanged residual diagonal starts. This is not a generic tolerance.
+    scope <- strsplit(path, "/", fixed = TRUE)[[1L]]
+    approved_id <- grepl("^(MGroup_|MIX_|MIXc_)?MED_(LIN|BLS)_longitudinal$", scope[1L])
+    class_scope <- length(scope) == 2L && grepl("^[1-9][0-9]*$", scope[2L])
+    single_scope <- length(scope) == 1L && grepl("^MED_", scope[1L])
+    if (approved_id && (single_scope || class_scope) &&
+        !is.null(old$matrices$S) && !is.null(new$matrices$S) &&
+        !identical(old$matrices$S$values, new$matrices$S$values)) {
+      old_s <- old$matrices$S
+      new_s <- new$matrices$S
+      prefix <- if (class_scope) paste0("c", scope[2L]) else ""
+      residual_variance <- function(role) {
+        indices <- which(diag(old_s$labels) == paste0(prefix, role, "_residuals"))
+        values <- unique(diag(old_s$values)[indices])
+        if (length(values) != 1L || !is.finite(values) || values <= 0) {
+          stop("Unrecognized MED residual diagonal at ", path)
+        }
+        values
+      }
+      vy <- residual_variance("S")
+      vm <- residual_variance("M")
+      vx <- residual_variance("R")
+      cells <- which(!is.na(old_s$labels) & old_s$labels == paste0(prefix, "MR_RES"))
+      close <- function(values, expected) {
+        length(values) && all(is.finite(values)) &&
+          all(abs(values - expected) <= numeric_tolerance * pmax(1, abs(values), abs(expected)))
+      }
+      if (!length(cells) || !identical(dim(old_s$values), dim(new_s$values)) ||
+          !identical(typeof(old_s$values), typeof(new_s$values)) ||
+          !close(old_s$values[cells], .3 * sqrt(vy * vx)) ||
+          !close(new_s$values[cells], .3 * sqrt(vm * vx))) {
+        stop("Incorrect MED M-X residual starting covariance at ", path)
+      }
+      # All untouched cells and all structure must still pass exact/roundoff
+      # comparison below. A changed residual variance cannot justify a change.
+      new$matrices$S$values[cells] <- old_s$values[cells]
+      mediation_starts <<- c(mediation_starts, path)
+    }
     if (!identical(names(old$submodels), names(new$submodels))) {
       stop("Submodel names differ at ", path)
     }
@@ -74,10 +118,13 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
   }
   normalized <- current
   had_renames <- setNames(rep(FALSE, length(baseline)), names(baseline))
+  had_mediation_starts <- had_renames
   for (id in names(baseline)) {
     before <- length(renamed)
+    before_mediation <- length(mediation_starts)
     normalized[[id]] <- normalize(baseline[[id]], current[[id]], id)
     had_renames[id] <- length(renamed) > before
+    had_mediation_starts[id] <- length(mediation_starts) > before_mediation
   }
   exact <- vapply(names(baseline), function(id) identical(baseline[[id]], current[[id]]), logical(1))
   same_after_rename <- vapply(names(baseline), function(id) {
@@ -127,14 +174,18 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
   }
   same <- vapply(names(baseline), function(id) identical(baseline[[id]], normalized[[id]]), logical(1))
   roundoff <- same & !same_after_rename
-  rename_only <- same_after_rename & !exact
-  roundoff_only <- roundoff & !had_renames
+  rename_only <- same_after_rename & !exact & had_renames & !had_mediation_starts
+  mediation_only <- same_after_rename & !exact & had_mediation_starts & !had_renames
+  roundoff_only <- roundoff & !had_renames & !had_mediation_starts
   both <- roundoff & had_renames
   cat("Models:", length(baseline), "; exact:", sum(exact),
       "; approved ADD1 renames only:", sum(rename_only),
+      "; approved MED starts only:", sum(mediation_only),
       "; roundoff only:", sum(roundoff_only),
       "; approved renames plus roundoff:", sum(both),
+      "; approved MED starts plus roundoff:", sum(roundoff & had_mediation_starts),
       "; unexplained:", sum(!same), "\n")
+  if (length(mediation_starts)) cat("Corrected MED start scopes:", paste(mediation_starts, collapse = ", "), "\n")
   if (length(renamed)) cat("Renamed constant scopes:", paste(renamed, collapse = ", "), "\n")
   cat("Scaled numeric tolerance:", numeric_tolerance,
       "; maximum scaled roundoff:", max_scaled_roundoff,
@@ -148,6 +199,9 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
   }
   invisible(list(models = length(baseline), exact = sum(exact),
                  approved_renames = sum(same & had_renames), renamed_scopes = renamed,
+                 approved_mediation_starts = sum(same & had_mediation_starts),
+                 mediation_start_scopes = mediation_starts, mediation_starts_only = sum(mediation_only),
+                 mediation_starts_and_roundoff = sum(roundoff & had_mediation_starts),
                  roundoff_equivalent = sum(roundoff), renames_only = sum(rename_only),
                  roundoff_only = sum(roundoff_only), renames_and_roundoff = sum(both),
                  numeric_tolerance = numeric_tolerance, max_abs_roundoff = max_roundoff,

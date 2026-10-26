@@ -4,13 +4,40 @@
 #' @keywords internal
 #' @noRd
 validate_paramOut <- function(paramOut, names) {
-  if (!is.logical(paramOut) || length(paramOut) != 1) {
+  if (!is.logical(paramOut) || length(paramOut) != 1L || is.na(paramOut)) {
     stop("paramOut must be a single logical value (TRUE or FALSE).")
   }
-  if (!is.null(names) && !is.character(names)) {
-    stop("names must be a character vector or NULL.")
-  }
+  if (!is.null(names)) .validate_output_names(names)
   invisible(NULL)
+}
+
+# Parameter labels are a one-to-one mapping, never a recyclable data-frame
+# column. The optional derived names preserve standalone LCSM's documented
+# core-only naming convention; arbitrary shorter vectors are rejected.
+#' @keywords internal
+#' @noRd
+.validate_output_names <- function(names, expected_length = NULL, derived_names = character()) {
+  if (!is.character(names) || !is.null(dim(names))) {
+    stop("names must be a character vector or NULL.", call. = FALSE)
+  }
+  if (!length(names) || anyNA(names) || any(!nzchar(trimws(names))) || anyDuplicated(names)) {
+    stop("names must contain non-missing, non-empty, unique parameter names.", call. = FALSE)
+  }
+  if (!is.null(expected_length)) {
+    if (length(derived_names) && length(names) == expected_length - length(derived_names)) {
+      names <- c(names, derived_names)
+    }
+    if (length(names) != expected_length) {
+      stop("names must contain exactly ", expected_length, " parameter names",
+           if (length(derived_names)) paste0(" (or ", expected_length - length(derived_names),
+                                             " core names for this LCSM)"),
+           "; received ", length(names), ".", call. = FALSE)
+    }
+    if (anyDuplicated(names)) {
+      stop("names must remain unique after derived parameter names are appended.", call. = FALSE)
+    }
+  }
+  names
 }
 
 #' Validate res_scale values are between 0 and 1 (exclusive)

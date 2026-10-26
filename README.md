@@ -12,49 +12,33 @@ on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
-## Development: 1.0.0.9003
+## Development 1.0.0.9004
 
-This development branch contains Phase C and the subsequent correctness fixes
-from the independent review. The published manuscript and existing releases
-remain unchanged.
-
-- New fits retain their model specification and fitting provenance through
-  `getSpecification()`, including original group labels and retained/dropped rows.
-- Standard `print()`, `summary()`, `coef()`, `logLik()`, and `plot()` methods make
-  fitted models easier to inspect. Coefficients retain full precision, AIC/BIC
-  use the OpenMx likelihood counts, and plotting uses the saved specification.
-- Existing S4 slots and legacy saved fits remain compatible. Legacy plotting
-  requires explicit model arguments. Recorded calls are provenance records,
-  not automatically executable replay commands.
-- The earlier correctness fixes cover multivariate indexing, pointwise plot
-  intervals, bootstrap filtering, label-based agreement, and group-specific times.
-- New regression tests, a fitted-model workflow vignette, pkgdown configuration,
-  three GitHub Actions workflows, and GPL-3 license text support development.
-- Version 1.0.0.9003 corrects mediation time mapping, starting-value constraints,
-  multivariate covariance construction, unequal observation schedules, kappa
-  intervals, and one-class/multi-digit-class reporting. New estimate and SE
-  tables and numeric interval bounds retain full precision. Older saved tables
-  retain their historical rounding.
-
-See the [1.0.0.9003 validation record](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/.github/VALIDATION-1.0.0.9003.md)
-for current results, commands, and limitations. The full fitting suite now runs
-on pull requests, alongside three-platform package checks and documentation.
-The historical [Phase C record](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/.github/VALIDATION-phase-c.md) remains available.
-Regression agreement and independent checks of model specification and
-statistical calculations provide complementary evidence.
+This development update fixes mediation wave/covariance starts, one-class mixture
+post-processing, posterior normalization and class-count validation, multivariate
+summary columns, parameter names and confidence-interval labels. It adds opt-in
+`getDiagnostics()` checks for stored covariance admissibility, Hessian and standard
+error information, and mixture component sizes. It does not refit or constrain models.
 
 ```r
-# After fitting a model with this development version:
 print(fit)
-head(coef(fit))
-logLik(fit)
-AIC(fit)
-BIC(fit)
+coef(fit)
+getDiagnostics(fit)
 getSpecification(fit)$specification
-figure <- plot(fit, draw = FALSE)
+plot(fit, draw = FALSE)
 ```
 
-See `vignette("phase_c_workflow", package = "nlpsem")` for a runnable example.
+The [release preparation record](.github/VALIDATION-1.0.0.9004.md) separates completed
+checks from outstanding numerical qualification. Existing examples and numerical
+reference fixtures remain historical evidence. In particular, the saved
+`Math_TVCchgBL_BLS_r` example is inadmissible despite optimizer status 0; see the TVC
+guide. This development version is not a V1.0.0 release.
+
+New estimate tables retain full precision. Older serialized tables retain their
+historical rounding and need recomputation or refitting to recover precision. S4
+slots are preserved. Invalid custom names now fail explicitly instead of recycling.
+Factor scoring supports single RAM/LISREL models with their own raw data; mixture
+and multiple-group parent objects are rejected with a clear explanation.
 
 ## Portfolio positioning
 
@@ -74,8 +58,7 @@ This repository demonstrates:
 
 The methods implemented in this package are described in:
 
-Liu, J. (2025). *Examination of nonlinear longitudinal processes in the
-framework of structural equation modeling: The R package nlpsem*. Behavior
+Liu, J. (2025). *Examination of nonlinear longitudinal processes with latent variables, latent processes, latent changes, and latent classes in the structural equation modeling framework: The R package nlpsem*. Behavior
 Research Methods. <https://doi.org/10.3758/s13428-025-02596-4>
 
 ## Connection to AI evaluation
@@ -137,17 +120,17 @@ their intrinsically nonlinear forms by setting `intrinsic = TRUE`.
 
 ## Installation
 
-If the package is available on CRAN:
+The published version is available from CRAN:
 
 ```r
 install.packages("nlpsem")
 ```
 
-To install the development version from GitHub:
+To install the development source from a local checkout:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("Veronica0206/nlpsem", ref = "codex/nlpsem-phase-c-1.0.0.9002")
+remotes::install_local(".")
 ```
 
 ## Quick example
@@ -199,7 +182,7 @@ Highlights include:
 - synchronized vignettes and saved example objects
 - a new `testthat` test suite and cleaner CRAN-facing documentation
 
-See [NEWS.md](https://github.com/Veronica0206/nlpsem/blob/codex/nlpsem-phase-c-1.0.0.9002/NEWS.md) for a more comprehensive summary of changes from version 0.3.
+See `NEWS.md` for a more comprehensive summary of changes from version 0.3.
 
 ## Documentation
 

@@ -151,6 +151,11 @@ getMGroup <- function(dat, grp_var, sub_Model, t_var, records, y_var, curveFun, 
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC, TVC = TVC, m_var = m_var,
                    x_var = x_var, x_type = x_type, grp_var = grp_var)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_subModel(sub_Model, curveFun, intrinsic, growth_TIC,
+                                         records, y_model, decompose, y_var, m_var, x_type, x_var)
+    names <- .validate_output_names(names, length(expected_names))
+  }
   metadata <- .capture_fit_metadata(match.call(), "getMGroup", environment(), dat)
   ## Downstream helpers index the groups 1..K: drop rows without a group and recode the grouping
   ## variable by the sorted order of its distinct values (a message reports the mapping).

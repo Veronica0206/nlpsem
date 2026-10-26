@@ -88,29 +88,12 @@ getLCSM.output <- function(model, curveFun, growth_TIC, names){
                           mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
     }
   }
-  # Auto-generate derived quantity names if the user-supplied names vector is shorter than model.est
-  nDerived <- length(model.est) - length(names)
-  if (nDerived > 0){
-    nIntervals <- nDerived %/% 6
-    derived_names <- c(paste0("slp_val_est", seq_len(nIntervals)),
-                       paste0("slp_var_est", seq_len(nIntervals)),
-                       paste0("chg_inv_val_est", seq_len(nIntervals)),
-                       paste0("chg_inv_var_est", seq_len(nIntervals)),
-                       paste0("chg_bl_val_est", seq_len(nIntervals)),
-                       paste0("chg_bl_var_est", seq_len(nIntervals)))
-    names <- c(names, derived_names)
-  }
-  # Ensure names and estimates have matching length
-  if (length(names) != length(model.est)){
-    warning("Number of parameter names (", length(names), ") does not match number of estimates (",
-            length(model.est), "). Please check the 'names' argument. ",
-            "Auto-padding with generic labels.")
-    if (length(names) < length(model.est)){
-      names <- c(names, paste0("param_", seq(length(names) + 1, length(model.est))))
-    } else {
-      names <- names[seq_len(length(model.est))]
-    }
-  }
+  # Accept either the complete labels or the exact core-model label count.
+  nIntervals <- length(mxEval(Yslp_m, model))
+  derived_names <- unlist(lapply(c("slp_val_est", "slp_var_est", "chg_inv_val_est",
+                                   "chg_inv_var_est", "chg_bl_val_est", "chg_bl_var_est"),
+                                 function(prefix) paste0(prefix, seq_len(nIntervals))))
+  names <- .validate_output_names(names, length(model.est), derived_names)
   estimate_out <- data.frame(Name = names, Estimate = model.est, SE = model.se)
   return(estimate_out)
 }

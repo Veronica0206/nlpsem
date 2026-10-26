@@ -99,7 +99,7 @@ R CMD build .
 NOT_CRAN=false R CMD check --as-cran nlpsem_1.0.0.9003.tar.gz
 ```
 
-The [full fitting workflow](workflows/full-fitting-tests.yaml) now runs on pull
+The [full fitting workflow](https://github.com/Veronica0206/nlpsem/blob/ca795d15c5daba5c2ecfcd67e4cc1d4bae21561b/.github/workflows/full-fitting-tests.yaml) now runs on pull
 requests and checks the PR head, retains numerical/structural evidence, and tests
 the minimum dependency. Three-platform package checks and the documentation
 workflow run separately. Hosted results must be read for the final commit on

@@ -34,7 +34,7 @@ setClass("FSOutput",
 ## kappa value, confidence interval, and judgment.
 #' @title S4 Class for kappa statistic with confidence interval and judgment.
 #' @description S4 Class for the output structure for the \code{getLatentKappa()} function.
-#' @slot kappa_value A character vector for the kappa statistic with 95\% CI.
+#' @slot kappa_value A character vector for the kappa statistic with a confidence interval.
 #' @slot judgment A character vector for the judgement for agreement.
 #' @export
 setClass("KappaOutput",
@@ -106,7 +106,9 @@ setGeneric("printTable", function(object){
 #' @export
 setMethod("ModelSummary", "myMxOutput", function(object){
   ### Print the summary of MxModel
-  print(summary(object@mxOutput))
+  result <- summary(object@mxOutput)
+  print(result)
+  invisible(result)
 })
 #'
 ## Define Method for printing point estimates and standard errors
@@ -125,6 +127,7 @@ setMethod("printTable", "myMxOutput", function(object) {
   else {
     message("To obtain Estimates, please set 'paramOut = TRUE' and specify parameters via 'names' argument!")
   }
+  invisible(object)
 })
 ## Define Method for printing p values and confidence intervals (when applicable)
 #' @title S4 Method for printing p values and confidence intervals (when applicable)
@@ -144,6 +147,7 @@ setMethod("printTable", "StatsOutput", function(object) {
     cat("\nBootstrap Estimates:\n")
     print(object@bootstrap)
   }
+  invisible(object)
 })
 ## Define Method for printing estimated factor scores and their standard errors
 #' @title S4 Method for printing estimated factor scores and their standard errors
@@ -157,19 +161,28 @@ setMethod("printTable", "FSOutput", function(object) {
   print(object@scores_est)
   cat("\nStandard errors of estimated factor scores:\n")
   print(object@scores_se)
+  invisible(object)
 })
-## Define Method for printing kappa statistic with 95% CI and judgement for agreement.
-#' @title S4 Method for printing kappa statistic with 95\% CI and judgement for agreement.
-#' @description Method for printing kappa statistic with 95\% CI and judgement for agreement.
+## Define Method for printing kappa statistic with a confidence interval and judgement for agreement.
+#' @title S4 Method for printing kappa statistic with a confidence interval and judgement for agreement.
+#' @description Method for printing kappa statistic with a confidence interval and judgement for agreement.
 #' @param object An object of class "KappaOutput".
 #' @return Called for its side effect of printing kappa statistic with confidence interval
 #' and agreement judgment. Returns the object invisibly.
 #' @export
 setMethod("printTable", "KappaOutput", function(object) {
-  cat("\nKappa statistic (95% CI):\n")
+  level <- attr(object, "conf.level", exact = TRUE)
+  label <- if (is.numeric(level) && length(level) == 1L && is.finite(level) &&
+               level > 0 && level < 1) {
+    paste0(format(100 * level, trim = TRUE), "% CI")
+  } else {
+    "CI; level not recorded"
+  }
+  cat("\nKappa statistic (", label, "):\n", sep = "")
   print(object@kappa_value)
   cat("\nJudgement for agreement:\n")
   print(object@judgment)
+  invisible(object)
 })
 ## Define Method for printing posterior probabilities, membership, entropy, and accuracy.
 #' @title S4 Method for printing posterior probabilities, membership, entropy, and accuracy.
@@ -189,6 +202,7 @@ setMethod("printTable", "postOutput", function(object) {
     cat("\nAccuracy:\n")
     print(object@accuracy)
   }
+  invisible(object)
 })
 ## Define Method for displaying figures.
 #' @title S4 Method for displaying figures.
@@ -213,6 +227,7 @@ setMethod("show", "figOutput", function(object) {
       print(object@figures[[j]][[k]])
     }
   }
+  invisible(object)
 })
 
 

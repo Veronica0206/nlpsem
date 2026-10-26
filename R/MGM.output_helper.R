@@ -98,16 +98,7 @@ getMGM.output <- function(model, y_var, records, curveFun, y_model, names){
                           unlist(chg_inv_v.se_L), unlist(chg_bl_m.se_L), unlist(chg_bl_v.se_L))
     }
   }
-  # Safety net: ensure names and estimates have matching length
-  if (length(names) != length(model.est)){
-    warning("Number of parameter names (", length(names), ") does not match number of estimates (",
-            length(model.est), "). Auto-padding with generic labels.")
-    if (length(names) < length(model.est)){
-      names <- c(names, paste0("param_", seq(length(names) + 1, length(model.est))))
-    } else {
-      names <- names[seq_len(length(model.est))]
-    }
-  }
+  names <- .validate_output_names(names, length(model.est))
   estimate_out <- data.frame(Name = names, Estimate = model.est, SE = model.se)
   return(estimate_out)
 }

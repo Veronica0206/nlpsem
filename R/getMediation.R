@@ -111,6 +111,10 @@ getMediation <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, reco
   }
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    m_var = m_var, x_var = x_var, x_type = x_type)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_MED(curveFun, x_type, x_var, m_var, y_var)
+    names <- .validate_output_names(names, length(expected_names))
+  }
   metadata <- .capture_fit_metadata(match.call(), "getMediation", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){

@@ -33,6 +33,7 @@ reference:
   - title: Inspect and visualize fitted models
     contents:
       - getSpecification
+      - getDiagnostics
       - fit-methods
       - getFigure
       - matches("^(ModelSummary|printTable)")
