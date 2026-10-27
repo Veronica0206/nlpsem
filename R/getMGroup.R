@@ -200,11 +200,11 @@ getMGroup <- function(dat, grp_var, sub_Model, t_var, records, y_var, curveFun, 
     else{
       mxRun(model_mx)
     }
-  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose),
+  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose, covariates = growth_TIC),
   build = function(plan) getMGroup.mxModel(dat = .std_data(dat, plan), grp_var = grp_var, nClass = nClass, sub_Model = sub_Model, t_var = t_var, y_var = y_var,
                                   curveFun = curveFun, intrinsic = intrinsic, records = records, y_model = y_model,
                                   m_var = m_var, x_var = x_var, x_type = x_type, TVC = TVC, decompose = decompose,
-                                  growth_TIC = growth_TIC, starts = starts, res_cor = res_cor))
+                                  growth_TIC = .std_cov(plan, growth_TIC), starts = starts, res_cor = res_cor))
   model <- fit_std$model
   metadata$fitting$standardization <- fit_std$standardization
   ## Print out the point estimates and standard errors for the parameters of interest

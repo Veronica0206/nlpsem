@@ -207,11 +207,12 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
     else{
       mxRun(model_mx)
     }
-  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose),
-  build = function(plan) getMIX.mxModel(dat = .std_data(dat, plan), nClass = nClass, sub_Model = sub_Model, cluster_TIC = cluster_TIC,
+  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose,
+                    covariates = c(growth_TIC, cluster_TIC)),
+  build = function(plan) getMIX.mxModel(dat = .std_data(dat, plan), nClass = nClass, sub_Model = sub_Model, cluster_TIC = .std_cov(plan, cluster_TIC),
                                t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
                                records = records, y_model = y_model, m_var = m_var, x_var = x_var, x_type = x_type,
-                               TVC = TVC, decompose = decompose, growth_TIC = growth_TIC, starts = starts,
+                               TVC = TVC, decompose = decompose, growth_TIC = .std_cov(plan, growth_TIC), starts = starts,
                                res_cor = res_cor))
   model <- fit_std$model
   metadata$fitting$standardization <- fit_std$standardization

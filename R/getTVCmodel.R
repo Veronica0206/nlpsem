@@ -162,9 +162,9 @@ getTVCmodel <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, 
     else{
       mxRun(model_mx)
     }
-  }, plan = .std_plan(dat, "TVC", curveFun, y_var, records, t_var, TVC, decompose),
+  }, plan = .std_plan(dat, "TVC", curveFun, y_var, records, t_var, TVC, decompose, covariates = growth_TIC),
   build = function(plan) getTVC.mxModel(dat = .std_data(dat, plan), t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
-                               records = records, growth_TIC = growth_TIC, TVC = TVC, decompose = decompose,
+                               records = records, growth_TIC = .std_cov(plan, growth_TIC), TVC = TVC, decompose = decompose,
                                y_model = y_model, starts = starts))
   model <- fit_std$model
   metadata$fitting$standardization <- fit_std$standardization

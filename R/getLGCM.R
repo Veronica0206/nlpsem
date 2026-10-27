@@ -137,9 +137,9 @@ getLGCM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
     else{
       mxRun(model_mx)
     }
-  }, plan = .std_plan(dat, "LGCM", curveFun, y_var, records, t_var),
+  }, plan = .std_plan(dat, "LGCM", curveFun, y_var, records, t_var, covariates = growth_TIC),
   build = function(plan) getLGCM.mxModel(dat = .std_data(dat, plan), t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
-                                records = records, growth_TIC = growth_TIC, starts = starts))
+                                records = records, growth_TIC = .std_cov(plan, growth_TIC), starts = starts))
   model <- fit_std$model
   metadata$fitting$standardization <- fit_std$standardization
   ## Print out the point estimates and standard errors for the parameters of interest

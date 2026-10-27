@@ -7,7 +7,9 @@
 #'   \item each outcome process is centred at the mean and divided by the standard deviation of its
 #'   first recorded occasion; a time-varying covariate (TVC) is divided by its first-occasion standard
 #'   deviation without centring; time is divided by the mean of its last recorded occasion without
-#'   centring, so that it runs from 0 to about 1; time-invariant covariates are left as they are;
+#'   centring, so that it runs from 0 to about 1; time-invariant covariates are left as they are, also
+#'   when a covariate is one of the time, outcome or TVC columns (for example baseline age as a
+#'   growth or class-membership covariate): such a covariate is read from an unscaled copy;
 #'   \item the model is built from the same starting values as on the raw scale, mapped exactly to the
 #'   standardized scale, and optimized with the same optimizer and retry settings;
 #'   \item every free parameter is mapped back with its exact unit factor (and the intercept means
@@ -36,8 +38,10 @@ NULL
 ## Which manifest variables are standardized for a fitting call, with centres and scales; NULL when the
 ## call is outside the scope (other functional forms, mediation models) or the option is off. Outcomes are
 ## centred and scaled at their first recorded occasion, a TVC is scaled without centring, and time is
-## divided by the mean of its last recorded occasion without centring.
-.std_plan <- function(dat, sub_Model, curveFun, y_var, records, t_var, TVC = NULL, decompose = NULL){
+## divided by the mean of its last recorded occasion without centring. A covariate column (growth or
+## class-membership TIC) that is also one of these columns gets an unscaled copy under a new name.
+.std_plan <- function(dat, sub_Model, curveFun, y_var, records, t_var, TVC = NULL, decompose = NULL,
+                      covariates = NULL){
   if (!isTRUE(getOption("nlpsem.standardize", TRUE))) return(NULL)
   if (!isTRUE(as.character(curveFun)[1] %in% .std_forms)) return(NULL)
   if (!isTRUE(sub_Model %in% c("LGCM", "LCSM", "TVC", "MGM"))) return(NULL)
@@ -65,7 +69,11 @@ NULL
     add("Y", y_var, records, TRUE) && (sub_Model != "TVC" || add("X", TVC, records, FALSE))
   }
   if (!ok) return(NULL)
-  list(processes = processes, sub_Model = sub_Model, curveFun = as.character(curveFun)[1],
+  scaled <- c(unlist(lapply(processes, `[[`, "columns"), use.names = FALSE), time_columns)
+  shared <- intersect(unique(as.character(covariates)), scaled)
+  copies <- make.unique(c(names(dat), paste0("nlpsemTIC_", shared)), sep = "_")
+  copies <- stats::setNames(copies[length(dat) + seq_along(shared)], shared)
+  list(processes = processes, sub_Model = sub_Model, curveFun = as.character(curveFun)[1], copies = copies,
        decompose = if (is.null(decompose)) 0 else decompose,
        time = list(variables = unique(tv), columns = time_columns, scale = time_scale),
        pairs = if (sub_Model == "MGM" && length(y_var) > 1){
@@ -77,11 +85,20 @@ NULL
 
 ## The standardized copy of the data.
 .std_data <- function(dat, plan){
+  for (col in names(plan$copies)) dat[[plan$copies[[col]]]] <- dat[[col]]
   for (p in plan$processes){
     for (col in p$columns) dat[[col]] <- (dat[[col]] - p$center) / p$scale
   }
   for (col in plan$time$columns) dat[[col]] <- dat[[col]] / plan$time$scale
   dat
+}
+
+## Covariate column names as the standardized model reads them (see copies in .std_plan).
+.std_cov <- function(plan, columns){
+  if (is.null(columns) || !length(plan$copies)) return(columns)
+  hit <- columns %in% names(plan$copies)
+  columns[hit] <- plan$copies[columns[hit]]
+  columns
 }
 
 ## Exact unit factor (raw = factor * standardized + shift) of every free-parameter label. When a label

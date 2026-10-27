@@ -29,16 +29,25 @@ test_that("the parameter map reproduces the likelihood exactly for every kind of
     MGroup_TVC_EXP_r_d2 = list(getMGroup, "TVC", list(grp_var = "SEX", sub_Model = "TVC", t_var = "T", y_var = "M", curveFun = "EXP",
                                                       intrinsic = TRUE, records = 1:9, y_model = "LGCM", TVC = "Rs", decompose = 2)),
     MIXc_QUAD = list(getMIX, "LGCM", list(prop_starts = c(0.5, 0.5), sub_Model = "LGCM", cluster_TIC = "gx1", t_var = "T", y_var = "M",
-                                          curveFun = "QUAD", intrinsic = FALSE, records = 1:9))
+                                          curveFun = "QUAD", intrinsic = FALSE, records = 1:9)),
+    # a time column that is also a growth or class-membership covariate
+    LGCM_QUAD_timeTIC = list(getLGCM, "LGCM", list(t_var = "T", y_var = "M", curveFun = "QUAD", intrinsic = FALSE, records = 1:9,
+                                                   growth_TIC = c("ex1", "T9"))),
+    MIXc_EXP_timeTIC = list(getMIX, "LGCM", list(prop_starts = c(0.5, 0.5), sub_Model = "LGCM", cluster_TIC = "T9", t_var = "T",
+                                                 y_var = "M", curveFun = "EXP", intrinsic = FALSE, records = 1:9))
   )
   for (nm in names(cases)) {
     fn <- cases[[nm]][[1]]; sub <- cases[[nm]][[2]]; a <- cases[[nm]][[3]]
     set.seed(20191029)
     fit <- .std_unfitted(fn, a, dat)
     raw <- fit@mxOutput
-    plan <- nlpsem:::.std_plan(dat, sub, a$curveFun, a$y_var, a$records, a$t_var, a$TVC, a$decompose)
+    plan <- nlpsem:::.std_plan(dat, sub, a$curveFun, a$y_var, a$records, a$t_var, a$TVC, a$decompose,
+                               covariates = c(a$growth_TIC, a$cluster_TIC))
     expect_false(is.null(plan), info = nm)
-    std <- .with_std(FALSE, .std_unfitted(fn, a, nlpsem:::.std_data(dat, plan), starts = getSpecification(fit)$fitting$starts))@mxOutput
+    a_std <- a
+    a_std$growth_TIC <- nlpsem:::.std_cov(plan, a$growth_TIC)
+    a_std$cluster_TIC <- nlpsem:::.std_cov(plan, a$cluster_TIC)
+    std <- .with_std(FALSE, .std_unfitted(fn, a_std, nlpsem:::.std_data(dat, plan), starts = getSpecification(fit)$fitting$starts))@mxOutput
     theta <- OpenMx::omxGetParameters(raw)
     map <- nlpsem:::.std_param_map(names(theta), plan, nlpsem:::.std_container_labels(raw))
     expect_length(map$unknown, 0)
@@ -69,6 +78,32 @@ test_that("unit factors follow the units of each growth factor", {
   quad <- nlpsem:::.std_param_map(c("Y_mueta2", "Y_psi12"), nlpsem:::.std_plan(dat, "LGCM", "QUAD", "M", 1:9, "T"))
   expect_equal(quad$factor, c(Y_mueta2 = sy / b^2, Y_psi12 = sy^2 / b^3))
   expect_equal(nlpsem:::.std_param_map(c("Y_mueta0", "Y_unknown"), plan)$unknown, "Y_unknown")
+})
+
+test_that("a covariate that is also a time column is not rescaled", {
+  skip_on_cran()
+  dat <- .golden_data(n = 200)
+  # time in years since birth, so that the first time column is baseline age
+  for (j in 1:9) dat[[paste0("T", j)]] <- RMS_dat[[paste0("T", j)]][1:200] / 12
+  dat$baseline_age <- dat$T1
+  plan <- nlpsem:::.std_plan(dat, "LGCM", "QUAD", "M", 1:9, "T", covariates = "T1")
+  expect_identical(plan$copies, c(T1 = "nlpsemTIC_T1"))
+  sdat <- nlpsem:::.std_data(dat, plan)
+  expect_identical(sdat$nlpsemTIC_T1, dat$T1)
+  expect_equal(sdat$T1, dat$T1 / plan$time$scale)
+  expect_identical(nlpsem:::.std_cov(plan, c("ex1", "T1")), c("ex1", "nlpsemTIC_T1"))
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  fit_tic <- function(tic){
+    set.seed(20191029)
+    suppressMessages(getLGCM(dat = dat, t_var = "T", y_var = "M", curveFun = "QUAD", intrinsic = FALSE, records = 1:9,
+                             growth_TIC = tic, paramOut = TRUE))
+  }
+  shared <- fit_tic("T1"); copied <- fit_tic("baseline_age")
+  expect_true(getSpecification(shared)$fitting$standardization$applied)
+  expect_equal(shared@mxOutput@output$Minus2LogLikelihood, copied@mxOutput@output$Minus2LogLikelihood, tolerance = 1e-10)
+  expect_equal(coef(shared), coef(copied), tolerance = 1e-8)
+  expect_equal(shared@mxOutput@output$standardErrors, copied@mxOutput@output$standardErrors, tolerance = 1e-8)
+  expect_equal(unname(coef(shared)["mux1"]), mean(dat$T1), tolerance = 1e-5)
 })
 
 test_that("a standardized fit carries a consistent raw-scale solution and uncertainty", {
