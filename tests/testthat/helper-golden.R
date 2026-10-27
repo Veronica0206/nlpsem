@@ -1,8 +1,9 @@
 # Shared definitions for the fitting-layer reference ("golden") tests. The same case list drives
 # data-raw/make_golden_fits.R, which writes tests/testthat/golden/fit_golden.rds.
 
-# A 200-person subsample of RMS_dat with re-baselined occasions, one standardised growth TIC (ex1),
-# one standardised cluster TIC (gx1) and a standardised time-varying covariate (Rs).
+# A 200-person subsample of RMS_dat (or the first n persons) with re-baselined occasions, one
+# standardised growth TIC (ex1), one standardised cluster TIC (gx1) and a standardised time-varying
+# covariate (Rs).
 .golden_data <- function(n = 200) {
   env <- new.env()
   data("RMS_dat", package = "nlpsem", envir = env)
@@ -76,8 +77,13 @@
     MIX_MGM_LIN = mix("MGM", list(t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "LIN", intrinsic = FALSE,
                                   records = list(1:9, 1:9), y_model = "LGCM")),
     MIX_MED_LIN = mix("MED", list(t_var = rep("T", 2), y_var = "M", m_var = "R", x_type = "baseline", x_var = "ex1",
-                                  curveFun = "LIN", records = list(1:9, 1:9)))
+                                  curveFun = "LIN", records = list(1:9, 1:9))),
+    # Jenss-Bayley models on the reading scores of all 500 children, which accelerate clearly over the
+    # study (the math-score JB cases above do not converge)
+    LGCM_JB_f_read = c(list(n = 500L), uni("getLGCM", "JB", FALSE)),
+    LCSM_JB_f_read = c(list(n = 500L), uni("getLCSM", "JB", FALSE))
   )
+  for (nm in c("LGCM_JB_f_read", "LCSM_JB_f_read")) cases[[nm]]$args$y_var <- "R"
   # Cases that do not reach status 0 from the default starts on the subsample get a few jittered
   # extra attempts (mxTryHard); the seed set in .fit_golden_case() keeps them reproducible.
   light <- c("LGCM_EXP_f", "LGCM_JB_f", "LGCM_JB_r", "LCSM_EXP_f", "LCSM_JB_f", "LCSM_JB_r", "MED_LIN_baseline")
@@ -85,11 +91,18 @@
              "MIX_LGCM_BLS_f", "MIX_LGCM_BLS_f_clusterTIC", "MIX_LCSM_NonP", "MIX_MGM_LIN")
   for (nm in light) cases[[nm]]$tries <- 5L
   for (nm in heavy) cases[[nm]]$tries <- 3L
+  for (nm in c("LGCM_JB_f_read", "LCSM_JB_f_read")) cases[[nm]]$tries <- 10L
   cases
 }
 
+# The data of a case: the 200-person subsample unless the case names a larger sample.
+.golden_case_data <- function(case, dat = .golden_data()) {
+  if (is.null(case$n) || case$n == nrow(dat)) dat else .golden_data(case$n)
+}
+
 # Fit one case deterministically (fixed optimizer, fixed seed for the k-means step of mixtures) and
-# return the quantities that are compared: -2 log-likelihood, free-parameter estimates, status code.
+# return the quantities that are compared: -2 log-likelihood, free-parameter estimates, status code,
+# and the problems getDiagnostics() reports (covariance admissibility, Hessian, standard errors).
 .fit_golden_case <- function(case, dat) {
   OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
   set.seed(20191029)
@@ -101,5 +114,6 @@
   list(minus2LL = unname(model@output$Minus2LogLikelihood),
        estimates = OpenMx::omxGetParameters(model),
        status = unname(model@output$status$code),
+       issues = getDiagnostics(fit)$issues,
        seconds = unname(model@output$wallTime))
 }
