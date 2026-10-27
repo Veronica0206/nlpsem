@@ -244,3 +244,26 @@ test_that("a fit with the records in descending order can be plotted", {
   expect_equal(descending$time, ascending$time)
   expect_equal(descending$Y_hat, ascending$Y_hat, tolerance = 1e-6)
 })
+
+test_that("mixture and multiple-group TVC plots add each class's full model-implied mean", {
+  skip_on_cran()
+  dat <- .golden_data(n = 200)
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  args <- list(t_var = "T", y_var = "M", curveFun = "LIN", intrinsic = FALSE, records = 1:9, y_model = "LGCM", TVC = "Rs", decompose = 0)
+  set.seed(20191029)
+  fit <- suppressWarnings(suppressMessages(do.call(getMGroup, c(list(dat = dat, grp_var = "SEX", sub_Model = "TVC"), args))))@mxOutput
+  fig <- suppressWarnings(getFigure(fit, nClass = 2, grp_var = "SEX", sub_Model = "TVC", y_var = "M", curveFun = "LIN", y_model = "LGCM",
+                                    t_var = "T", records = 1:9, xstarts = 0))
+  p <- fig@figures[[1]][[1]]
+  labels <- ggplot2::ggplot_build(p)$plot$scales$get_scales("linetype")$get_labels()
+  expect_true(all(c("Model Implied Growth Component (TVC Effect Excluded)", "Model Implied Mean Outcome (TVC Effect Included)") %in% labels))
+  full <- p$layers[[5]]$data
+  times <- colMeans(dat[, paste0("T", 1:9)])
+  par <- OpenMx::omxGetParameters(fit)
+  # With a direct TVC, each group's full mean is its growth component plus its kappa times its TVC means.
+  for (k in 1:2) {
+    mean0 <- c(OpenMx::mxEvalByName(paste0("c", k, "Y_mean0"), fit@submodels[[k]]))
+    expect_equal(full$value[full$Class == k],
+                 unname(mean0[1] + mean0[2] * times + par[paste0("c", k, "kappa")] * par[paste0("c", k, "TVC_m", 1:9)]), tolerance = 1e-8)
+  }
+})

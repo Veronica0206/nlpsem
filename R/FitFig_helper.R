@@ -140,16 +140,29 @@
   out
 }
 
-## Model-implied mean of the outcome at each wave of a single-group TVC model, including the effect of
-## the TVC, at the mean occasions (and the means of the other definition variables): the occasions at
-## which the growth-component curve is drawn.
-.tvc_full_mean <- function(model, columns){
-  obs <- model@data@observed
-  num <- vapply(obs, is.numeric, logical(1))
-  obs[1, num] <- lapply(obs[num], mean, na.rm = TRUE)
-  model@data@observed <- obs
+## Model-implied mean of the outcome at each wave of a TVC model, including the effect of the TVC, at the
+## mean occasions (and the means of the other definition variables) of observed, by default the model's
+## own data: the occasions at which the growth-component curve is drawn.
+.tvc_full_mean <- function(model, columns, observed = model@data@observed){
+  num <- vapply(observed, is.numeric, logical(1))
+  observed[1, num] <- lapply(observed[num], mean, na.rm = TRUE)
+  model <- mxModel(model, mxData(observed, type = "raw"))
   expected <- mxGetExpected(model, "means", defvar.row = 1)
   as.numeric(expected[1, columns])
+}
+
+## The same for each class of a mixture or each group of a multiple-group TVC model, at the mean occasions
+## of all persons (those of the class- or group-specific growth-component curves); as changes from the
+## first wave when change = TRUE.
+.tvc_class_full_means <- function(model, columns, time_columns, xstarts, change = FALSE){
+  observed <- if (length(model@data)) model@data$observed else
+    do.call(rbind, lapply(model@submodels, function(sub) sub@data$observed))
+  times <- colMeans(observed[, time_columns, drop = FALSE], na.rm = TRUE) + xstarts
+  do.call(rbind, lapply(seq_along(model@submodels), function(k){
+    value <- .tvc_full_mean(model@submodels[[k]], columns, observed)
+    if (change) data.frame(time = times[-1], value = value[-1] - value[1], Class = k) else
+      data.frame(time = times, value = value, Class = k)
+  }))
 }
 
 .plot_algebra_ci <- function(model, eval_model, eval_name, se_name){
@@ -398,19 +411,24 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
           dat_est <- do.call(rbind, dat_est_L)
 
           dat_est$time <- dat_est$time + xstarts
+          full <- if (tvc) .tvc_class_full_means(model, paste0(raw_y_var, records), paste0(t_var, records), xstarts, change = FALSE)
           fig.status <- ggplot(data = dat_est, aes(x = time, y = Y_hat, group = Class, color = as.factor(Class))) +
             geom_line(aes(linetype = "Model Implied Growth Status"), linewidth = 1) +
             geom_line(aes(x = time, y = Y_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
             geom_line(aes(x = time, y = Y_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
             geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Growth Status"),
                         linewidth = 1, se = FALSE) +
+            (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
+                                                 linetype = "Model Implied Mean Outcome (TVC Effect Included)"), linewidth = 0.8)) +
+            (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
             labs(x = xlab, y = paste0("Growth Status of ", outcome), color = "Class") +
             scale_linetype_manual(values = c("Model Implied Growth Status" = "solid",
                                              "Smooth Line of Observed Growth Status" = "twodash",
-                                             "95% Pointwise Confidence Interval on Model Implied Growth Status" = "dotdash"), labels = lt_labels) +
+                                             "95% Pointwise Confidence Interval on Model Implied Growth Status" = "dotdash",
+                                             if (tvc) c("Model Implied Mean Outcome (TVC Effect Included)" = "dashed")), labels = lt_labels) +
             scale_x_continuous(breaks = ceiling(seq(from = min(dat_est$time), to = max(dat_est$time), length.out = length(records)))) +
             scale_color_manual(values = colorRampPalette(c("grey20", "grey80"))(nClass), labels = class_labels) +
-            guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3, order = 1),
+            guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3 + tvc, order = 1),
                    color = guide_legend(title = "Class", order = 2)) +
             theme_bw() +
             theme(strip.text.y = element_text(size = 4),
@@ -457,19 +475,24 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
 
 
           dat_est$time <- dat_est$time + xstarts
+          full <- if (tvc) .tvc_class_full_means(model, paste0(raw_y_var, records), paste0(t_var, records), xstarts, change = TRUE)
           fig.CHG_BL <- ggplot(data = dat_est, aes(x = time, y = cY_hat, group = Class, color = as.factor(Class))) +
             geom_line(aes(linetype = "Model Implied Change from Baseline"), linewidth = 1) +
             geom_line(aes(x = time, y = cY_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
             geom_line(aes(x = time, y = cY_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
             geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Change from Baseline"),
                         linewidth = 1, se = FALSE) +
+            (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
+                                                 linetype = "Model Implied Mean Change from Baseline (TVC Effect Included)"), linewidth = 0.8)) +
+            (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
             labs(x = xlab, y = paste0("Change from baseline of ", outcome), color = "Class") +
             scale_linetype_manual(values = c("Model Implied Change from Baseline" = "solid",
                                              "Smooth Line of Observed Change from Baseline" = "twodash",
-                                             "95% Pointwise Confidence Interval on Model Implied Change from Baseline" = "dotdash"), labels = lt_labels) +
+                                             "95% Pointwise Confidence Interval on Model Implied Change from Baseline" = "dotdash",
+                                             if (tvc) c("Model Implied Mean Change from Baseline (TVC Effect Included)" = "dashed")), labels = lt_labels) +
             scale_x_continuous(breaks = ceiling(seq(from = min(dat_est$time), to = max(dat_est$time), length.out = length(records)))) +
             scale_color_manual(values = colorRampPalette(c("grey20", "grey80"))(nClass), labels = class_labels) +
-            guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3, order = 1),
+            guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3 + tvc, order = 1),
                    color = guide_legend(title = "Class", order = 2)) +
             theme_bw() +
             theme(strip.text.y = element_text(size = 4),
@@ -560,19 +583,24 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
         dat_est <- do.call(rbind, dat_est_L)
 
         dat_est$time <- dat_est$time + xstarts
+        full <- if (tvc) .tvc_class_full_means(model, paste0(raw_y_var, records), paste0(t_var, records), xstarts, change = FALSE)
         fig.status <- ggplot(data = dat_est, aes(x = time, y = Y_hat, group = Class, color = as.factor(Class))) +
           geom_line(aes(linetype = "Model Implied Growth Status"), linewidth = 1) +
           geom_line(aes(x = time, y = Y_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
           geom_line(aes(x = time, y = Y_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
           geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Growth Status"),
                       linewidth = 1, se = FALSE) +
+          (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
+                                               linetype = "Model Implied Mean Outcome (TVC Effect Included)"), linewidth = 0.8)) +
+          (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
           labs(x = xlab, y = paste0("Growth Status of ", outcome), color = "Class") +
           scale_linetype_manual(values = c("Model Implied Growth Status" = "solid",
                                            "Smooth Line of Observed Growth Status" = "twodash",
-                                           "95% Pointwise Confidence Interval on Model Implied Growth Status" = "dotdash"), labels = lt_labels) +
+                                           "95% Pointwise Confidence Interval on Model Implied Growth Status" = "dotdash",
+                                             if (tvc) c("Model Implied Mean Outcome (TVC Effect Included)" = "dashed")), labels = lt_labels) +
           scale_x_continuous(breaks = ceiling(seq(from = min(dat_est$time), to = max(dat_est$time), length.out = length(records)))) +
           scale_color_manual(values = colorRampPalette(c("grey20", "grey80"))(nClass), labels = class_labels) +
-          guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3, order = 1),
+          guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3 + tvc, order = 1),
                  color = guide_legend(title = grp_var, order = 2)) +
           theme_bw() +
           theme(strip.text.y = element_text(size = 4),
@@ -621,6 +649,7 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
 
 
         dat_est$time <- dat_est$time + xstarts
+        full <- if (tvc) .tvc_class_full_means(model, paste0(raw_y_var, records), paste0(t_var, records), xstarts, change = TRUE)
         fig.CHG_BL <- ggplot(data = dat_est, aes(x = time, y = cY_hat, group = Class, color = as.factor(Class))) +
           geom_line(aes(linetype = "Model Implied Change from Baseline"),  linewidth = 1) +
           geom_line(aes(x = time, y = cY_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
@@ -628,13 +657,17 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
           geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class,
                                           linetype = "Smooth Line of Observed Change from Baseline"),
                       linewidth = 1, se = FALSE) +
+          (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
+                                               linetype = "Model Implied Mean Change from Baseline (TVC Effect Included)"), linewidth = 0.8)) +
+          (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
           labs(x = xlab, y = paste0("Change from baseline of ", outcome), color = "Class") +
           scale_linetype_manual(values = c("Model Implied Change from Baseline" = "solid",
                                            "Smooth Line of Observed Change from Baseline" = "twodash",
-                                           "95% Pointwise Confidence Interval on Model Implied Change from Baseline" = "dotdash"), labels = lt_labels) +
+                                           "95% Pointwise Confidence Interval on Model Implied Change from Baseline" = "dotdash",
+                                             if (tvc) c("Model Implied Mean Change from Baseline (TVC Effect Included)" = "dashed")), labels = lt_labels) +
           scale_x_continuous(breaks = ceiling(seq(from = min(dat_est$time), to = max(dat_est$time), length.out = length(records)))) +
           scale_color_manual(values = colorRampPalette(c("grey20", "grey80"))(nClass), labels = class_labels) +
-          guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3, order = 1),
+          guides(linetype = guide_legend(title = "Trajectory Type: ", nrow = 3 + tvc, order = 1),
                  color = guide_legend(title = grp_var, order = 2)) +
           theme_bw() +
           theme(strip.text.y = element_text(size = 4),

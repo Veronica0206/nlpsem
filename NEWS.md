@@ -36,8 +36,14 @@
   When k-means on the individual growth factors leaves a smaller class (it can isolate a few persons
   with outlying negative exponential fits), the classes are formed on the normal scores of the growth
   factors instead; if a class is still too small, the k-means classes are kept with a warning. A covariate
-  effect that a class's data cannot determine starts at 0 with a warning. Before, a two-TIC
-  negative exponential mixture on 200 persons failed with "infinite or missing values in 'x'".
+  effect that the persons used cannot determine (growth-factor effects of TICs, mediation paths and the
+  TVC effect) starts at 0 with a warning. Before, a two-TIC negative exponential mixture on 200 persons
+  failed with "infinite or missing values in 'x'".
+* Nonparametric (latent change score) starting values: each person's residuals now come from that
+  person's own intercept and scale along the average interval-specific slopes. Measured against the
+  average curve itself, they also contained the differences between persons, which made the residual
+  variance start about ten times too large (twenty in mixtures, which double it); two-class
+  nonparametric mixtures then collapsed into one class. The change applies to every model family.
 * The fitting-layer reference tests check convergence, covariance admissibility, the Hessian and the
   standard errors with `getDiagnostics()` before comparing numbers. Five references reach status 0
   with inadmissible solutions on the 200-person subsample (four two-class mixtures and the
@@ -45,8 +51,9 @@
   as model coverage, which leaves 33 positive references. Two fixed-ratio JB references fitted to the
   reading scores of all 500 children were added.
 * Plots of fits whose `records` are not in ascending order no longer fail. Plots of TVC models label
-  their curves as the growth component, which excludes the effect of the TVC, and single-group TVC
-  plots add the full model-implied mean of the outcome at each wave.
+  their curves as the growth component, which excludes the effect of the TVC, and add the full
+  model-implied mean of the outcome (or its change from baseline) at each wave, for each class or
+  group in mixture and multiple-group plots.
 
 # nlpsem 1.0.0.9005 (NLS initialization development update)
 

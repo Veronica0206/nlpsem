@@ -101,6 +101,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
     } else{
       M_alpha
     }
+    M_beta <- .zero_aliased_effects(M_beta)
     M_psi_r <- if (curveFun %in% c("bilinear spline", "BLS")){
       M_beta <- .stabilize_med_path_starts(M_beta, curveFun = curveFun)
       .ensure_pd(var(M_growth_factor[, 1:3], use = "pairwise.complete.obs") - M_beta %*% X_var %*% t(M_beta), label = "MED M_psi_r")
@@ -120,6 +121,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
                               na.action = na.exclude)$coefficients)
       Y_alpha <- c(Y_reg0[1], Y_reg1[1])
       Y_beta <- matrix(c(Y_reg0[2], Y_reg0[3], 0, Y_reg1[-1]), byrow = T, nrow = 2, ncol = 3)
+      Y_beta <- .zero_aliased_effects(Y_beta)
       Y_psi_r <- var(Y_growth_factor, use = "pairwise.complete.obs") - t(t(Y_beta[, 1])) %*% X_var %*% t(Y_beta[, 1]) -
         Y_beta[, 2:3] %*% M_psi_r %*% t(Y_beta[, 2:3])
       Y_residuals <- .get_res_init(Y_growth_factor, 1, res_scale[1])
@@ -139,6 +141,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
       Y_beta <- matrix(c(Y_reg_1[2:3], 0, 0,
                          Y_reg_r[2:4], 0,
                          Y_reg_2[-1]), byrow = T, nrow = 3, ncol = 4)
+      Y_beta <- .zero_aliased_effects(Y_beta)
       Y_beta <- .stabilize_med_path_starts(Y_beta, curveFun = curveFun)
       Y_psi_r <- cov(Y_growth_factor[, 1:3], use = "pairwise.complete.obs") - t(t(Y_beta[, 1])) %*% X_var %*% t(Y_beta[, 1]) - Y_beta[, 2:4] %*% M_psi_r %*% t(Y_beta[, 2:4])
       Y_psi_r <- .ensure_pd(Y_psi_r, label = "MED Y_psi_r")
@@ -189,6 +192,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
                               na.action = na.exclude)$coefficients)
       M_alpha <- c(M_reg0[1], M_reg1[1])
       M_beta <- matrix(c(M_reg0[-1], 0, M_reg1[-1]), byrow = T, nrow = 2, ncol = 2)
+      M_beta <- .zero_aliased_effects(M_beta)
       M_psi_r <- var(M_growth_factor, use = "pairwise.complete.obs") - M_beta %*% X_psi0 %*% t(M_beta)
       M_residuals <- .get_res_init(M_growth_factor, 1, res_scale[2])
       starts.M <- list(means = M_alpha, beta = M_beta, covMatrix = M_psi_r, residuals = M_residuals)
@@ -204,6 +208,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
       Y_alpha <- c(Y_reg0[1], Y_reg1[1])
       Y_beta <- matrix(c(Y_reg0[2], 0, Y_reg0[3], 0,
                          Y_reg1[-1]), byrow = T, nrow = 2, ncol = 4)
+      Y_beta <- .zero_aliased_effects(Y_beta)
       Y_psi_r <- var(Y_growth_factor, use = "pairwise.complete.obs") - Y_beta[, 1:2] %*% X_psi0 %*% t(Y_beta[, 1:2]) -
         Y_beta[, 3:4] %*% M_psi_r %*% t(Y_beta[, 3:4])
       Y_residuals <- .get_res_init(Y_growth_factor, 1, res_scale[1])
@@ -223,6 +228,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
                                na.action = na.exclude)$coefficients)
       M_alpha <- c(M_reg_1[1], M_reg_r[1], M_reg_2[1], mean(M_growth_factor[, 4], na.rm = TRUE))
       M_beta <- matrix(c(M_reg_1[-1], 0, 0, M_reg_r[-1], 0, M_reg_2[-1]), byrow = T, nrow = 3, ncol = 3)
+      M_beta <- .zero_aliased_effects(M_beta)
       M_beta <- .stabilize_med_path_starts(M_beta, curveFun = curveFun)
       M_psi_r <- var(M_growth_factor[, 1:3], use = "pairwise.complete.obs") - M_beta %*% X_psi0 %*% t(M_beta)
       M_psi_r <- .ensure_pd(M_psi_r, label = "MED M_psi_r")
@@ -245,6 +251,7 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
       Y_beta <- matrix(c(Y_reg_1[2], rep(0, 2), Y_reg_1[3], rep(0, 2),
                          Y_reg_r[2:3], 0, Y_reg_r[4:5], 0, Y_reg_2[-1]),
                        byrow = T, nrow = 3, ncol = 6)
+      Y_beta <- .zero_aliased_effects(Y_beta)
       Y_beta <- .stabilize_med_path_starts(Y_beta, curveFun = curveFun)
       Y_psi_r <- var(Y_growth_factor[, 1:3], use = "pairwise.complete.obs") - Y_beta[, 1:3] %*% M_psi_r %*% t(Y_beta[, 1:3]) -
         Y_beta[, 4:6] %*% X_psi0 %*% t(Y_beta[, 4:6])

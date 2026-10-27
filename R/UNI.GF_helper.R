@@ -239,16 +239,23 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
     time_delta <- dat_time[, 2] - dat_time[, 1]
     eta1 <- (dat_traj[, 2] - dat_traj[, 1]) / time_delta
     growth_factor <- data.frame(eta0 = eta0, eta1 = eta1)
-    # For nonparametric, compute residuals as deviations from piecewise-linear interpolation
-    # using the interval-specific slopes
-    fitted_vals <- matrix(NA, nrow = nrow(dat_traj), ncol = nT)
-    fitted_vals[, 1] <- dat_traj[, 1]
-    for (j in 2:nT){
-      fitted_vals[, j] <- fitted_vals[, j - 1] + slp[j - 1] * (dat_time[, j] - dat_time[, j - 1])
+    # Residuals of each person's own fit: an intercept and a scale for the change along the average
+    # interval-specific slopes. Deviations from the average curve itself would also contain the
+    # between-person differences in intercept and slope, and overstate the residual variance.
+    Y <- as.matrix(dat_traj); Tm <- as.matrix(dat_time)
+    fitted_vals <- matrix(NA_real_, nrow = nrow(Y), ncol = nT)
+    for (i in seq_len(nrow(Y))){
+      basis <- c(0, cumsum(slp * diff(Tm[i, ])))
+      ok <- is.finite(Y[i, ]) & is.finite(basis)
+      if (sum(ok) > 2L && stats::var(basis[ok]) > 0){
+        fitted_vals[i, ok] <- Y[i, ok] - stats::lm.fit(cbind(1, basis[ok]), Y[i, ok])$residuals
+      }
     }
-    res_var_per_person <- rowMeans((as.matrix(dat_traj) - fitted_vals)^2, na.rm = TRUE)
+    resid <- Y - fitted_vals
+    n_fit <- rowSums(is.finite(resid))
+    res_var_per_person <- ifelse(n_fit > 2L, rowSums(resid^2, na.rm = TRUE) / pmax(n_fit - 2L, 1L), NA_real_)
     attr(growth_factor, "mean_res_var") <- median(res_var_per_person, na.rm = TRUE)
-    attr(growth_factor, "residuals") <- unname(as.matrix(dat_traj) - fitted_vals)
+    attr(growth_factor, "residuals") <- unname(resid)
   }
   return(growth_factor)
 }

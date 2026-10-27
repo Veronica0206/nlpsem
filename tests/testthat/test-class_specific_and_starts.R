@@ -290,3 +290,60 @@ test_that("class-specific decomposed-TVC tables read the renamed absolute-rate a
     expect_equal(rate_rows$Estimate[rate_rows$Name == paste0("c", k, "X_abs_rate2")], c(direct))
   }
 })
+
+# Two classes of nonparametric change trajectories that differ mainly in the decline of their
+# interval-specific rates (residual variance 1).
+.nonp_two_class_data <- function(n, seed) {
+  set.seed(seed); class <- rep(1:2, each = n / 2)
+  rates <- list(c(1, seq(0.95, 0.60, by = -0.05)), c(1, seq(0.9, 0.2, by = -0.1)))
+  eta0 <- c(28, 32)[class] + rnorm(n, sd = 5); eta1 <- 5 + rnorm(n)
+  dat <- data.frame(id = seq_len(n), class = class)
+  tm <- sapply(1:10, function(j) if (j %in% c(1, 10)) rep(j - 1, n) else j - 1 + runif(n, -0.25, 0.25))
+  y <- matrix(NA, n, 10); y[, 1] <- eta0
+  for (j in 2:10) y[, j] <- y[, j - 1] + eta1 * vapply(class, function(k) rates[[k]][j - 1], 0) * (tm[, j] - tm[, j - 1])
+  y <- y + matrix(rnorm(n * 10), n)
+  for (j in 1:10) { dat[[paste0("T", j)]] <- tm[, j]; dat[[paste0("Y", j)]] <- y[, j] }
+  dat
+}
+
+test_that("nonparametric residual starts come from each person's own fit", {
+  dat <- .nonp_two_class_data(300, 20261027)
+  gf <- nlpsem:::getUNI.GF(dat[paste0("Y", 1:10)], dat[paste0("T", 1:10)], 10, "NonP")
+  # Deviations from the average curve would also contain the differences between persons (about 10 here).
+  expect_gt(attr(gf, "mean_res_var"), 0.7)
+  expect_lt(attr(gf, "mean_res_var"), 1.6)
+  res <- attr(gf, "residuals")
+  expect_equal(dim(res), c(300L, 10L))
+  expect_lt(max(abs(rowMeans(res))), 1e-8)
+})
+
+test_that("a two-class nonparametric mixture finds both classes from its default starts", {
+  skip_on_cran()
+  dat <- .nonp_two_class_data(300, 20261027)
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  set.seed(20191029)
+  fit <- suppressWarnings(suppressMessages(getMIX(dat = dat, prop_starts = c(0.5, 0.5), sub_Model = "LCSM", y_var = "Y", t_var = "T",
+                                                  records = 1:10, curveFun = "NonP", intrinsic = FALSE)))
+  expect_equal(fit@mxOutput@output$status$code, 0)
+  membership <- getPosterior(fit@mxOutput, nClass = 2, cluster_TIC = NULL)@membership
+  agreement <- mean(membership == dat$class)
+  expect_gt(max(agreement, 1 - agreement), 0.9)
+})
+
+test_that("mediation and TVC effects that the data cannot determine start at 0", {
+  dat <- .golden_data(n = 200)
+  dat$ex1 <- 1
+  warnings <- character()
+  med <- withCallingHandlers(
+    nlpsem:::getMED.initial(dat = dat, t_var = rep("T", 2), y_var = "M", m_var = "R", x_type = "baseline", x_var = "ex1",
+                            curveFun = "LIN", records = list(1:9, 1:9), res_scale = NULL, res_cor = NULL),
+    warning = function(w) { warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning") })
+  # both the mediator and the outcome effects of the constant predictor
+  expect_equal(sum(grepl("starting them at 0", warnings)), 2)
+  expect_true(all(is.finite(unlist(med))))
+  dat <- .golden_data(n = 200)
+  dat$Rs1 <- 0
+  expect_warning(tvc <- nlpsem:::getTVC.initial(dat = dat, t_var = "T", y_var = "M", curveFun = "LIN", records = 1:9, growth_TIC = NULL,
+                                                TVC = "Rs", decompose = 0, res_scale = NULL), "starting them at 0")
+  expect_true(all(is.finite(unlist(tvc))))
+})

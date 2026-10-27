@@ -279,6 +279,7 @@ getTVC.initial <- function(dat, t_var, y_var, curveFun, records, growth_TIC, TVC
       tvc_rel_rate = TVC_starts$rel_rate
     )
   }
+  kappa <- .zero_aliased_effects(kappa)
   kappa <- .stabilize_kappa_start(kappa, intrinsic = intrinsic, decompose = decompose)
   if (curveFun %in% c("bilinear spline", "BLS")){
     # Transformed matrices obtained by multivariate Delta method

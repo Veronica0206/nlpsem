@@ -234,12 +234,13 @@
   as.integer(max(nGF + 1L, if (nTIC > 0L) nTIC + 2L else 0L))
 }
 
-## Helper: covariate effects on the growth factors that the data cannot determine (the regression
-## coefficient is aliased: a covariate is constant or collinear in the persons used) start at 0.
+## Helper: covariate effects (on growth factors, mediator or outcome, or of a TVC) that the data cannot
+## determine (the regression coefficient is aliased: a covariate is constant or collinear in the persons
+## used) start at 0.
 .zero_aliased_effects <- function(beta){
   if (anyNA(beta)){
-    warning("Covariate effect(s) on the growth factors could not be estimated for the starting values (constant ",
-            "or collinear covariates in the persons used); starting them at 0.", call. = FALSE)
+    warning("Covariate effect(s) could not be estimated for the starting values (constant or collinear ",
+            "covariates in the persons used); starting them at 0.", call. = FALSE)
     beta[is.na(beta)] <- 0
   }
   beta
