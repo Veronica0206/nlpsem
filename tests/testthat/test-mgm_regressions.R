@@ -120,13 +120,14 @@ test_that("getMIX.initial forwards intrinsic to multivariate starts", {
     .package = "nlpsem"
   )
 
-  starts <- nlpsem:::getMIX.initial(
+  # Four persons cannot support class-specific multivariate starts; the classes are kept with a warning.
+  expect_warning(starts <- nlpsem:::getMIX.initial(
     dat = dat, nClass = 2, prop_starts = c(0.5, 0.5), sub_Model = "MGM",
     cluster_TIC = NULL, t_var = c("T", "T"), records = list(1:2, 1:2),
     y_var = c("R", "M"), curveFun = "BLS", m_var = NULL, x_var = NULL,
     x_type = NULL, TVC = NULL, decompose = NULL, growth_TIC = NULL,
     res_scale = NULL, res_cor = NULL, intrinsic = TRUE
-  )
+  ), "provisional classes")
 
   expect_length(starts, 3)
   expect_equal(intrinsic_seen, c(TRUE, TRUE))
@@ -200,13 +201,13 @@ test_that("getMIX.initial stores class starts on the softmax scale", {
     .package = "nlpsem"
   )
 
-  starts <- nlpsem:::getMIX.initial(
+  expect_warning(starts <- nlpsem:::getMIX.initial(
     dat = dat, nClass = 2, prop_starts = c(0.2, 0.8), sub_Model = "LGCM",
     cluster_TIC = NULL, t_var = "T", records = 1:2, y_var = "Y",
     curveFun = "LIN", m_var = NULL, x_var = NULL, x_type = NULL,
     TVC = NULL, decompose = NULL, growth_TIC = NULL,
     res_scale = NULL, res_cor = NULL, intrinsic = FALSE
-  )
+  ), "provisional classes")
 
   expect_equal(starts[[3]], c(0, log(0.8 / 0.2)))
 })

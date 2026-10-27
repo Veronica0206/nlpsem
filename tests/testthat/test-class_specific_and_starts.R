@@ -153,6 +153,47 @@ test_that("provisional class labels cover every person", {
   expect_error(nlpsem:::.provisional_class_labels(gf[c(1, 5, 6), ], 2), "complete growth-factor starts")
 })
 
+test_that("provisional classes too small for their starts are formed on normal scores", {
+  # Two persons far out in the second growth factor: k-means on the raw values isolates them.
+  set.seed(1)
+  gf <- cbind(rnorm(40, 30, 5), c(rnorm(38, 80, 10), 1200, 1900), rnorm(40, 0.5, 0.1))
+  set.seed(2)
+  expect_equal(min(tabulate(nlpsem:::.provisional_class_labels(gf, 2))), 2)
+  set.seed(2)
+  lab <- nlpsem:::.provisional_class_labels(gf, 2, min_size = nlpsem:::.min_class_size(3, 2))
+  expect_gte(min(tabulate(lab, nbins = 2)), 4)
+  expect_equal(nlpsem:::.min_class_size(3), 4L)
+  expect_equal(nlpsem:::.min_class_size(2, 4), 6L)
+  set.seed(2)
+  expect_warning(small <- nlpsem:::.provisional_class_labels(gf[1:6, ], 2, min_size = 4), "each class needs at least 4")
+  set.seed(2)
+  expect_identical(small, nlpsem:::.provisional_class_labels(gf[1:6, ], 2))
+})
+
+test_that("covariate effects a class cannot determine start at 0", {
+  expect_warning(beta <- nlpsem:::.zero_aliased_effects(matrix(c(1, NA, 2, 3), 2)), "starting them at 0")
+  expect_equal(beta, matrix(c(1, 0, 2, 3), 2))
+  expect_silent(nlpsem:::.zero_aliased_effects(matrix(1:4, 2)))
+})
+
+test_that("negative exponential mixture starts with two growth TICs are computed on the reference sample", {
+  skip_on_cran()
+  # k-means on the individual NLS growth factors forms classes of 198 and 2 persons on this sample;
+  # the class of 2 cannot support an intercept and two covariate effects.
+  dat <- .golden_data(n = 200)
+  for (intrinsic in c(FALSE, TRUE)) {
+    set.seed(20191029)
+    starts <- suppressWarnings(nlpsem:::getMIX.initial(
+      dat = dat, nClass = 2, prop_starts = c(0.5, 0.5), sub_Model = "LGCM", cluster_TIC = NULL, t_var = "T",
+      records = 1:9, y_var = "M", curveFun = "EXP", m_var = NULL, x_var = NULL, x_type = NULL, TVC = NULL,
+      decompose = NULL, growth_TIC = c("ex1", "gx1"), res_scale = NULL, res_cor = NULL, intrinsic = intrinsic))
+    for (k in 1:2) {
+      expect_true(all(is.finite(starts[[k]]$beta)), info = paste(intrinsic, k))
+      expect_true(all(is.finite(starts[[k]]$Y_starts$covMatrix)), info = paste(intrinsic, k))
+    }
+  }
+})
+
 test_that("class-specific mediation models with a baseline predictor build for any predictor name", {
   dat <- .rebaseline_full()
   for (cf in c("LIN", "BLS")) {

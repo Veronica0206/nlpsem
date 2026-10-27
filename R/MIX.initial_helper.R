@@ -81,7 +81,7 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
     if (curveFun %in% c("Jenss-Bayley", "JB")){
       uni_GF[, 3] <- abs(uni_GF[, 3])
     }
-    dat$label <- .provisional_class_labels(uni_GF, nClass)
+    dat$label <- .provisional_class_labels(uni_GF, nClass, .min_class_size(ncol(uni_GF), length(growth_TIC)))
     for (k in 1:nClass){
       starts[[k]] <- getUNI.initial(dat = dat[dat$label == k, ], t_var = t_var, y_var = y_var, curveFun = curveFun,
                                     records = records, growth_TIC = growth_TIC, res_scale = .safe_k(res_scale, k),
@@ -101,7 +101,8 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
     # Calculate the number of time points
     nT <- length(records)
     growth_factor <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
-    dat$label <- .provisional_class_labels(growth_factor, nClass)
+    dat$label <- .provisional_class_labels(growth_factor, nClass,
+                                           .min_class_size(ncol(growth_factor), length(growth_TIC) + (decompose != 0)))
     for (k in 1:nClass){
       if (decompose == 0){
         starts[[k]] <- getTVC.initial(dat = dat[dat$label == k, ], t_var = t_var, y_var = y_var, curveFun = curveFun,
@@ -133,7 +134,7 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
       uni_GF[[traj]] <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
     }
     uni_GF_dat <- do.call(cbind, uni_GF)
-    dat$label <- .provisional_class_labels(uni_GF_dat, nClass)
+    dat$label <- .provisional_class_labels(uni_GF_dat, nClass, .min_class_size(ncol(uni_GF_dat)))
     for (k in 1:nClass){
       class_dat <- dat[dat$label == k, ]
       starts[[k]] <- getMULTI.initial(dat = class_dat, t_var = t_var, y_var = y_var,
@@ -165,7 +166,7 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
       uni_GF[[traj]] <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
     }
     uni_GF_dat <- do.call(cbind, uni_GF)
-    dat$label <- .provisional_class_labels(uni_GF_dat, nClass)
+    dat$label <- .provisional_class_labels(uni_GF_dat, nClass, .min_class_size(ncol(uni_GF_dat)))
     for (k in 1:nClass){
       starts[[k]] <- getMED.initial(dat = dat[dat$label == k, ], t_var = t_var, y_var = y_var, m_var = m_var,
                                     x_var = x_var, x_type = x_type, curveFun = curveFun, records = records,

@@ -177,13 +177,36 @@
 ## growth-factor starts are complete; the remaining persons are assigned to the nearest
 ## class centre over their finite coordinates (or to the largest class when none is finite).
 ## Classes are ordered by the mean of their centres so labels are reproducible across runs.
-.provisional_class_labels <- function(growth_factor, nClass){
+## Each class needs at least min_size persons to compute its class-specific starting values. When
+## k-means on the growth factors leaves a class smaller than that (it can isolate a few outlying
+## persons, e.g. near-linear trajectories whose individual negative exponential fits have a very
+## large change and a very small rate), the classes are formed on the normal scores of each growth
+## factor instead, so that neither the units of a growth factor nor single persons determine them.
+## When that does not help either (too few persons), the k-means classes are kept with a warning.
+.provisional_class_labels <- function(growth_factor, nClass, min_size = 1L){
   gf <- as.matrix(growth_factor)
   complete <- stats::complete.cases(gf)
   if (sum(complete) < nClass){
     stop("Only ", sum(complete), " person(s) have complete growth-factor starts; at least ", nClass,
          " are needed to form the provisional classes of a mixture model.")
   }
+  labels <- .kmeans_class_labels(gf, complete, nClass)
+  if (min(tabulate(labels, nbins = nClass)) < min_size){
+    scores <- apply(gf, 2, function(x){
+      r <- rank(x, na.last = "keep", ties.method = "average")
+      stats::qnorm((r - 0.5) / sum(!is.na(r)))
+    })
+    score_labels <- .kmeans_class_labels(matrix(scores, nrow = nrow(gf)), complete, nClass)
+    if (min(tabulate(score_labels, nbins = nClass)) >= min_size) return(score_labels)
+    warning("The provisional classes formed for the starting values have ",
+            paste(tabulate(labels, nbins = nClass), collapse = ", "), " persons; each class needs at least ",
+            min_size, " for stable class-specific starting values. Consider supplying starts, or fitting fewer ",
+            "classes or fewer growth TICs.", call. = FALSE)
+  }
+  labels
+}
+
+.kmeans_class_labels <- function(gf, complete, nClass){
   km <- kmeans(x = gf[complete, , drop = FALSE], centers = nClass, iter.max = 100)
   order_indices <- order(apply(km$centers, 1, mean))
   labels <- rep(NA_integer_, nrow(gf))
@@ -202,4 +225,22 @@
     }
   }
   labels
+}
+
+## Helper: smallest provisional class that supports the class-specific starting values: the
+## growth-factor covariance matrix needs one person more than there are growth factors, and the
+## regression of each growth factor on the growth TICs one more than it has coefficients.
+.min_class_size <- function(nGF, nTIC = 0L){
+  as.integer(max(nGF + 1L, if (nTIC > 0L) nTIC + 2L else 0L))
+}
+
+## Helper: covariate effects on the growth factors that the data cannot determine (the regression
+## coefficient is aliased: a covariate is constant or collinear in the persons used) start at 0.
+.zero_aliased_effects <- function(beta){
+  if (anyNA(beta)){
+    warning("Covariate effect(s) on the growth factors could not be estimated for the starting values (constant ",
+            "or collinear covariates in the persons used); starting them at 0.", call. = FALSE)
+    beta[is.na(beta)] <- 0
+  }
+  beta
 }
