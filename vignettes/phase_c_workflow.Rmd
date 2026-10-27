@@ -113,6 +113,40 @@ class(figures)
 Its `figures` slot contains the ggplot objects. The layout follows `getFigure()`:
 one entry per outcome, with growth-status or change/rate plots within that entry.
 
+## Check a model on simulated data
+
+`getSimData()` generates wide-format data from a model with known parameter values.
+Each data set carries those values as the attribute `truth`, named as in the estimate
+table of the matching fit, so a fit can be compared with the values that generated
+the data. This example generates six measurements for 500 people from a quadratic
+latent growth curve model with the default parameter values.
+
+```{r simulate-data, message=FALSE}
+sim <- getSimData(n = 500, curveFun = "QUAD", nT = 6, seed = 20261027)
+truth <- attr(sim, "truth")
+sim_fit <- getLGCM(
+  sim, t_var = "T", y_var = "Y", records = 1:6,
+  curveFun = "QUAD", intrinsic = FALSE, paramOut = TRUE
+)
+estimates <- sim_fit@Estimates[match(names(truth), sim_fit@Estimates$Name), ]
+data.frame(truth = truth, estimate = round(estimates$Estimate, 3), SE = round(estimates$SE, 3))
+```
+
+The data also carry each person's growth factors (`growth_factors`) and the full
+generating values (`settings`). Supply `params` to change the generating values, and
+a list of parameter sets with `prop` to generate latent classes. The same function
+generates data for multivariate, time-varying covariate and mediation models:
+
+```{r simulate-families}
+bivariate <- getSimData(n = 200, sub_Model = "MGM", curveFun = "LIN", seed = 1)
+with_tvc <- getSimData(n = 200, sub_Model = "TVC", curveFun = "LIN", decompose = 1, seed = 1)
+mediation <- getSimData(n = 200, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", seed = 1)
+head(attr(mediation, "truth"))
+```
+
+The matching fit for each is `getMGM()`, `getTVCmodel()` and `getMediation()` with the
+same functional form; `?getSimData` lists the parameter values each model takes.
+
 ## Reuse existing analyses
 
 The fitting functions retain their existing arguments and output slots. Calls that

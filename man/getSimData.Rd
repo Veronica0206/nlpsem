@@ -2,7 +2,7 @@
 % Please edit documentation in R/getSimData.R
 \name{getSimData}
 \alias{getSimData}
-\title{Simulate Longitudinal Data from a Latent Growth Curve or Latent Change Score Model}
+\title{Simulate Longitudinal Data from the Models of the Package}
 \usage{
 getSimData(
   n = 500,
@@ -12,30 +12,39 @@ getSimData(
   nT = 10,
   times = NULL,
   jitter = 0.25,
+  y_model = NULL,
+  decompose = NULL,
+  x_type = NULL,
   params = NULL,
   prop = NULL,
   cluster = NULL,
   growth_TIC = NULL,
   cluster_TIC = NULL,
-  y_var = "Y",
+  y_var = NULL,
   t_var = "T",
+  TVC = "TVC",
+  m_var = "M",
+  x_var = "X",
   seed = NULL
 )
 }
 \arguments{
 \item{n}{An integer: the number of persons. Default is \code{500}.}
 
-\item{sub_Model}{A string: \code{"LGCM"} (latent growth curve model) or \code{"LCSM"} (latent change score model).
-Default is \code{"LGCM"}.}
+\item{sub_Model}{A string: \code{"LGCM"} (latent growth curve model), \code{"LCSM"} (latent change score model),
+\code{"TVC"} (growth model with a time-varying covariate), \code{"MGM"} (multivariate growth model) or
+\code{"MED"} (longitudinal mediation model). Default is \code{"LGCM"}.}
 
-\item{curveFun}{A string specifying the functional form. Supported options for \code{sub_Model = "LGCM"} are
+\item{curveFun}{A string specifying the functional form. Supported options for a latent growth curve model are
 \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"} (or
-\code{"EXP"}), \code{"Jenss-Bayley"} (or \code{"JB"}), and \code{"bilinear spline"} (or \code{"BLS"}); for
-\code{sub_Model = "LCSM"}, \code{"quadratic"}, \code{"negative exponential"}, \code{"Jenss-Bayley"}, and
-\code{"nonparametric"} (or \code{"NonP"}).}
+\code{"EXP"}), \code{"Jenss-Bayley"} (or \code{"JB"}), and \code{"bilinear spline"} (or \code{"BLS"}); for a
+latent change score model, \code{"quadratic"}, \code{"negative exponential"}, \code{"Jenss-Bayley"}, and
+\code{"nonparametric"} (or \code{"NonP"}); for \code{sub_Model = "MED"}, \code{"linear"} and
+\code{"bilinear spline"}.}
 
 \item{intrinsic}{A logical flag: whether the growth ratio (negative exponential and Jenss-Bayley) or the knot
-(bilinear spline) varies between persons. Default is \code{FALSE}.}
+(bilinear spline) varies between persons. Not used for \code{sub_Model = "MED"}, whose knots are the same for
+everyone. Default is \code{FALSE}.}
 
 \item{nT}{An integer: the number of measurement occasions. Default is \code{10}.}
 
@@ -45,24 +54,16 @@ Default is \code{"LGCM"}.}
 \code{jitter} of the planned ones (individually varying measurement occasions); the first and the last
 occasions are the planned ones. Default is \code{0.25}.}
 
-\item{params}{A list of parameters for one class, or a list of such lists, one per latent class. The elements
-of a class list are:
-\itemize{
-  \item \code{mean}: a named numeric vector of the means of the growth factors: \code{eta0} (intercept),
-  \code{eta1} (slope; for the negative exponential, the change to the asymptote; for the bilinear spline, the
-  slope before the knot; for the nonparametric form, the slope of the first interval), \code{eta2}
-  (quadratic coefficient; for the Jenss-Bayley, the coefficient of the exponential term; for the bilinear
-  spline, the slope after the knot), and \code{gamma} (growth ratio or knot), as the form requires;
-  \item \code{cov}: the covariance matrix of the growth factors that vary between persons (in the order
-  above, \code{gamma} last), not explained by the growth TICs;
-  \item \code{residual}: the residual variance;
-  \item \code{rel_rate}: for the nonparametric form, the relative rates of the \code{nT - 1} intervals; the
-  first is \code{1};
-  \item \code{tic_mean}, \code{tic_cov}, \code{beta}: for growth TICs, their means and covariance matrix, and
-  the matrix of their effects on the growth factors that vary between persons (one row per growth factor,
-  one column per TIC).
-}
-Default is \code{NULL}: one class with the settings of the package's simulation studies.}
+\item{y_model}{For \code{sub_Model = "TVC"} or \code{"MGM"}: \code{"LGCM"} or \code{"LCSM"}. Default is
+\code{"LGCM"}.}
+
+\item{decompose}{For \code{sub_Model = "TVC"}: \code{0} (the TVC enters directly), \code{1} (through its
+interval-specific slopes), \code{2} (its interval-specific changes) or \code{3} (its change from baseline).}
+
+\item{x_type}{For \code{sub_Model = "MED"}: \code{"baseline"} or \code{"longitudinal"} predictor.}
+
+\item{params}{A list of parameters for one class, or a list of such lists, one per latent class. See
+Details. Default is \code{NULL}: one class with the settings of the package's simulation studies.}
 
 \item{prop}{A numeric vector of class proportions for several classes without cluster TICs. Default is
 \code{NULL} (equal proportions).}
@@ -72,39 +73,87 @@ Default is \code{NULL}: one class with the settings of the package's simulation 
 class (the first row zeros, for the reference class) and one column for the intercept and each TIC.
 Default is \code{NULL}.}
 
-\item{growth_TIC}{A character vector of column names for the growth TICs. Default is \code{"ex1"},
-\code{"ex2"}, ... when \code{params} has growth-TIC effects.}
+\item{growth_TIC}{A character vector of column names for the growth TICs (\code{"LGCM"}, \code{"LCSM"} and
+\code{"TVC"}). Default is \code{"ex1"}, \code{"ex2"}, ... when \code{params} has growth-TIC effects.}
 
 \item{cluster_TIC}{A character vector of column names for the cluster TICs. Default is \code{"gx1"},
 \code{"gx2"}, ... when \code{cluster} is given.}
 
-\item{y_var, t_var}{Strings: the prefixes of the outcome and occasion columns. Defaults are \code{"Y"} and
-\code{"T"}.}
+\item{y_var}{The prefix of the outcome columns; for \code{sub_Model = "MGM"}, one prefix per process.
+Defaults are \code{"Y"} and, for \code{"MGM"}, \code{c("Y", "Z")}.}
+
+\item{t_var}{The prefix of the occasion columns, shared by all processes. Default is \code{"T"}.}
+
+\item{TVC}{The prefix of the TVC columns. Default is \code{"TVC"}.}
+
+\item{m_var, x_var}{The prefixes of the mediator and predictor columns for \code{sub_Model = "MED"} (a baseline
+predictor is the single column \code{x_var}). Defaults are \code{"M"} and \code{"X"}.}
 
 \item{seed}{An integer seed for reproducible data, or \code{NULL}. The random number generator state of the
 session is restored afterwards. Default is \code{NULL}.}
 }
 \value{
-A data frame with columns \code{id}, \code{y_var1}, ..., \code{t_var1}, ..., the TICs and, for several
-classes, \code{class}. Its attribute \code{"truth"} holds the true parameter values, named as in the
-\code{Estimates} of \code{getLGCM()}/\code{getLCSM()} (one class) or \code{getMIX()} (several classes, with the
-class weights as log odds \code{p2}, ... against the first class, or as cluster-TIC coefficients
-\code{beta20}, ...); attribute \code{"growth_factors"} holds each person's growth factors, and attribute
-\code{"settings"} the arguments.
+A data frame with columns \code{id}, the repeated measures, the occasions \code{t_var1}, ..., the
+TICs and, for several classes, \code{class}. Its attribute \code{"truth"} holds the true parameter values,
+named as in the \code{Estimates} of the matching fitting function, or of \code{getMIX()} for several classes
+(with the class weights as log odds \code{p2}, ... against the first class, or as cluster-TIC coefficients
+\code{beta20}, ...); derived quantities (rates and changes of a latent change score model, mediation and
+total effects) are not included. Attribute \code{"growth_factors"} holds each person's growth factors, and
+attribute \code{"settings"} the arguments.
 }
 \description{
-This function generates wide-format longitudinal data from a latent growth curve model or a
-latent change score model with one of the functional forms that \code{getLGCM()} and \code{getLCSM()} fit,
-optionally with time-invariant covariates (TICs) and several latent classes. The true parameter values are
+This function generates wide-format longitudinal data from the models that \code{getLGCM()},
+\code{getLCSM()}, \code{getTVCmodel()}, \code{getMGM()} and \code{getMediation()} fit, optionally with
+time-invariant covariates (TICs) and several latent classes (\code{getMIX()}). The true parameter values are
 attached to the data under the names that the matching fitting function uses in its \code{Estimates}, so
 that a fit can be compared with the values that generated the data.
 }
 \details{
-Growth factors and growth TICs are drawn from multivariate normal distributions, each person's
-outcome follows the functional form at their own occasions, and normal residuals are added. With
-\code{sub_Model = "LCSM"}, a parametric form generates the same trajectories as with \code{"LGCM"} (a latent
-change score model describes such a trajectory by its rates of change), and the nonparametric form
+Growth factors, TICs and the baseline of a TVC or of a mediation predictor are drawn from
+multivariate normal distributions, each person's repeated measures follow the functional form at their own
+occasions, and normal residuals are added (correlated between processes at the same occasion). With a latent
+change score model, a parametric form generates the same trajectories as a latent growth curve model (the
+latent change score model describes such a trajectory by its rates of change), and the nonparametric form
 generates change scores: the slope of each interval is \code{eta1} times the interval's relative rate.
+With a random growth ratio or knot, each person's trajectory is the exact curve at their own ratio or knot,
+while the fitting functions describe such a model by a first-order Taylor expansion around the mean ratio
+or knot; their estimates therefore recover the generating values approximately.
+
+The elements of a class list of \code{params} are:
+\describe{
+  \item{\code{"LGCM"}, \code{"LCSM"}}{\code{mean}: a named numeric vector of the means of the growth factors:
+  \code{eta0} (intercept), \code{eta1} (slope; for the negative exponential, the change to the asymptote; for
+  the bilinear spline, the slope before the knot; for the nonparametric form, the slope of the first
+  interval), \code{eta2} (quadratic coefficient; for the Jenss-Bayley, the coefficient of the exponential
+  term; for the bilinear spline, the slope after the knot) and \code{gamma} (growth ratio or knot), as the
+  form requires; \code{cov}: the covariance matrix of the growth factors that vary between persons (in the
+  order above), not explained by the growth TICs; \code{residual}: the residual variance; \code{rel_rate}:
+  for the nonparametric form, the relative rates of the \code{nT - 1} intervals, the first \code{1};
+  \code{tic_mean}, \code{tic_cov}, \code{beta}: for growth TICs, their means and covariance matrix, and their
+  effects on the growth factors that vary between persons (one row per growth factor, one column per TIC).}
+  \item{\code{"MGM"}}{\code{mean}: a list of mean vectors as above, one per process; \code{cov}: the
+  covariance matrix of the growth factors that vary between persons, process by process; \code{residual}: the
+  covariance matrix of the residuals of the processes at the same occasion; \code{rel_rate}: for the
+  nonparametric form, a list of relative rates, one per process.}
+  \item{\code{"TVC"}}{For the outcome, the elements of a latent growth curve or change score model as above,
+  and \code{kappa}, the effect of the TVC. With \code{decompose = 0}, \code{tvc}: a list with the \code{mean}
+  and \code{var} of the TVC at each occasion. With \code{decompose = 1}, \code{2} or \code{3}, the TVC is a
+  nonparametric latent change score process: \code{tvc} is a list with its \code{mean} (\code{eta0},
+  \code{eta1}), \code{cov}, \code{rel_rate} and \code{residual}; \code{beta_tvc}: the effects of the TVC's
+  latent baseline on the outcome's growth factors that vary between persons; \code{res_cov}: the covariance of
+  the TVC and outcome residuals at the same occasion; with growth TICs, \code{cov_bl}: their covariances
+  with the TVC's latent baseline. The outcome's \code{mean} holds marginal means.}
+  \item{\code{"MED"}}{\code{x}: the predictor, \code{list(mean, var)} at baseline or a growth process
+  \code{list(mean, cov)}; \code{m}, \code{y}: the mediator and outcome processes, \code{list(mean, cov)}
+  (marginal means, and covariances not explained by the predictor and mediator); \code{beta_xm},
+  \code{beta_xy}: the effects of the predictor (or of its growth factors) on the mediator's and outcome's
+  growth factors, and \code{beta_my}: of the mediator's growth factors on the outcome's (one row per
+  receiving growth factor; a growth factor affects only itself and later ones); \code{residual}: the
+  covariance matrix of the residuals of the (predictor,) mediator and outcome at the same occasion. The growth
+  factors are \code{eta0} and \code{eta1} for the linear form, and \code{eta1} (slope before the knot),
+  \code{etar} (status at the knot), \code{eta2} (slope after the knot) and the knot \code{gamma} for the
+  bilinear spline.}
+}
 }
 \examples{
 dat <- getSimData(n = 200, curveFun = "QUAD", seed = 20261027)
@@ -116,5 +165,7 @@ fit <- getLGCM(dat = dat, t_var = "T", y_var = "Y", curveFun = "QUAD", intrinsic
 truth <- attr(dat, "truth")
 cbind(estimate = fit@Estimates$Estimate[match(names(truth), fit@Estimates$Name)], truth)
 }
+bivariate <- getSimData(n = 200, sub_Model = "MGM", curveFun = "LIN", seed = 1)
+names(attr(bivariate, "truth"))
 
 }

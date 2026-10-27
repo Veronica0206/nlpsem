@@ -100,4 +100,87 @@ test_that("fits of the matching model recover the true values", {
   recover(dat, fit)
   membership <- getPosterior(fit@mxOutput, nClass = 2, cluster_TIC = NULL)@membership
   expect_gt(mean(membership == dat$class), 0.95)
+  dat <- getSimData(n = 500, sub_Model = "MGM", curveFun = "LIN", seed = 20261027)
+  set.seed(20191029)
+  recover(dat, suppressMessages(getMGM(dat = dat, t_var = c("T", "T"), y_var = c("Y", "Z"), curveFun = "LIN", intrinsic = FALSE,
+                                       records = list(1:10, 1:10), y_model = "LGCM", paramOut = TRUE)))
+  dat <- getSimData(n = 500, sub_Model = "TVC", curveFun = "LIN", decompose = 1, nT = 5, seed = 20261027)
+  set.seed(20191029)
+  recover(dat, suppressMessages(getTVCmodel(dat = dat, t_var = "T", y_var = "Y", curveFun = "LIN", intrinsic = FALSE, records = 1:5,
+                                            y_model = "LGCM", TVC = "TVC", decompose = 1, paramOut = TRUE)))
+  dat <- getSimData(n = 500, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", seed = 20261027)
+  set.seed(20191029)
+  recover(dat, suppressMessages(getMediation(dat = dat, t_var = c("T", "T"), y_var = "Y", m_var = "M", x_type = "baseline",
+                                             x_var = "X", curveFun = "LIN", records = list(1:10, 1:10), paramOut = TRUE)))
+})
+
+test_that("multivariate, TVC and mediation data carry the true values of the matching fit", {
+  configs <- list(
+    list(sub_Model = "MGM", curveFun = "LIN"), list(sub_Model = "MGM", curveFun = "BLS", intrinsic = TRUE, y_var = c("Y", "Z", "W")),
+    list(sub_Model = "MGM", y_model = "LCSM", curveFun = "NonP"), list(sub_Model = "MGM", y_model = "LCSM", curveFun = "JB", intrinsic = TRUE),
+    list(sub_Model = "TVC", decompose = 0, curveFun = "EXP"), list(sub_Model = "TVC", decompose = 1, curveFun = "BLS", intrinsic = TRUE),
+    list(sub_Model = "TVC", decompose = 2, y_model = "LCSM", curveFun = "QUAD"), list(sub_Model = "TVC", decompose = 3, y_model = "LCSM", curveFun = "NonP"),
+    list(sub_Model = "MED", curveFun = "LIN", x_type = "baseline"), list(sub_Model = "MED", curveFun = "LIN", x_type = "longitudinal"),
+    list(sub_Model = "MED", curveFun = "BLS", x_type = "baseline"), list(sub_Model = "MED", curveFun = "BLS", x_type = "longitudinal"))
+  for (cfg in configs) {
+    dat <- do.call(getSimData, c(list(n = 30, seed = 1), cfg))
+    s <- attr(dat, "settings")
+    ctx <- list(sub_Model = s$sub_Model, curveFun = s$curveFun, intrinsic = s$intrinsic, nT = s$nT, y_model = s$y_model,
+                decompose = s$decompose, x_type = s$x_type, y_var = s$y_var, growth_TIC = s$growth_TIC)
+    label <- paste(unlist(cfg), collapse = " ")
+    expect_identical(names(attr(dat, "truth")), nlpsem:::.sim_fit_names(ctx), info = label)
+    expect_false(anyNA(dat), info = label)
+  }
+  # growth TICs in a TVC model with a decomposed TVC
+  p <- nlpsem:::.sim_default_params(list(sub_Model = "TVC", form = "LIN", intrinsic = FALSE, nT = 10, decompose = 1))
+  p$tic_mean <- c(0, 0); p$tic_cov <- diag(2); p$beta <- matrix(0.5, 2, 2); p$cov_bl <- c(0.3, 0.2)
+  truth <- attr(getSimData(n = 30, sub_Model = "TVC", curveFun = "LIN", decompose = 1, params = p, seed = 1), "truth")
+  expect_equal(truth[c("betaTIC10", "covBL1", "covBL2", "muTIC2", "phiTIC12")], c(betaTIC10 = 0.5, covBL1 = 0.3, covBL2 = 0.2, muTIC2 = 0, phiTIC12 = 0))
+})
+
+test_that("multivariate data have the requested cross-process covariances", {
+  dat <- getSimData(n = 20000, sub_Model = "MGM", curveFun = "LIN", jitter = 0, seed = 6)
+  p <- attr(dat, "settings")$params[[1]]
+  gf <- attr(dat, "growth_factors")
+  expect_equal(unname(cov(gf)), unname(p$cov), tolerance = 0.05)
+  eY <- as.matrix(dat[paste0("Y", 1:10)]) - (gf[, "Y_eta0"] + gf[, "Y_eta1"] * as.matrix(dat[paste0("T", 1:10)]))
+  eZ <- as.matrix(dat[paste0("Z", 1:10)]) - (gf[, "Z_eta0"] + gf[, "Z_eta1"] * as.matrix(dat[paste0("T", 1:10)]))
+  expect_equal(cov(c(eY), c(eZ)), p$residual[1, 2], tolerance = 0.05)
+  expect_equal(attr(dat, "truth")[c("YZ_psi10", "YZ_res")], c(YZ_psi10 = p$cov[2, 3], YZ_res = 0.3))
+})
+
+test_that("a decomposed TVC acts through its slopes, changes or change from baseline", {
+  for (decompose in 1:3) {
+    dat <- getSimData(n = 20000, sub_Model = "TVC", curveFun = "LIN", decompose = decompose, seed = 7)
+    p <- attr(dat, "settings")$params[[1]]
+    gf <- attr(dat, "growth_factors"); tm <- as.matrix(dat[paste0("T", 1:10)])
+    slope <- outer(gf[, "TVC_eta1"], p$tvc$rel_rate); lag <- t(apply(tm, 1, diff))
+    true_x <- gf[, "TVC_eta0"] + cbind(0, t(apply(slope * lag, 1, cumsum)))
+    state <- switch(decompose, cbind(0, slope), cbind(0, slope * lag), true_x - gf[, "TVC_eta0"])
+    eY <- as.matrix(dat[paste0("Y", 1:10)]) - (gf[, "Y_eta0"] + gf[, "Y_eta1"] * tm) - p$kappa * state
+    eX <- as.matrix(dat[paste0("TVC", 1:10)]) - true_x
+    expect_equal(c(var(c(eY)), var(c(eX)), cov(c(eY), c(eX))), c(p$residual, p$tvc$residual, p$res_cov), tolerance = 0.05, info = paste("decompose", decompose))
+
+    expect_equal(unname(coef(lm(gf[, "Y_eta0"] ~ gf[, "TVC_eta0"]))[2]), p$beta_tvc[1], tolerance = 0.1, info = paste("decompose", decompose))
+  }
+})
+
+test_that("mediation paths are the requested effects", {
+  dat <- getSimData(n = 20000, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", seed = 8)
+  p <- attr(dat, "settings")$params[[1]]; gf <- attr(dat, "growth_factors")
+  expect_equal(unname(coef(lm(gf[, "M_eta1"] ~ dat$X))[2]), p$beta_xm[2, 1], tolerance = 0.05)
+  fit <- lm(gf[, "Y_eta1"] ~ dat$X + gf[, "M_eta0"] + gf[, "M_eta1"])
+  expect_equal(unname(coef(fit)[-1]), c(p$beta_xy[2, 1], p$beta_my[2, ]), tolerance = 0.05)
+  truth <- attr(dat, "truth")
+  expect_equal(truth[c("betaM0Y1", "alphaM0")], c(betaM0Y1 = p$beta_my[2, 1], alphaM0 = p$m$mean[["eta0"]] - p$beta_xm[1, 1] * p$x$mean))
+})
+
+test_that("multivariate, TVC and mediation inputs that do not describe a model are rejected", {
+  expect_error(getSimData(sub_Model = "MED", curveFun = "QUAD", x_type = "baseline"), "linear or bilinear")
+  expect_error(getSimData(sub_Model = "MED", curveFun = "LIN"), "x_type")
+  expect_error(getSimData(sub_Model = "TVC", curveFun = "LIN"), "decompose")
+  expect_error(getSimData(sub_Model = "MGM", curveFun = "LIN", y_var = "Y"), "two or more")
+  p <- nlpsem:::.sim_default_params(list(sub_Model = "MED", form = "LIN", x_type = "longitudinal"))
+  p$beta_my[1, 2] <- 0.1
+  expect_error(getSimData(sub_Model = "MED", curveFun = "LIN", x_type = "longitudinal", params = p), "later ones")
 })

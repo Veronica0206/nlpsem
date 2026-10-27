@@ -6,7 +6,13 @@
   knots, individually varying measurement occasions, growth TICs, and several latent classes with fixed
   proportions or cluster-TIC multinomial logits. The true parameter values are attached under the names of
   the matching fit's `Estimates`, and each person's growth factors are attached too, so a fit can be
-  compared with the values that generated the data. Multivariate, TVC and mediation models follow.
+  compared with the values that generated the data. It also generates multivariate growth models (two or
+  more outcomes, with growth factors and residuals correlated across outcomes), models with a time-varying
+  covariate (a direct effect, or decompositions 1, 2 or 3, in which the outcome responds to the TVC's slopes,
+  interval changes or change from baseline and the TVC's baseline predicts the outcome's growth factors),
+  and longitudinal mediation models (linear or bilinear spline, with a baseline or longitudinal predictor).
+  A new section of the workflow vignette generates data, fits the matching model and compares the
+  estimates with the truth.
 * Quadratic, negative exponential and Jenss-Bayley models, with fixed or random ratios, are
   fitted to standardized data and converted back exactly in `getLGCM()`, `getLCSM()`,
   `getTVCmodel()`, `getMGM()`, `getMGroup()` and `getMIX()`. Each outcome is centred and scaled
