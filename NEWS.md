@@ -1,5 +1,12 @@
 # nlpsem 1.0.0.9006 (standardized fitting development update)
 
+* New `getSimData()` simulates wide-format longitudinal data from a latent growth curve model (linear,
+  quadratic, negative exponential, Jenss-Bayley, bilinear spline) or a latent change score model
+  (quadratic, negative exponential, Jenss-Bayley, nonparametric), with fixed or random growth ratios and
+  knots, individually varying measurement occasions, growth TICs, and several latent classes with fixed
+  proportions or cluster-TIC multinomial logits. The true parameter values are attached under the names of
+  the matching fit's `Estimates`, and each person's growth factors are attached too, so a fit can be
+  compared with the values that generated the data. Multivariate, TVC and mediation models follow.
 * Quadratic, negative exponential and Jenss-Bayley models, with fixed or random ratios, are
   fitted to standardized data and converted back exactly in `getLGCM()`, `getLCSM()`,
   `getTVCmodel()`, `getMGM()`, `getMGroup()` and `getMIX()`. Each outcome is centred and scaled
