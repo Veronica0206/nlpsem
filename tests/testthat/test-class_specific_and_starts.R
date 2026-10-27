@@ -234,7 +234,8 @@ test_that("per-person curve residuals are attached and residual-correlation star
   gf <- nlpsem:::getUNI.GF(dat_traj, dat_time, nT = 6, curveFun = "LIN")
   expect_equal(attr(gf, "residuals")[1, ], unname(y1[1, ] - (gf$eta0[1] + gf$eta1[1] * tt[1, ])))
   gfb <- nlpsem:::getUNI.GF(dat_traj, dat_time, nT = 6, curveFun = "BLS")
-  k <- gfb$gamma[1]
+  # the stored knots are the individual knots shifted to the profiled common knot
+  k <- gfb$gamma[1] - attr(gfb, "initialization")$knot_shift
   expect_equal(attr(gfb, "residuals")[1, ],
                unname(y1[1, ] - (gfb$eta0[1] + gfb$eta1[1] * pmin(tt[1, ], k) + gfb$eta2[1] * pmax(tt[1, ] - k, 0))))
   # Person-mean centring (the 0.4 heuristic) sees the shared growth trend; the curve residuals do not.
@@ -346,4 +347,17 @@ test_that("mediation and TVC effects that the data cannot determine start at 0",
   expect_warning(tvc <- nlpsem:::getTVC.initial(dat = dat, t_var = "T", y_var = "M", curveFun = "LIN", records = 1:9, growth_TIC = NULL,
                                                 TVC = "Rs", decompose = 0, res_scale = NULL), "starting them at 0")
   expect_true(all(is.finite(unlist(tvc))))
+})
+
+test_that("bilinear spline knot starts use the profiled common knot", {
+  # A knot at 3.2 for everyone, away from the midpoint 4.5 of the occasions 0, ..., 9
+  set.seed(20261027); n <- 200
+  tm <- sapply(1:10, function(j) if (j %in% c(1, 10)) rep(j - 1, n) else j - 1 + runif(n, -0.25, 0.25))
+  eta0 <- rnorm(n, 50, 5); eta1 <- rnorm(n, 5, 1); eta2 <- rnorm(n, 2, 1)
+  y <- eta0 + eta1 * pmin(tm, 3.2) + eta2 * pmax(tm - 3.2, 0) + matrix(rnorm(n * 10), n)
+  gf <- nlpsem:::getUNI.GF(as.data.frame(y), as.data.frame(tm), 10, "BLS")
+  knot <- attr(gf, "initialization")$common_knot
+  expect_lt(abs(knot - 3.2), 0.1)
+  expect_equal(mean(gf$gamma, na.rm = TRUE), knot)
+  expect_true(is.na(nlpsem:::.bls_profile_knot(as.data.frame(y[1:5, ]), as.data.frame(tm[1:5, ]))))
 })

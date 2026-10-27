@@ -50,6 +50,14 @@
   multiple-group bilinear spline model); they are kept as fixtures for `getDiagnostics()` rather than
   as model coverage, which leaves 33 positive references. Two fixed-ratio JB references fitted to the
   reading scores of all 500 children were added.
+* Bilinear spline starting values: the mean knot now starts at the common knot profiled over all persons
+  (each with their own intercept and slopes; the least-squares knot of the fixed-knot model) instead of
+  the average of the per-person knots. Persons whose own fit fails keep the midpoint seed, which pulled
+  that average towards the middle of the time range (for example 3.9 for a true knot of 3.5). The
+  per-person knots are shifted to the profiled knot, so the knot variance rule is unchanged. From the
+  new start, two random-knot references reach better solutions, and their stored values were updated:
+  `TVC_LGCM_BLS_r_d1` (-2LL 16093.60 to 16090.76) and `MGM_LGCM_BLS_r` (25005.40 to 24975.52), both
+  passing `getDiagnostics()`. The other references are unchanged.
 * Plots of fits whose `records` are not in ascending order no longer fail. Plots of TVC models label
   their curves as the growth component, which excludes the effect of the TVC, and add the full
   model-implied mean of the outcome (or its change from baseline) at each wave, for each class or

@@ -84,6 +84,45 @@
   list(a = y[1L], b = first, c = second, d = knot)
 }
 
+# Common knot of a bilinear spline: the knot that minimises the residual sum of squares pooled over
+# persons when each person has their own intercept and slopes (the least-squares knot of the fixed-knot
+# model), searched in the middle 70% of the time range. Only persons with at least four occasions that
+# cover that range enter, so the same persons are compared at every knot. NA when it cannot be found.
+.bls_profile_knot <- function(dat_traj, dat_time) {
+  Y <- as.matrix(dat_traj); Tm <- as.matrix(dat_time)
+  W <- is.finite(Y) & is.finite(Tm)
+  if (!any(W)) return(NA_real_)
+  time_range <- range(Tm[W]); span <- diff(time_range)
+  lower <- time_range[1] + 0.15 * span; upper <- time_range[2] - 0.15 * span
+  if (!is.finite(span) || span <= 0 || lower >= upper) return(NA_real_)
+  Tmin <- apply(ifelse(W, Tm, Inf), 1, min); Tmax <- apply(ifelse(W, Tm, -Inf), 1, max)
+  use <- rowSums(W) >= 4L & Tmin <= lower & Tmax >= upper
+  if (sum(use) < 10L) return(NA_real_)
+  Y <- Y[use, , drop = FALSE]; Tm <- Tm[use, , drop = FALSE]; W <- W[use, , drop = FALSE]
+  Y[!W] <- 0; Tm[!W] <- 0
+  n <- rowSums(W); sy <- rowSums(Y); syy <- rowSums(Y^2)
+  pooled_rss <- function(g) {
+    b1 <- pmin(Tm, g) * W; b2 <- pmax(Tm - g, 0) * W
+    s1 <- rowSums(b1); s2 <- rowSums(b2); s11 <- rowSums(b1^2); s12 <- rowSums(b1 * b2); s22 <- rowSums(b2^2)
+    s1y <- rowSums(b1 * Y); s2y <- rowSums(b2 * Y)
+    # y'X (X'X)^{-1} X'y through the adjugate of the 3 x 3 cross-product matrix
+    c11 <- s11 * s22 - s12^2; c12 <- s12 * s2 - s1 * s22; c13 <- s1 * s12 - s11 * s2
+    c22 <- n * s22 - s2^2; c23 <- s1 * s2 - n * s12; c33 <- n * s11 - s1^2
+    det <- n * c11 + s1 * c12 + s2 * c13
+    fitted <- (sy * (c11 * sy + c12 * s1y + c13 * s2y) + s1y * (c12 * sy + c22 * s1y + c23 * s2y) +
+               s2y * (c13 * sy + c23 * s1y + c33 * s2y)) / det
+    if (any(!is.finite(fitted))) return(Inf)
+    sum(syy - fitted)
+  }
+  grid <- seq(lower, upper, length.out = 41L)
+  rss <- vapply(grid, pooled_rss, numeric(1))
+  if (!any(is.finite(rss))) return(NA_real_)
+  best <- which.min(rss)
+  interval <- grid[c(max(best - 1L, 1L), min(best + 1L, length(grid)))]
+  if (interval[1] == interval[2]) return(grid[best])
+  stats::optimize(pooled_rss, interval = interval, tol = span * 1e-4)$minimum
+}
+
 .nls_curve_growth_factors <- function(dat_traj, dat_time, nT, curve) {
   columns <- if (curve == "EXP") c("eta0", "eta1", "gamma") else c("eta0", "eta1", "eta2", "gamma")
   n <- nrow(dat_traj)
@@ -169,6 +208,9 @@
 # Besides the growth factors, getUNI.GF() attaches two attributes: "mean_res_var" (median over persons of
 # the per-person residual variance) and "residuals" (persons x occasions matrix of observed minus fitted
 # values from the individual curve fits). The residual matrix feeds .residual_correlation_starts().
+# Bilinear spline knots are those of the individual fits shifted by initialization$knot_shift, so that
+# their mean is the profiled common knot (initialization$common_knot); the residuals are those of the
+# individual fits.
 
 getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
   # Calculate individual growth factors eta0 (initial values) and eta1 (slopes) for linear trajectories.
@@ -222,6 +264,16 @@ getUNI.GF <- function(dat_traj, dat_time, nT, curveFun){
   }
   else if (curveFun %in% c("bilinear spline", "BLS")){
     growth_factor <- .nls_curve_growth_factors(dat_traj, dat_time, nT, "BLS")
+    # A person whose own fit fails keeps the seed knot at the midpoint, which pulls the mean knot towards
+    # it. The knots are shifted so that their mean is the common knot profiled over all persons; their
+    # spread, and with it the knot variance and covariate effects, is unchanged.
+    knot <- .bls_profile_knot(dat_traj, dat_time)
+    if (is.finite(knot) && any(is.finite(growth_factor$gamma))){
+      shift <- knot - mean(growth_factor$gamma, na.rm = TRUE)
+      growth_factor$gamma <- growth_factor$gamma + shift
+      attr(growth_factor, "initialization")$common_knot <- knot
+      attr(growth_factor, "initialization")$knot_shift <- shift
+    }
   }
   # Calculate individual growth factors eta0 (initial values) and eta1 (slopes in the 1st time interval) for
   # nonparametric trajectories.
