@@ -211,3 +211,36 @@ test_that("class-specific nonlinear TIC trajectories use adjusted mean and rate 
     .expect_plot_se(out,"Y_hat",expression,fit)
   }
 })
+
+test_that("TVC plots label the growth component and add the full model-implied mean", {
+  fit <- .load_extdata("getTVCmodel_examples.RData")$Math_TVC_BLS_f@mxOutput
+  fig <- suppressWarnings(getFigure(fit, sub_Model = "TVC", y_var = "M", curveFun = "BLS", y_model = "LGCM", t_var = "T",
+                                    records = 1:9, xstarts = 0))
+  p <- fig@figures[[1]][[1]]
+  labels <- ggplot2::ggplot_build(p)$plot$scales$get_scales("linetype")$get_labels()
+  expect_true("Model Implied Growth Component (TVC Effect Excluded)" %in% labels)
+  expect_true("Model Implied Mean Outcome (TVC Effect Included)" %in% labels)
+  expect_false("Model Implied Growth Status" %in% labels)
+  # With a direct TVC, the full mean is the growth component plus kappa times the TVC mean (the stored
+  # algebra values of this shipped fit agree with its parameters to about 1e-7).
+  full <- p$layers[[5]]$data
+  times <- colMeans(fit$data$observed[, paste0("T", 1:9)])
+  component <- nlpsem:::.plot_curve_delta(nlpsem:::.plot_gf_distribution(fit, fit, "Y", "Y", "TVC", "BLS"), times, "BLS")$est
+  par <- OpenMx::omxGetParameters(fit)
+  expect_equal(full$time, unname(times))
+  expect_equal(full$value - component, unname(par["kappa"] * par[paste0("TVC_m", 1:9)]), tolerance = 1e-6)
+})
+
+test_that("a fit with the records in descending order can be plotted", {
+  skip_on_cran()
+  dat <- .golden_data(n = 200)
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  fit_records <- function(records){
+    set.seed(20191029)
+    suppressMessages(getLGCM(dat, t_var = "T", y_var = "M", curveFun = "LIN", intrinsic = FALSE, records = records))
+  }
+  descending <- plot(fit_records(9:1), draw = FALSE)@figures[[1]][[1]]$data
+  ascending <- plot(fit_records(1:9), draw = FALSE)@figures[[1]][[1]]$data
+  expect_equal(descending$time, ascending$time)
+  expect_equal(descending$Y_hat, ascending$Y_hat, tolerance = 1e-6)
+})
