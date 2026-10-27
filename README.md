@@ -12,9 +12,15 @@ on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
-## Development 1.0.0.9005
+## Development 1.0.0.9006
 
-EXP, Jenss-Bayley and bilinear spline starting values now use per-person
+Quadratic, negative exponential and Jenss-Bayley models are fitted to standardized
+data and converted back exactly: the estimates, standard errors and likelihood are
+reported in the original units, and `getSpecification()` records the scaling.
+`options(nlpsem.standardize = FALSE)` fits on the raw scale. Other functional forms
+and mediation models are fitted as before.
+
+The 1.0.0.9005 update made EXP, Jenss-Bayley and bilinear spline starting values use per-person
 `stats::nls()` with the 0.3 curve formulas and default Gauss-Newton algorithm.
 The shared initializer supplies this method to all model families. Failed NLS
 fits use recorded heuristic fallbacks; they are not counted as NLS convergence.
@@ -36,10 +42,12 @@ plot(fit, draw = FALSE)
 ```
 
 The [NLS validation record](.github/VALIDATION-1.0.0.9005.md) separates completed
-checks from outstanding numerical qualification. Existing examples and numerical
-reference fixtures remain historical evidence. In particular, the saved
-`Math_TVCchgBL_BLS_r` example is inadmissible despite optimizer status 0; see the TVC
-guide. This development version is not a V1.0.0 release.
+checks from outstanding numerical qualification. The fitting-layer reference values
+were regenerated with 1.0.0.9006; each fit is compared with its reference only after
+it passes the `getDiagnostics()` checks (see `NEWS.md`). The saved examples remain
+historical evidence. In particular, the saved `Math_TVCchgBL_BLS_r` example is
+inadmissible despite optimizer status 0; see the TVC guide. This development version
+is not a V1.0.0 release.
 
 New estimate tables retain full precision. Older serialized tables retain their
 historical rounding and need recomputation or refitting to recover precision. S4

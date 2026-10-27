@@ -58,6 +58,9 @@ attribute recording requested, attempted, successful and discarded counts and st
 \description{
 This function calculates p-values and confidence intervals (CIs) of parameters for a given model. It supports
 different types of CIs, including Wald CIs, likelihood-based CIs, bootstrap CIs, or all three.
+Likelihood-based and bootstrap CIs refit \code{model} as returned, on the original scale: a quadratic,
+negative exponential or Jenss-Bayley model that was fitted on the standardized scale is not
+standardized again for these refits.
 }
 \examples{
 # Fitted bilinear spline latent growth curve models shipped with the package
