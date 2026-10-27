@@ -6,7 +6,11 @@
 #' \itemize{
 #'   \item each outcome process is centred at the mean and divided by the standard deviation of its
 #'   first recorded occasion; a time-varying covariate (TVC) is divided by its first-occasion standard
-#'   deviation without centring; time is divided by the mean of its last recorded occasion without
+#'   deviation without centring. In multiple-group models this standard deviation is pooled within the
+#'   groups, and in mixture models within the provisional classes that the starting values are computed
+#'   from: with well-separated groups or classes, the overall standard deviation is several times the
+#'   within-group one and makes every within-group variance small on the standardized scale. Time is
+#'   divided by the mean of its last recorded occasion without
 #'   centring, so that it runs from 0 to about 1; time-invariant covariates are left as they are, also
 #'   when a covariate is one of the time, outcome or TVC columns (for example baseline age as a
 #'   growth or class-membership covariate): such a covariate is read from an unscaled copy;
@@ -40,20 +44,26 @@ NULL
 ## centred and scaled at their first recorded occasion, a TVC is scaled without centring, and time is
 ## divided by the mean of its last recorded occasion without centring. A covariate column (growth or
 ## class-membership TIC) that is also one of these columns gets an unscaled copy under a new name.
+## With groups (a group or provisional class per row), the scales are standard deviations pooled within
+## the groups; the overall standard deviation is the fallback when they cannot be computed.
 .std_plan <- function(dat, sub_Model, curveFun, y_var, records, t_var, TVC = NULL, decompose = NULL,
-                      covariates = NULL){
+                      covariates = NULL, groups = NULL){
   if (!isTRUE(getOption("nlpsem.standardize", TRUE))) return(NULL)
   if (!isTRUE(as.character(curveFun)[1] %in% .std_forms)) return(NULL)
   if (!isTRUE(sub_Model %in% c("LGCM", "LCSM", "TVC", "MGM"))) return(NULL)
   processes <- list()
+  if (!is.null(groups) && length(groups) != nrow(dat)) groups <- NULL
   add <- function(key, var, recs, center){
     columns <- paste0(var, recs)
     if (!all(columns %in% names(dat))) return(FALSE)
     first <- suppressWarnings(as.numeric(dat[[columns[1]]]))
-    scale <- stats::sd(first, na.rm = TRUE)
+    scale <- if (is.null(groups)) NA_real_ else .std_within_sd(first, groups)
+    basis <- if (is.finite(scale) && scale > 0) "within groups" else "overall"
+    if (basis == "overall") scale <- stats::sd(first, na.rm = TRUE)
     centre <- if (center) mean(first, na.rm = TRUE) else 0
     if (!is.finite(scale) || scale <= 0 || !is.finite(centre)) return(FALSE)
-    processes[[key]] <<- list(variable = var, columns = columns, center = centre, scale = scale, centered = center)
+    processes[[key]] <<- list(variable = var, columns = columns, center = centre, scale = scale, centered = center,
+                              scale_basis = basis)
     TRUE
   }
   recs <- if (is.list(records)) records else list(records)
@@ -81,6 +91,16 @@ NULL
          stats::setNames(lapply(seq_len(ncol(idx)), function(i) y_var[idx[, i]]),
                          apply(idx, 2, function(i) paste0(y_var[i], collapse = "")))
        } else list())
+}
+
+## Standard deviation pooled within groups; NA when fewer than two groups have observed values or no
+## degree of freedom is left.
+.std_within_sd <- function(x, groups){
+  ok <- is.finite(x) & !is.na(groups)
+  x <- x[ok]; g <- as.character(groups[ok])
+  k <- length(unique(g))
+  if (k < 2L || length(x) - k < 1L) return(NA_real_)
+  sqrt(sum((x - stats::ave(x, g))^2) / (length(x) - k))
 }
 
 ## The standardized copy of the data.
@@ -207,7 +227,7 @@ NULL
   processes <- do.call(rbind, lapply(names(plan$processes), function(k){
     p <- plan$processes[[k]]
     data.frame(process = k, variable = p$variable, first_column = p$columns[1], center = p$center,
-               scale = p$scale, centered = p$centered, stringsAsFactors = FALSE)
+               scale = p$scale, scale_basis = p$scale_basis, centered = p$centered, stringsAsFactors = FALSE)
   }))
   H <- fit_std@output$hessian
   list(model = model,

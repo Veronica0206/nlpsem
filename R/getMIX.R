@@ -103,8 +103,10 @@
 #'
 #' @section Standardized fitting:
 #' Latent growth curve, latent change score, TVC and multivariate sub-models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
-#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
-#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, pooled within
+#' the provisional classes that the automatic starting values are computed from (with user-supplied
+#' \code{starts}, the overall standard deviation), a time-varying covariate is divided by its first-occasion
+#' standard deviation (pooled in the same way), and time is divided by the
 #' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
 #' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
 #' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
@@ -190,6 +192,9 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
                              decompose = decompose, growth_TIC = growth_TIC, res_scale = res_scale,
                              res_cor = res_cor, intrinsic = intrinsic)
   }
+  # Provisional classes of the automatic starting values: the standardized fit scales within them
+  provisional_classes <- attr(starts, "provisional_classes")
+  attr(starts, "provisional_classes") <- NULL
   ## Build up a mixture model
   model_mx <- getMIX.mxModel(dat = dat, nClass = nClass, sub_Model = sub_Model, cluster_TIC = cluster_TIC,
                              t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
@@ -208,7 +213,7 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
       mxRun(model_mx)
     }
   }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose,
-                    covariates = c(growth_TIC, cluster_TIC)),
+                    covariates = c(growth_TIC, cluster_TIC), groups = provisional_classes),
   build = function(plan) getMIX.mxModel(dat = .std_data(dat, plan), nClass = nClass, sub_Model = sub_Model, cluster_TIC = .std_cov(plan, cluster_TIC),
                                t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
                                records = records, y_model = y_model, m_var = m_var, x_var = x_var, x_type = x_type,

@@ -190,5 +190,6 @@ getMIX.initial <- function(dat, nClass, prop_starts, sub_Model, cluster_TIC, t_v
     # Return the starts list
     starts[[length(starts) + 1]] <- .mixture_weight_starts(prop_starts)
   }
+  attr(starts, "provisional_classes") <- dat$label
   return(starts)
 }

@@ -28,6 +28,8 @@ test_that("the parameter map reproduces the likelihood exactly for every kind of
                                         records = list(1:9, 1:9), y_model = "LGCM")),
     MGroup_TVC_EXP_r_d2 = list(getMGroup, "TVC", list(grp_var = "SEX", sub_Model = "TVC", t_var = "T", y_var = "M", curveFun = "EXP",
                                                       intrinsic = TRUE, records = 1:9, y_model = "LGCM", TVC = "Rs", decompose = 2)),
+    MGroup_MGM_QUAD = list(getMGroup, "MGM", list(grp_var = "SEX", sub_Model = "MGM", t_var = c("T", "T"), y_var = c("R", "M"),
+                                                  curveFun = "QUAD", intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM")),
     MIXc_QUAD = list(getMIX, "LGCM", list(prop_starts = c(0.5, 0.5), sub_Model = "LGCM", cluster_TIC = "gx1", t_var = "T", y_var = "M",
                                           curveFun = "QUAD", intrinsic = FALSE, records = 1:9)),
     # a time column that is also a growth or class-membership covariate
@@ -42,7 +44,8 @@ test_that("the parameter map reproduces the likelihood exactly for every kind of
     fit <- .std_unfitted(fn, a, dat)
     raw <- fit@mxOutput
     plan <- nlpsem:::.std_plan(dat, sub, a$curveFun, a$y_var, a$records, a$t_var, a$TVC, a$decompose,
-                               covariates = c(a$growth_TIC, a$cluster_TIC))
+                               covariates = c(a$growth_TIC, a$cluster_TIC),
+                               groups = if (!is.null(a$grp_var)) dat[[a$grp_var]])
     expect_false(is.null(plan), info = nm)
     a_std <- a
     a_std$growth_TIC <- nlpsem:::.std_cov(plan, a$growth_TIC)
@@ -78,6 +81,53 @@ test_that("unit factors follow the units of each growth factor", {
   quad <- nlpsem:::.std_param_map(c("Y_mueta2", "Y_psi12"), nlpsem:::.std_plan(dat, "LGCM", "QUAD", "M", 1:9, "T"))
   expect_equal(quad$factor, c(Y_mueta2 = sy / b^2, Y_psi12 = sy^2 / b^3))
   expect_equal(nlpsem:::.std_param_map(c("Y_mueta0", "Y_unknown"), plan)$unknown, "Y_unknown")
+})
+
+test_that("multiple-group and mixture fits scale outcomes within groups", {
+  dat <- .golden_data(n = 200)
+  within <- function(x, g) sqrt(sum((x - ave(x, g))^2) / (length(x) - length(unique(g))))
+  plan <- nlpsem:::.std_plan(dat, "TVC", "EXP", "M", 1:9, "T", "Rs", 0, groups = dat$SEX)
+  expect_equal(plan$processes$Y$scale, within(dat$M1, dat$SEX))
+  expect_equal(plan$processes$X$scale, within(dat$Rs1, dat$SEX))
+  expect_identical(plan$processes$Y$scale_basis, "within groups")
+  expect_equal(plan$processes$Y$center, mean(dat$M1))
+  # one group, no groups, or groups of the wrong length: the overall standard deviation
+  for (g in list(rep(1, nrow(dat)), NULL, dat$SEX[-1])) {
+    p <- nlpsem:::.std_plan(dat, "LGCM", "EXP", "M", 1:9, "T", groups = g)
+    expect_equal(p$processes$Y$scale, sd(dat$M1))
+    expect_identical(p$processes$Y$scale_basis, "overall")
+  }
+})
+
+test_that("standardized fits converge when groups or classes are far apart", {
+  skip_on_cran()
+  # Two classes of negative exponential trajectories whose intercepts are 50 apart: the overall
+  # first-occasion standard deviation is about five times the within-class one.
+  set.seed(20261027)
+  n <- 300; class <- rep(1:2, each = n / 2)
+  eta0 <- c(0, 50)[class] + rnorm(n, sd = 5); eta1 <- 25 + rnorm(n, sd = 3)
+  dat <- data.frame(id = seq_len(n), class = class)
+  for (j in 1:10) {
+    tj <- if (j %in% c(1, 10)) rep(j - 1, n) else j - 1 + runif(n, -0.25, 0.25)
+    dat[[paste0("T", j)]] <- tj
+    dat[[paste0("Y", j)]] <- eta0 + eta1 * (1 - exp(-0.6 * tj)) + rnorm(n)
+  }
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  fit_both <- function(f) {
+    std <- f(); raw <- .with_std(FALSE, f())
+    list(std = std@mxOutput@output, raw = raw@mxOutput@output, spec = getSpecification(std)$fitting$standardization)
+  }
+  multigroup <- fit_both(function() suppressMessages(getMGroup(dat = dat, grp_var = "class", sub_Model = "LGCM", y_var = "Y",
+                                                               t_var = "T", records = 1:10, curveFun = "EXP", intrinsic = FALSE)))
+  mixture <- fit_both(function() { set.seed(20191029)
+    suppressMessages(getMIX(dat = dat, prop_starts = c(0.5, 0.5), sub_Model = "LGCM", y_var = "Y", t_var = "T", records = 1:10,
+                            curveFun = "EXP", intrinsic = FALSE)) })
+  for (res in list(multigroup, mixture)) {
+    expect_identical(res$spec$processes$scale_basis, "within groups")
+    expect_lt(res$spec$processes$scale, sd(dat$Y1) / 3)
+    expect_equal(res$std$status$code, 0)
+    expect_equal(res$std$Minus2LogLikelihood, res$raw$Minus2LogLikelihood, tolerance = 1e-8)
+  }
 })
 
 test_that("a covariate that is also a time column is not rescaled", {

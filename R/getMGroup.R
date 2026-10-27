@@ -99,8 +99,9 @@
 #'
 #' @section Standardized fitting:
 #' Latent growth curve, latent change score, TVC and multivariate sub-models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
-#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
-#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, pooled within
+#' the groups, a time-varying covariate is divided by its first-occasion standard deviation (also pooled within
+#' the groups), and time is divided by the
 #' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
 #' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
 #' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
@@ -200,7 +201,8 @@ getMGroup <- function(dat, grp_var, sub_Model, t_var, records, y_var, curveFun, 
     else{
       mxRun(model_mx)
     }
-  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose, covariates = growth_TIC),
+  }, plan = .std_plan(dat, sub_Model, curveFun, y_var, records, t_var, TVC, decompose, covariates = growth_TIC,
+                  groups = dat[[grp_var]]),
   build = function(plan) getMGroup.mxModel(dat = .std_data(dat, plan), grp_var = grp_var, nClass = nClass, sub_Model = sub_Model, t_var = t_var, y_var = y_var,
                                   curveFun = curveFun, intrinsic = intrinsic, records = records, y_model = y_model,
                                   m_var = m_var, x_var = x_var, x_type = x_type, TVC = TVC, decompose = decompose,

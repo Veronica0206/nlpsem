@@ -21,6 +21,13 @@
   fits missed. JB fits improve but stop with status 6: their random slope and acceleration terms
   are nearly collinear on this sample.
 * Mediation, linear, nonparametric and bilinear spline models are fitted as before.
+* In multiple-group and mixture models, the standardized fit scales each outcome (and a TVC) by the
+  standard deviation of its first occasion pooled within the groups, or within the provisional classes
+  of the automatic starting values; the overall standard deviation is used with user-supplied starts.
+  With well-separated groups or classes the overall standard deviation is several times the
+  within-group one, so every within-group variance became small on the standardized scale and the
+  optimizer stopped with status 6 short of the optimum that the raw-scale fit reached with status 0.
+  `getSpecification()` records the scale basis.
 * A growth or class-membership covariate that is also a time, outcome or TVC column (for example
   baseline age, `growth_TIC = "T1"`) is read from an unscaled copy in the standardized fit. It was
   rescaled with the time column before, which made the converted solution and likelihood wrong.
