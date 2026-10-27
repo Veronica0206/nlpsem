@@ -1,21 +1,23 @@
 #' @title Simulate Longitudinal Data from the Models of the Package
 #'
-#' @description This function generates wide-format longitudinal data from the models that \code{getLGCM()},
-#' \code{getLCSM()}, \code{getTVCmodel()}, \code{getMGM()} and \code{getMediation()} fit, optionally with
-#' time-invariant covariates (TICs) and several latent classes (\code{getMIX()}). The true parameter values are
-#' attached to the data under the names that the matching fitting function uses in its \code{Estimates}, so
-#' that a fit can be compared with the values that generated the data.
+#' @description This function generates wide-format longitudinal data in which each person's repeated measures
+#' follow a latent growth curve, optionally with time-invariant covariates (TICs), a time-varying covariate (TVC),
+#' several outcomes, a mediation structure, and several latent classes. The same data can be fitted with a
+#' latent growth curve model or a latent change score model (\code{getLGCM()} or \code{getLCSM()}, or
+#' \code{y_model} in \code{getTVCmodel()}, \code{getMGM()}, \code{getMGroup()} and \code{getMIX()}), and
+#' mediation data with \code{getMediation()}. The true parameter values are attached to the data under the names
+#' that these fitting functions use in their \code{Estimates}, which are the same for both models, so that a fit
+#' can be compared with the values that generated the data.
 #'
 #' @param n An integer: the number of persons. Default is \code{500}.
-#' @param sub_Model A string: \code{"LGCM"} (latent growth curve model), \code{"LCSM"} (latent change score model),
-#' \code{"TVC"} (growth model with a time-varying covariate), \code{"MGM"} (multivariate growth model) or
-#' \code{"MED"} (longitudinal mediation model). Default is \code{"LGCM"}.
-#' @param curveFun A string specifying the functional form. Supported options for a latent growth curve model are
-#' \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"} (or
-#' \code{"EXP"}), \code{"Jenss-Bayley"} (or \code{"JB"}), and \code{"bilinear spline"} (or \code{"BLS"}); for a
-#' latent change score model, \code{"quadratic"}, \code{"negative exponential"}, \code{"Jenss-Bayley"}, and
-#' \code{"nonparametric"} (or \code{"NonP"}); for \code{sub_Model = "MED"}, \code{"linear"} and
-#' \code{"bilinear spline"}.
+#' @param sub_Model A string: \code{"LGCM"} (one outcome), \code{"TVC"} (an outcome with a time-varying
+#' covariate), \code{"MGM"} (several outcomes) or \code{"MED"} (longitudinal mediation). Default is \code{"LGCM"}.
+#' @param curveFun A string specifying the functional form of the growth curves: \code{"linear"} (or
+#' \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"} (or \code{"EXP"}),
+#' \code{"Jenss-Bayley"} (or \code{"JB"}), \code{"bilinear spline"} (or \code{"BLS"}) or \code{"nonparametric"}
+#' (or \code{"NonP"}); for \code{sub_Model = "MED"}, \code{"linear"} or \code{"bilinear spline"}. A latent growth
+#' curve model fits all but the nonparametric form, and a latent change score model fits the quadratic, negative
+#' exponential, Jenss-Bayley and nonparametric forms.
 #' @param intrinsic A logical flag: whether the growth ratio (negative exponential and Jenss-Bayley) or the knot
 #' (bilinear spline) varies between persons. Not used for \code{sub_Model = "MED"}, whose knots are the same for
 #' everyone. Default is \code{FALSE}.
@@ -24,8 +26,6 @@
 #' @param jitter A non-negative number: each person's interior occasions are drawn uniformly within
 #' \code{jitter} of the planned ones (individually varying measurement occasions); the first and the last
 #' occasions are the planned ones. Default is \code{0.25}.
-#' @param y_model For \code{sub_Model = "TVC"} or \code{"MGM"}: \code{"LGCM"} or \code{"LCSM"}. Default is
-#' \code{"LGCM"}.
 #' @param decompose For \code{sub_Model = "TVC"}: \code{0} (the TVC enters directly), \code{1} (through its
 #' interval-specific slopes), \code{2} (its interval-specific changes) or \code{3} (its change from baseline).
 #' @param x_type For \code{sub_Model = "MED"}: \code{"baseline"} or \code{"longitudinal"} predictor.
@@ -37,8 +37,7 @@
 #' \code{cov} of the cluster TICs, and \code{beta}, a matrix of multinomial-logit coefficients with one row per
 #' class (the first row zeros, for the reference class) and one column for the intercept and each TIC.
 #' Default is \code{NULL}.
-#' @param growth_TIC A character vector of column names for the growth TICs (\code{"LGCM"}, \code{"LCSM"} and
-#' \code{"TVC"}). Default is \code{"ex1"}, \code{"ex2"}, ... when \code{params} has growth-TIC effects.
+#' @param growth_TIC A character vector of column names for the growth TICs (\code{"LGCM"} and \code{"TVC"}). Default is \code{"ex1"}, \code{"ex2"}, ... when \code{params} has growth-TIC effects.
 #' @param cluster_TIC A character vector of column names for the cluster TICs. Default is \code{"gx1"},
 #' \code{"gx2"}, ... when \code{cluster} is given.
 #' @param y_var The prefix of the outcome columns; for \code{sub_Model = "MGM"}, one prefix per process.
@@ -60,17 +59,27 @@
 #'
 #' @details Growth factors, TICs and the baseline of a TVC or of a mediation predictor are drawn from
 #' multivariate normal distributions, each person's repeated measures follow the functional form at their own
-#' occasions, and normal residuals are added (correlated between processes at the same occasion). With a latent
-#' change score model, a parametric form generates the same trajectories as a latent growth curve model (the
-#' latent change score model describes such a trajectory by its rates of change), and the nonparametric form
-#' generates change scores: the slope of each interval is \code{eta1} times the interval's relative rate.
-#' With a random growth ratio or knot, each person's trajectory is the exact curve at their own ratio or knot,
-#' while the fitting functions describe such a model by a first-order Taylor expansion around the mean ratio
-#' or knot; their estimates therefore recover the generating values approximately.
+#' occasions, and normal residuals are added (correlated between processes at the same occasion). Each
+#' trajectory is the exact growth curve at the person's own growth factors; a latent change score model
+#' describes the same trajectory by its rates of change. The nonparametric form is a growth curve whose slope in
+#' each interval is \code{eta1} times the interval's relative rate.
+#'
+#' Two approximations in the fitting functions affect how closely their estimates recover the generating values.
+#' With a random growth ratio or knot, a model is fitted through a first-order Taylor expansion of the curve
+#' around the mean ratio or knot. On its own this shifts the means of the growth factors by about 1\% or less
+#' with the default values, but more when a TVC changes over time in a similar shape to the curve: with a
+#' negative exponential curve and \code{decompose = 1} or \code{3}, for example, the TVC effect is 5\% to 10\%
+#' too high and the mean of \code{eta1} or of the ratio up to 3\% too low. A latent change score model takes each
+#' interval's change as the rate at the midpoint of the interval times its length, which is exact for the
+#' quadratic and nonparametric forms but not for the negative exponential and Jenss-Bayley forms; with ten yearly
+#' occasions and the default values, the mean of \code{eta1} (negative exponential) or \code{eta2}
+#' (Jenss-Bayley) is up to about 2.5\% too large in magnitude, and with a random ratio the covariance of
+#' \code{eta2} and the ratio is about 40\% too large. The midpoint error shrinks with shorter intervals or less
+#' curvature.
 #'
 #' The elements of a class list of \code{params} are:
 #' \describe{
-#'   \item{\code{"LGCM"}, \code{"LCSM"}}{\code{mean}: a named numeric vector of the means of the growth factors:
+#'   \item{\code{"LGCM"}}{\code{mean}: a named numeric vector of the means of the growth factors:
 #'   \code{eta0} (intercept), \code{eta1} (slope; for the negative exponential, the change to the asymptote; for
 #'   the bilinear spline, the slope before the knot; for the nonparametric form, the slope of the first
 #'   interval), \code{eta2} (quadratic coefficient; for the Jenss-Bayley, the coefficient of the exponential
@@ -120,16 +129,17 @@
 #' @importFrom stats rnorm runif
 #' @export
 getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE, nT = 10, times = NULL,
-                       jitter = 0.25, y_model = NULL, decompose = NULL, x_type = NULL, params = NULL, prop = NULL,
+                       jitter = 0.25, decompose = NULL, x_type = NULL, params = NULL, prop = NULL,
                        cluster = NULL, growth_TIC = NULL, cluster_TIC = NULL, y_var = NULL, t_var = "T",
                        TVC = "TVC", m_var = "M", x_var = "X", seed = NULL){
   validate_curveFun(curveFun)
-  if (!isTRUE(sub_Model %in% c("LGCM", "LCSM", "TVC", "MGM", "MED"))){
-    stop("sub_Model must be 'LGCM', 'LCSM', 'TVC', 'MGM' or 'MED'.")
+  if (!isTRUE(sub_Model %in% c("LGCM", "TVC", "MGM", "MED"))){
+    stop("sub_Model must be 'LGCM', 'TVC', 'MGM' or 'MED'; the data follow growth curves, which a latent change ",
+         "score model can also fit.")
   }
   form <- .sim_form(curveFun)
-  if (sub_Model %in% c("LGCM", "LCSM")) y_model <- sub_Model
-  if (sub_Model %in% c("TVC", "MGM") && is.null(y_model)) y_model <- "LGCM"
+  # Growth curves throughout; only the nonparametric form takes the names of a latent change score model.
+  y_model <- if (form == "NonP") "LCSM" else "LGCM"
   if (sub_Model == "MED"){
     if (!form %in% c("LIN", "BLS")) stop("A mediation model has a linear or bilinear spline functional form.")
     if (!isTRUE(x_type %in% c("baseline", "longitudinal"))) stop("x_type must be 'baseline' or 'longitudinal'.")
@@ -137,10 +147,6 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   } else{
     validate_curveFun_ymodel(curveFun, y_model)
     validate_intrinsic(intrinsic, curveFun, model_type = y_model)
-    if (y_model == "LGCM" && form == "NonP"){
-      stop("The nonparametric functional form is a latent change score model; use ",
-           if (sub_Model == "LGCM") "sub_Model" else "y_model", " = 'LCSM'.")
-    }
   }
   if (sub_Model == "TVC" && !isTRUE(decompose %in% 0:3)) stop("decompose must be 0, 1, 2 or 3.")
   if (is.null(y_var)) y_var <- if (sub_Model == "MGM") c("Y", "Z") else "Y"
@@ -210,7 +216,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   if (jitter > 0) occasions[, 2:(nT - 1)] <- occasions[, 2:(nT - 1)] + runif(n * (nT - 2), -jitter, jitter)
 
   # Repeated measures, TICs and growth factors, class by class
-  generate <- switch(EXPR = sub_Model, LGCM = , LCSM = .sim_class_uni, TVC = .sim_class_tvc, MGM = .sim_class_mgm,
+  generate <- switch(EXPR = sub_Model, LGCM = .sim_class_uni, TVC = .sim_class_tvc, MGM = .sim_class_mgm,
                      MED = .sim_class_med)
   columns <- list(); GF <- NULL
   for (k in seq_len(nClass)){
@@ -239,7 +245,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   attr(dat, "truth") <- .sim_truth(ctx, params, prop, cluster)
   attr(dat, "growth_factors") <- GF
   attr(dat, "settings") <- list(n = n, sub_Model = sub_Model, curveFun = curveFun, intrinsic = intrinsic, nT = nT,
-                                times = times, jitter = jitter, y_model = y_model, decompose = decompose,
+                                times = times, jitter = jitter, decompose = decompose,
                                 x_type = x_type, params = params, prop = prop, cluster = cluster,
                                 growth_TIC = growth_TIC, cluster_TIC = cluster_TIC, y_var = y_var, t_var = t_var,
                                 TVC = TVC, m_var = m_var, x_var = x_var, seed = seed)
@@ -297,7 +303,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     out
   }
   form <- ctx$form; nT <- ctx$nT
-  if (ctx$sub_Model %in% c("LGCM", "LCSM")){
+  if (ctx$sub_Model == "LGCM"){
     p <- uni(form, ctx$intrinsic, nT); p$sd <- NULL
     return(p)
   }
@@ -397,7 +403,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     p
   }
   factors <- ctx$factors; random <- ctx$random; nr <- length(random)
-  if (ctx$sub_Model %in% c("LGCM", "LCSM", "TVC")){
+  if (ctx$sub_Model %in% c("LGCM", "TVC")){
     if (is.null(p$mean) || is.null(p$cov) || is.null(p$residual)) stop("Each class needs 'mean', 'cov' and 'residual'", where, ".")
     p$mean <- check_mean(p$mean, factors, "mean")
     p$cov <- check_cov(p$cov, nr, "cov", paste(random, collapse = ", "))
@@ -636,7 +642,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     out[paste0(prefix, labels[idx[, "row"]], labels[idx[, "col"]], suffix)] <- cov[idx]
     out
   }
-  if (ctx$sub_Model %in% c("LGCM", "LCSM", "TVC")){
+  if (ctx$sub_Model %in% c("LGCM", "TVC")){
     pre <- if (ctx$sub_Model == "TVC") "Y_" else ""
     nTIC <- if (is.null(p[["beta"]])) 0L else ncol(p[["beta"]])
     shift <- if (nTIC > 0) drop(p[["beta"]] %*% p$tic_mean) else rep(0, length(random))
@@ -748,8 +754,8 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
 .sim_fit_names <- function(ctx){
   nT <- ctx$nT
   out <- switch(EXPR = ctx$sub_Model,
-    LGCM = .auto_names_LGCM(ctx$curveFun, ctx$intrinsic, ctx$growth_TIC),
-    LCSM = .auto_names_LCSM(ctx$curveFun, ctx$intrinsic, ctx$growth_TIC, nT),
+    LGCM = if (ctx$y_model == "LCSM") .auto_names_LCSM(ctx$curveFun, ctx$intrinsic, ctx$growth_TIC, nT) else
+      .auto_names_LGCM(ctx$curveFun, ctx$intrinsic, ctx$growth_TIC),
     TVC = .auto_names_TVC(ctx$curveFun, ctx$intrinsic, seq_len(nT), ctx$y_model, ctx$decompose, ctx$growth_TIC),
     MGM = .auto_names_MGM(ctx$curveFun, ctx$intrinsic, ctx$y_var, rep(list(seq_len(nT)), length(ctx$y_var)), ctx$y_model),
     MED = .auto_names_MED(ctx$curveFun, ctx$x_type, "X", "M", "Y"))

@@ -1,18 +1,23 @@
 # nlpsem 1.0.0.9006 (standardized fitting development update)
 
-* New `getSimData()` simulates wide-format longitudinal data from a latent growth curve model (linear,
-  quadratic, negative exponential, Jenss-Bayley, bilinear spline) or a latent change score model
-  (quadratic, negative exponential, Jenss-Bayley, nonparametric), with fixed or random growth ratios and
-  knots, individually varying measurement occasions, growth TICs, and several latent classes with fixed
-  proportions or cluster-TIC multinomial logits. The true parameter values are attached under the names of
-  the matching fit's `Estimates`, and each person's growth factors are attached too, so a fit can be
-  compared with the values that generated the data. It also generates multivariate growth models (two or
-  more outcomes, with growth factors and residuals correlated across outcomes), models with a time-varying
-  covariate (a direct effect, or decompositions 1, 2 or 3, in which the outcome responds to the TVC's slopes,
-  interval changes or change from baseline and the TVC's baseline predicts the outcome's growth factors),
-  and longitudinal mediation models (linear or bilinear spline, with a baseline or longitudinal predictor).
-  A new section of the workflow vignette generates data, fits the matching model and compares the
-  estimates with the truth.
+* New `getSimData()` simulates wide-format longitudinal data in which each person's repeated measures follow
+  a latent growth curve (linear, quadratic, negative exponential, Jenss-Bayley, bilinear spline or
+  nonparametric), with fixed or random growth ratios and knots, individually varying measurement occasions,
+  growth TICs, and several latent classes with fixed proportions or cluster-TIC multinomial logits. The same
+  data can be fitted with a latent growth curve model or a latent change score model, which use the same
+  names for the true values. The true parameter values are attached under the names of the fit's
+  `Estimates`, and each person's growth factors are attached too, so a fit can be compared with the values
+  that generated the data. It also generates multivariate growth models (two or more outcomes, with growth
+  factors and residuals correlated across outcomes), models with a time-varying covariate (a direct effect,
+  or decompositions 1, 2 or 3, in which the outcome responds to the TVC's slopes, interval changes or change
+  from baseline and the TVC's baseline predicts the outcome's growth factors), and longitudinal mediation
+  models (linear or bilinear spline, with a baseline or longitudinal predictor). A new section of the
+  workflow vignette generates data, fits the matching model and compares the estimates with the truth.
+* The help of `getSimData()`, `getLCSM()` and `getTVCmodel()` describes two approximations measured on
+  generated data: the first-order Taylor expansion of models with a random growth ratio or knot (about 1% or
+  less on the growth factor means, but a TVC effect 5% to 10% too high with a negative exponential curve and
+  `decompose = 1` or `3`), and the midpoint rate of latent change score models with a negative exponential
+  or Jenss-Bayley form (means up to about 2.5% too large in magnitude with ten yearly occasions).
 * Quadratic, negative exponential and Jenss-Bayley models, with fixed or random ratios, are
   fitted to standardized data and converted back exactly in `getLGCM()`, `getLCSM()`,
   `getTVCmodel()`, `getMGM()`, `getMGroup()` and `getMIX()`. Each outcome is centred and scaled

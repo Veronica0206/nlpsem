@@ -1,18 +1,18 @@
 # getSimData(): structure, generating distribution, and recovery of the true values by the matching fit.
 
-test_that("simulated data have the columns and true values of the matching fit", {
-  specs <- list(c("LGCM", "LIN", FALSE), c("LGCM", "QUAD", FALSE), c("LGCM", "EXP", TRUE), c("LGCM", "JB", FALSE),
-                c("LGCM", "BLS", TRUE), c("LCSM", "QUAD", FALSE), c("LCSM", "JB", TRUE), c("LCSM", "NonP", FALSE))
+test_that("simulated data have the columns and true values of the growth curve and change score fits", {
+  specs <- list(c("LIN", FALSE), c("QUAD", FALSE), c("EXP", TRUE), c("JB", FALSE), c("JB", TRUE), c("BLS", TRUE), c("NonP", FALSE))
   for (s in specs) {
-    intrinsic <- as.logical(s[3])
-    dat <- getSimData(n = 30, sub_Model = s[1], curveFun = s[2], intrinsic = intrinsic, seed = 1)
+    intrinsic <- as.logical(s[2])
+    dat <- getSimData(n = 30, curveFun = s[1], intrinsic = intrinsic, seed = 1)
     expect_identical(names(dat), c("id", paste0("Y", 1:10), paste0("T", 1:10)), info = paste(s, collapse = " "))
-    fit_names <- if (s[1] == "LGCM") nlpsem:::.auto_names_LGCM(s[2], intrinsic, NULL) else
-      nlpsem:::.auto_names_LCSM(s[2], intrinsic, NULL, 10)
     truth <- attr(dat, "truth")
-    expect_true(all(names(truth) %in% fit_names), info = paste(s, collapse = " "))
-    # every free parameter of the fit, without the derived change-score quantities
-    expect_identical(names(truth), fit_names[!grepl("_est[0-9]*$", fit_names)], info = paste(s, collapse = " "))
+    # every free parameter of each fit that supports the form, without the derived change-score quantities
+    if (s[1] != "NonP") expect_identical(names(truth), nlpsem:::.auto_names_LGCM(s[1], intrinsic, NULL), info = paste(s, collapse = " "))
+    if (!s[1] %in% c("LIN", "BLS")) {
+      lcsm <- nlpsem:::.auto_names_LCSM(s[1], intrinsic, NULL, 10)
+      expect_identical(names(truth), lcsm[!grepl("_est[0-9]*$", lcsm)], info = paste(s, collapse = " "))
+    }
     expect_equal(dat$T1, rep(0, 30)); expect_equal(dat$T10, rep(9, 30))
     expect_true(all(abs(as.matrix(dat[paste0("T", 2:9)]) - matrix(1:8, 30, 8, byrow = TRUE)) <= 0.25))
   }
@@ -61,8 +61,7 @@ test_that("classes follow the proportions or the cluster-TIC logits", {
 })
 
 test_that("inputs that do not describe a model are rejected", {
-  expect_error(getSimData(curveFun = "NonP"), "sub_Model = 'LCSM'")
-  expect_error(getSimData(sub_Model = "LCSM", curveFun = "LIN"), "LCSM does not support")
+  expect_error(getSimData(sub_Model = "LCSM", curveFun = "QUAD"), "latent change score model can also fit")
   expect_error(getSimData(curveFun = "LIN", intrinsic = TRUE), "intrinsic")
   expect_error(getSimData(curveFun = "LIN", params = list(mean = c(eta0 = 1, eta1 = 1), cov = diag(3), residual = 1)), "2 x 2")
   expect_error(getSimData(curveFun = "LIN", params = list(mean = c(eta0 = 1, eta1 = 1), cov = matrix(c(1, 2, 2, 1), 2), residual = 1)),
@@ -87,7 +86,15 @@ test_that("fits of the matching model recover the true values", {
   set.seed(20191029)
   recover(dat, suppressMessages(getLGCM(dat = dat, t_var = "T", y_var = "Y", curveFun = "EXP", intrinsic = TRUE, records = 1:10,
                                         paramOut = TRUE)))
-  dat <- getSimData(n = 500, sub_Model = "LCSM", curveFun = "NonP", seed = 20261027)
+  # one data set, fitted as a growth curve and as change scores
+  dat <- getSimData(n = 500, curveFun = "QUAD", seed = 20261027)
+  set.seed(20191029)
+  recover(dat, suppressMessages(getLGCM(dat = dat, t_var = "T", y_var = "Y", curveFun = "QUAD", intrinsic = FALSE, records = 1:10,
+                                        paramOut = TRUE)))
+  set.seed(20191029)
+  recover(dat, suppressMessages(getLCSM(dat = dat, t_var = "T", y_var = "Y", curveFun = "QUAD", intrinsic = FALSE, records = 1:10,
+                                        paramOut = TRUE)))
+  dat <- getSimData(n = 500, curveFun = "NonP", seed = 20261027)
   set.seed(20191029)
   recover(dat, suppressMessages(getLCSM(dat = dat, t_var = "T", y_var = "Y", curveFun = "NonP", intrinsic = FALSE, records = 1:10,
                                         paramOut = TRUE)))
@@ -117,15 +124,16 @@ test_that("fits of the matching model recover the true values", {
 test_that("multivariate, TVC and mediation data carry the true values of the matching fit", {
   configs <- list(
     list(sub_Model = "MGM", curveFun = "LIN"), list(sub_Model = "MGM", curveFun = "BLS", intrinsic = TRUE, y_var = c("Y", "Z", "W")),
-    list(sub_Model = "MGM", y_model = "LCSM", curveFun = "NonP"), list(sub_Model = "MGM", y_model = "LCSM", curveFun = "JB", intrinsic = TRUE),
+    list(sub_Model = "MGM", curveFun = "NonP"), list(sub_Model = "MGM", curveFun = "JB", intrinsic = TRUE),
     list(sub_Model = "TVC", decompose = 0, curveFun = "EXP"), list(sub_Model = "TVC", decompose = 1, curveFun = "BLS", intrinsic = TRUE),
-    list(sub_Model = "TVC", decompose = 2, y_model = "LCSM", curveFun = "QUAD"), list(sub_Model = "TVC", decompose = 3, y_model = "LCSM", curveFun = "NonP"),
+    list(sub_Model = "TVC", decompose = 2, curveFun = "QUAD"), list(sub_Model = "TVC", decompose = 3, curveFun = "NonP"),
     list(sub_Model = "MED", curveFun = "LIN", x_type = "baseline"), list(sub_Model = "MED", curveFun = "LIN", x_type = "longitudinal"),
     list(sub_Model = "MED", curveFun = "BLS", x_type = "baseline"), list(sub_Model = "MED", curveFun = "BLS", x_type = "longitudinal"))
   for (cfg in configs) {
     dat <- do.call(getSimData, c(list(n = 30, seed = 1), cfg))
     s <- attr(dat, "settings")
-    ctx <- list(sub_Model = s$sub_Model, curveFun = s$curveFun, intrinsic = s$intrinsic, nT = s$nT, y_model = s$y_model,
+    ctx <- list(sub_Model = s$sub_Model, curveFun = s$curveFun, intrinsic = s$intrinsic, nT = s$nT,
+                y_model = if (s$curveFun == "NonP") "LCSM" else "LGCM",
                 decompose = s$decompose, x_type = s$x_type, y_var = s$y_var, growth_TIC = s$growth_TIC)
     label <- paste(unlist(cfg), collapse = " ")
     expect_identical(names(attr(dat, "truth")), nlpsem:::.sim_fit_names(ctx), info = label)
@@ -136,6 +144,23 @@ test_that("multivariate, TVC and mediation data carry the true values of the mat
   p$tic_mean <- c(0, 0); p$tic_cov <- diag(2); p$beta <- matrix(0.5, 2, 2); p$cov_bl <- c(0.3, 0.2)
   truth <- attr(getSimData(n = 30, sub_Model = "TVC", curveFun = "LIN", decompose = 1, params = p, seed = 1), "truth")
   expect_equal(truth[c("betaTIC10", "covBL1", "covBL2", "muTIC2", "phiTIC12")], c(betaTIC10 = 0.5, covBL1 = 0.3, covBL2 = 0.2, muTIC2 = 0, phiTIC12 = 0))
+})
+
+test_that("growth curve and change score fits share the names of the true values of every parametric form", {
+  for (form in c("QUAD", "EXP", "JB")) for (intrinsic in c(FALSE, TRUE)) {
+    if (form == "QUAD" && intrinsic) next
+    names_of <- function(...) nlpsem:::.sim_fit_names(list(curveFun = form, intrinsic = intrinsic, nT = 10, y_var = c("Y", "Z"), ...))
+    label <- paste(form, intrinsic)
+    for (tic in list(NULL, c("ex1", "ex2"))) {
+      expect_identical(names_of(sub_Model = "LGCM", y_model = "LGCM", growth_TIC = tic), names_of(sub_Model = "LGCM", y_model = "LCSM", growth_TIC = tic),
+                       info = label)
+      for (decompose in 0:3) {
+        expect_identical(names_of(sub_Model = "TVC", y_model = "LGCM", decompose = decompose, growth_TIC = tic),
+                         names_of(sub_Model = "TVC", y_model = "LCSM", decompose = decompose, growth_TIC = tic), info = label)
+      }
+    }
+    expect_identical(names_of(sub_Model = "MGM", y_model = "LGCM"), names_of(sub_Model = "MGM", y_model = "LCSM"), info = label)
+  }
 })
 
 test_that("multivariate data have the requested cross-process covariances", {
