@@ -19,6 +19,7 @@ test_that("getMGM preserves multi-character outcome prefixes", {
       OpenMx::mxModel("stub", type = "RAM")
     },
     mxRun = function(model) model,
+    .warn_fit_issues = function(object) object,
     .package = "nlpsem"
   )
 

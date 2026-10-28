@@ -60,6 +60,12 @@
 #' Covariance checks assume references resolve within each RAM model; custom
 #' cross-model covariance expressions require additional independent checks.
 #'
+#' The fitting functions (\code{getLGCM()}, \code{getLCSM()}, \code{getTVCmodel()}, \code{getMGM()},
+#' \code{getMediation()}, \code{getMGroup()} and \code{getMIX()}) run these checks on each new fit and return
+#' the fit with a warning of class \code{"nlpsem_diagnostics_warning"} that lists the issues when there are
+#' any, so that a solution with, for example, an indefinite covariance matrix is not reported silently.
+#' Missing standard errors are recorded as unavailable and do not raise the warning.
+#'
 #' @examples
 #' load(system.file("extdata", "getTVCmodel_examples.RData", package = "nlpsem"))
 #' diagnostics <- getDiagnostics(Math_TVCchgBL_BLS_r)
@@ -329,4 +335,20 @@ getDiagnostics <- function(object, tolerance = 1e-8) {
   } else if (out$scaled_minimum_eigenvalue <= tolerance) "near_boundary" else "positive_definite"
   out$detail <- "Stored matrix; diagonal-scaled eigenvalue classification"
   out
+}
+
+## Warn when the diagnostics of a new fit report issues; the fit is returned either way.
+.warn_fit_issues <- function(object) {
+  issues <- tryCatch(getDiagnostics(object)$issues, error = function(e) {
+    paste("the diagnostics could not be computed:", conditionMessage(e))
+  })
+  if (length(issues)) {
+    shown <- paste(utils::head(issues, 3L), collapse = "; ")
+    if (length(issues) > 3L) shown <- paste0(shown, "; and ", length(issues) - 3L, " more")
+    warning(structure(class = c("nlpsem_diagnostics_warning", "warning", "condition"),
+                      list(message = paste0("getDiagnostics() reports ", length(issues), " issue(s) with this solution: ",
+                                            shown, ". Inspect them before interpreting the estimates."),
+                           call = NULL)))
+  }
+  object
 }

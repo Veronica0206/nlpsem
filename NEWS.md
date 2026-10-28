@@ -19,6 +19,10 @@
   length (a single baseline mediation path is no longer copied to every growth factor). Simulated processes
   are named only when the data are assembled, so prefixes such as `y_var = "M"`, `"TVC"` or `"TIC"` no longer
   drop or overwrite columns, and prefixes or covariate names that would duplicate a column are rejected.
+* The fitting functions warn when a new fit fails the checks of `getDiagnostics()`: a nonzero optimizer
+  status, an inadmissible covariance matrix, a Hessian that is not positive definite, incomplete standard
+  errors or an empty mixture class. The fit is still returned; the warning (class
+  `"nlpsem_diagnostics_warning"`) lists the issues, so an invalid solution is no longer reported silently.
 * Multivariate models reject outcome prefixes whose parameter labels would be ambiguous. The parameters shared
   by two outcomes are labelled by joining the two prefixes, so with `y_var = c("A", "B", "AB")` the covariance
   of outcomes A and B and the variance of outcome AB had the same label, and with `c("A", "BC", "AB", "C")`

@@ -18,7 +18,7 @@
   testthat::local_mocked_bindings(
     getLGCM.mxModel = function(...) OpenMx::mxModel("lazy_metadata_stub", type = "RAM"),
     mxRun = function(model) model,
-    .package = "nlpsem", .env = .env
+    .warn_fit_issues = function(object) object, .package = "nlpsem", .env = .env
   )
 }
 
@@ -62,7 +62,7 @@ test_that("user-supplied starts retain their evaluation order before retries", {
       force(extraTries)
       events <<- c(events, "retry")
       model
-    }, .package = "nlpsem"
+    }, .warn_fit_issues = function(object) object, .package = "nlpsem"
   )
   .lazy_metadata_preserve_rng({
     set.seed(303)
@@ -100,7 +100,7 @@ test_that("automatic-start random draws precede lazy retry arguments", {
       force(extraTries)
       events <<- c(events, "retry")
       model
-    }, .package = "nlpsem"
+    }, .warn_fit_issues = function(object) object, .package = "nlpsem"
   )
   .lazy_metadata_preserve_rng({
     set.seed(517)

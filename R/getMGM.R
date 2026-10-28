@@ -63,6 +63,8 @@
 #' @seealso \code{\link{getLGCM}}, \code{\link{getMGroup}}, \code{\link{getMIX}}, \code{\link{getFigure}}
 #'
 #' @details New fits retain their resolved model specification and fitting provenance.
+#' A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+#' indefinite covariance matrix) is returned with a warning that lists them.
 #' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
 #' \code{logLik()} and \code{plot()} methods are available.
 #'
@@ -167,5 +169,6 @@ getMGM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, y_mod
     model <- new("myMxOutput", mxOutput = model)
   }
   model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
+  model <- .warn_fit_issues(model)
   return(model)
 }

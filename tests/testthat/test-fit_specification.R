@@ -14,12 +14,13 @@
 
 .fit_specification_mock_fitters <- function(.env = parent.frame()) {
   builder <- function(...) OpenMx::mxModel("specification_stub", type = "RAM")
+  # the stubs are never fitted, so the fit-time diagnostics warning is not exercised here
   testthat::local_mocked_bindings(
     getLGCM.mxModel = builder, getLCSM.mxModel = builder,
     getTVC.mxModel = builder, getMGM.mxModel = builder,
     getMED.mxModel = builder, getMGroup.mxModel = builder,
     getMIX.mxModel = builder, mxRun = function(model) model,
-    mxTryHard = function(model, ...) model,
+    mxTryHard = function(model, ...) model, .warn_fit_issues = function(object) object,
     .package = "nlpsem", .env = .env
   )
 }
@@ -241,4 +242,18 @@ test_that("provenance reports nonconverged optimizer status without converting i
                  records = c(2L, 4L, 6L, 8L), starts = list(marker = 42))
   expect_identical(getSpecification(fit)$diagnostics$status, 6L)
   expect_identical(getSpecification(fit)$diagnostics$minus2LL, 123.4)
+})
+
+test_that("a new fit with diagnostic issues is returned with a classed warning", {
+  builder <- function(...) OpenMx::mxModel("specification_stub", type = "RAM")
+  local_mocked_bindings(getLGCM.mxModel = builder, mxRun = function(model) {
+    model@output$status <- list(code = 6L)
+    model@output$Minus2LogLikelihood <- 123.4
+    model
+  }, .package = "nlpsem")
+  expect_warning(fit <- getLGCM(.fit_specification_data(), "Time", "Score", "LIN", intrinsic = FALSE,
+                                records = c(2L, 4L, 6L, 8L), starts = list(marker = 42)),
+                 class = "nlpsem_diagnostics_warning", regexp = "Optimizer status is 6")
+  expect_s4_class(fit, "myMxOutput")
+  expect_identical(getSpecification(fit)$diagnostics$status, 6L)
 })

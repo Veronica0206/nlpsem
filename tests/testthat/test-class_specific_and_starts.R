@@ -265,8 +265,12 @@ test_that("mixture weight rows report the standard error of the softmax weight",
   dat <- .golden_data(n = 200)
   OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
   set.seed(20191029)
-  fit <- suppressMessages(getMIX(dat = dat, prop_starts = c(0.5, 0.5), sub_Model = "LGCM", t_var = "T", y_var = "M",
-                                 curveFun = "LIN", intrinsic = FALSE, records = 1:9, paramOut = TRUE))
+  # This fit is the inadmissible reference MIX_LGCM_LIN (an indefinite class covariance matrix); only the
+  # weight row is checked here, so its diagnostics warning is muffled.
+  fit <- withCallingHandlers(
+    suppressMessages(getMIX(dat = dat, prop_starts = c(0.5, 0.5), sub_Model = "LGCM", t_var = "T", y_var = "M",
+                            curveFun = "LIN", intrinsic = FALSE, records = 1:9, paramOut = TRUE)),
+    nlpsem_diagnostics_warning = function(w) invokeRestart("muffleWarning"))
   m <- fit@mxOutput
   w <- fit@Estimates[fit@Estimates$Name == "p2", ]
   expect_equal(w$Estimate, unname(m@output$estimate["w2"]))

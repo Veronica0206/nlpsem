@@ -69,6 +69,12 @@ Results describe the stored fit; manually changing it can leave cached
 outputs stale. Refit a modified model before interpreting these diagnostics.
 Covariance checks assume references resolve within each RAM model; custom
 cross-model covariance expressions require additional independent checks.
+
+The fitting functions (\code{getLGCM()}, \code{getLCSM()}, \code{getTVCmodel()}, \code{getMGM()},
+\code{getMediation()}, \code{getMGroup()} and \code{getMIX()}) run these checks on each new fit and return
+the fit with a warning of class \code{"nlpsem_diagnostics_warning"} that lists the issues when there are
+any, so that a solution with, for example, an indefinite covariance matrix is not reported silently.
+Missing standard errors are recorded as unavailable and do not raise the warning.
 }
 \examples{
 load(system.file("extdata", "getTVCmodel_examples.RData", package = "nlpsem"))
