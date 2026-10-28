@@ -103,7 +103,7 @@ Figure2 <- getFigure(
 show(Figure2)
 ```
 
-A comparison between Figure 1 and Figure 2 demonstrates that incorporating a TVC directly results in underestimation of the growth factor means.
+Figures 1 and 2 show each model's growth component, which leaves out the TVC effect; the dashed line adds it back. With the TVC entered directly, the growth component leaves out the TVC's full value at each occasion, while with interval-specific slopes it leaves out only the slope effect, so the two components describe different quantities.
 
 ## Example 2: Fit reduced bilinear spline LGCMs with a decomposed TVC (interval-specific slopes, interval-specific changes, and change from baseline) to examine the influence of baseline teacher-reported approach to learning and the development in reading ability on the development of mathematics ability. It also includes a visualization showcasing the growth status of mathematics ability.
 ```{r, message = FALSE, eval = FALSE}

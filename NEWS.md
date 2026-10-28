@@ -92,7 +92,9 @@
 * Plots of fits whose `records` are not in ascending order no longer fail. Plots of TVC models label
   their curves as the growth component, which excludes the effect of the TVC, and add the full
   model-implied mean of the outcome (or its change from baseline) at each wave, for each class or
-  group in mixture and multiple-group plots.
+  group in mixture and multiple-group plots. The TVC vignette explains that the growth components of a
+  model with a direct TVC and of one with interval-specific slopes describe different quantities, instead
+  of reading their difference as underestimation of the growth factor means.
 
 # nlpsem 1.0.0.9005 (NLS initialization development update)
 
