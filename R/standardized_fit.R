@@ -123,7 +123,9 @@ NULL
 
 ## Exact unit factor (raw = factor * standardized + shift) of every free-parameter label. When a label
 ## is not recognised, factor is NULL and the labels are listed in unknown, so the call is fitted on the raw scale.
-.std_param_map <- function(labels, plan, dimensionless = character()){
+## classes gives the class prefix of each label of a class submodel (see .std_class_prefixes); only that
+## prefix is removed, so an outcome name that looks like one (for example c1A) keeps its own units.
+.std_param_map <- function(labels, plan, dimensionless = character(), classes = character()){
   s <- vapply(plan$processes, `[[`, numeric(1), "scale")
   ctr <- vapply(plan$processes, function(p) if (isTRUE(p$centered)) p$center else 0, numeric(1))
   b <- plan$time$scale
@@ -136,7 +138,8 @@ NULL
   sx <- if ("X" %in% single) s[["X"]] else NA_real_
   factor <- shift <- stats::setNames(rep(NA_real_, length(labels)), labels)
   for (lab in labels){
-    bl <- sub("^c[0-9]+", "", lab)
+    cls <- classes[lab]
+    bl <- if (!is.na(cls) && startsWith(lab, cls)) substring(lab, nchar(cls) + 1L) else lab
     f <- NA_real_; sh <- 0
     hit <- prefixes[startsWith(bl, paste0(prefixes, "_"))][1]
     if (lab %in% dimensionless){
@@ -203,6 +206,18 @@ NULL
   unique(unlist(lapply(model@matrices, function(x){ l <- x@labels[x@free]; l[!is.na(l)] }), use.names = FALSE))
 }
 
+## Class prefix of each free label of the class submodels of a multiple-group or mixture model: the
+## builders label class k's parameters with the prefix c<k>. A single-group model has none.
+.std_class_prefixes <- function(model){
+  if (!length(model@submodels)) return(character())
+  out <- unlist(lapply(seq_along(model@submodels), function(k){
+    l <- unique(unlist(lapply(model@submodels[[k]]@matrices, function(x){ l <- x@labels[x@free]; l[!is.na(l)] }),
+                       use.names = FALSE))
+    stats::setNames(rep(paste0("c", k), length(l)), l)
+  }))
+  if (is.null(out)) character() else out
+}
+
 ## Fit model_mx (built on the raw data) with run(). For calls in the standardized scope (plan not NULL),
 ## build(plan) returns the same model built on .std_data(dat, plan); it is started from the raw starting
 ## values mapped exactly to the standardized scale, fitted with the same run(), and converted back.
@@ -214,7 +229,7 @@ NULL
   if (!length(start) || is.null(names(start)) || anyNA(names(start))){
     return(list(model = run(model_mx), standardization = NULL))
   }
-  map <- .std_param_map(names(start), plan, .std_container_labels(model_mx))
+  map <- .std_param_map(names(start), plan, .std_container_labels(model_mx), .std_class_prefixes(model_mx))
   if (is.null(map$factor)){
     return(list(model = run(model_mx),
                 standardization = list(applied = FALSE, reason = paste("unrecognised parameter labels:",

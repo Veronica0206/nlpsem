@@ -31,6 +31,11 @@
   `getMIX()` and `getSimData()` now stop before fitting or simulating, naming the conflict; latent change
   score models also reject prefixes that differ only in letter case. Prefixes that were unambiguous keep
   their labels and results.
+* Standardized fits keep each outcome's own units when an outcome name looks like a class prefix. The map
+  between the raw and standardized parameters removed a leading `c<k>` from every label, also outside
+  multiple-group and mixture models, so with `y_var = c("A", "c1A")` the parameters of `c1A` were converted
+  with the centre and scale of `A`: the fit returned wrong estimates with a zero optimizer status, or stopped
+  when the two outcomes' scales differed widely. Only the prefix of a parameter's own class is removed now.
 * Multivariate output takes residual variances, residual covariances and relative rates from their exact
   labels: a partial match collected `MY_residuals` with `Y_residuals` (and `XYZ_RES` with `YZ_RES`), so
   `paramOut = TRUE` failed after fitting.

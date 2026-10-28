@@ -7,6 +7,16 @@
   force(expr)
 }
 
+# Two outcomes named A and c1A (mathematics and ten times reading) and a copy of c1A named B.
+.with_class_like_names <- function(dat) {
+  for (j in 1:9) {
+    dat[[paste0("A", j)]] <- dat[[paste0("M", j)]]
+    dat[[paste0("c1A", j)]] <- 10 * dat[[paste0("R", j)]]
+    dat[[paste0("B", j)]] <- dat[[paste0("c1A", j)]]
+  }
+  dat
+}
+
 .std_unfitted <- function(fn, args, dat, starts = NULL) {
   call_args <- c(list(dat = dat), args, list(paramOut = FALSE))
   if (!is.null(starts)) call_args$starts <- starts
@@ -16,7 +26,7 @@
 test_that("the parameter map reproduces the likelihood exactly for every kind of label", {
   # Building without fitting: the optimizer calls return the model they are given.
   local_mocked_bindings(mxRun = function(model, ...) model, mxTryHard = function(model, ...) model, .package = "nlpsem")
-  dat <- .golden_data(n = 200)
+  dat <- .with_class_like_names(.golden_data(n = 200))
   cases <- list(
     LGCM_EXP_r_tic = list(getLGCM, "LGCM", list(t_var = "T", y_var = "M", curveFun = "EXP", intrinsic = TRUE, records = 1:9, growth_TIC = "ex1")),
     LCSM_JB_r = list(getLCSM, "LCSM", list(t_var = "T", y_var = "M", curveFun = "JB", intrinsic = TRUE, records = 1:9)),
@@ -36,7 +46,14 @@ test_that("the parameter map reproduces the likelihood exactly for every kind of
     LGCM_QUAD_timeTIC = list(getLGCM, "LGCM", list(t_var = "T", y_var = "M", curveFun = "QUAD", intrinsic = FALSE, records = 1:9,
                                                    growth_TIC = c("ex1", "T9"))),
     MIXc_EXP_timeTIC = list(getMIX, "LGCM", list(prop_starts = c(0.5, 0.5), sub_Model = "LGCM", cluster_TIC = "T9", t_var = "T",
-                                                 y_var = "M", curveFun = "EXP", intrinsic = FALSE, records = 1:9))
+                                                 y_var = "M", curveFun = "EXP", intrinsic = FALSE, records = 1:9)),
+    # an outcome name that looks like a class prefix, alone and inside genuine classes
+    MGM_QUAD_classlike = list(getMGM, "MGM", list(t_var = c("T", "T"), y_var = c("A", "c1A"), curveFun = "QUAD", intrinsic = FALSE,
+                                                  records = list(1:9, 1:9), y_model = "LGCM")),
+    MGroup_MGM_QUAD_classlike = list(getMGroup, "MGM", list(grp_var = "SEX", sub_Model = "MGM", t_var = c("T", "T"), y_var = c("c1A", "A"),
+                                                            curveFun = "QUAD", intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM")),
+    MIX_MGM_QUAD_classlike = list(getMIX, "MGM", list(prop_starts = c(0.5, 0.5), sub_Model = "MGM", t_var = c("T", "T"), y_var = c("A", "c1A"),
+                                                      curveFun = "QUAD", intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM"))
   )
   for (nm in names(cases)) {
     fn <- cases[[nm]][[1]]; sub <- cases[[nm]][[2]]; a <- cases[[nm]][[3]]
@@ -52,7 +69,7 @@ test_that("the parameter map reproduces the likelihood exactly for every kind of
     a_std$cluster_TIC <- nlpsem:::.std_cov(plan, a$cluster_TIC)
     std <- .with_std(FALSE, .std_unfitted(fn, a_std, nlpsem:::.std_data(dat, plan), starts = getSpecification(fit)$fitting$starts))@mxOutput
     theta <- OpenMx::omxGetParameters(raw)
-    map <- nlpsem:::.std_param_map(names(theta), plan, nlpsem:::.std_container_labels(raw))
+    map <- nlpsem:::.std_param_map(names(theta), plan, nlpsem:::.std_container_labels(raw), nlpsem:::.std_class_prefixes(raw))
     expect_length(map$unknown, 0)
     K <- sum(vapply(plan$processes, function(p) 2 * sum(!is.na(as.matrix(dat[, p$columns]))) * log(p$scale), numeric(1)))
     for (point in list(theta, theta * (1 + 0.003 * sin(seq_along(theta))))) {
@@ -63,6 +80,43 @@ test_that("the parameter map reproduces the likelihood exactly for every kind of
       expect_equal(o@output$Minus2LogLikelihood - z@output$Minus2LogLikelihood, K, tolerance = 1e-10, info = nm)
     }
   }
+})
+
+test_that("an outcome name that looks like a class prefix keeps its own units", {
+  local_mocked_bindings(mxRun = function(model, ...) model, mxTryHard = function(model, ...) model, .package = "nlpsem")
+  dat <- .with_class_like_names(.golden_data(n = 200))
+  # the same model under other outcome names (B is a copy of c1A) or in the other order maps every free
+  # parameter with the same factor and shift
+  map_of <- function(fn, args) {
+    set.seed(20191029)
+    raw <- .std_unfitted(fn, args, dat)@mxOutput
+    plan <- nlpsem:::.std_plan(dat, "MGM", args$curveFun, args$y_var, args$records, args$t_var)
+    labels <- names(OpenMx::omxGetParameters(raw))
+    map <- nlpsem:::.std_param_map(labels, plan, nlpsem:::.std_container_labels(raw), nlpsem:::.std_class_prefixes(raw))
+    expect_length(map$unknown, 0)
+    map
+  }
+  quad <- function(y_var, ...) list(t_var = c("T", "T"), y_var = y_var, curveFun = "QUAD", intrinsic = FALSE,
+                                    records = list(1:9, 1:9), y_model = "LGCM", ...)
+  for (order in list(c("A", "c1A"), c("c1A", "A"))) {
+    named <- map_of(getMGM, quad(order))
+    renamed <- map_of(getMGM, quad(sub("c1A", "B", order, fixed = TRUE)))
+    expect_equal(unname(named$factor), unname(renamed$factor))
+    expect_equal(unname(named$shift), unname(renamed$shift))
+    expect_equal(named$factor[["c1A_mueta0"]], sd(dat$c1A1))
+    expect_equal(named$shift[["c1A_mueta0"]], mean(dat$c1A1))
+    expect_equal(named$factor[["c1A_residuals"]], var(dat$c1A1))
+    expect_equal(named$shift[["A_mueta0"]], mean(dat$A1))
+  }
+  # genuine class prefixes are still removed: c1c1A is process c1A in class 1, c2A process A in class 2
+  grouped <- map_of(getMGroup, quad(c("A", "c1A"), grp_var = "SEX", sub_Model = "MGM"))
+  grouped_b <- map_of(getMGroup, quad(c("A", "B"), grp_var = "SEX", sub_Model = "MGM"))
+  expect_equal(unname(grouped$factor), unname(grouped_b$factor))
+  expect_equal(unname(grouped$shift), unname(grouped_b$shift))
+  expect_equal(grouped$shift[["c1c1A_mueta0"]], mean(dat$c1A1))
+  expect_equal(grouped$shift[["c2A_mueta0"]], mean(dat$A1))
+  expect_equal(nlpsem:::.std_param_map("c1A_mueta0", nlpsem:::.std_plan(dat, "MGM", "QUAD", c("A", "c1A"), list(1:9, 1:9), c("T", "T")),
+                                       classes = c(c1A_mueta0 = "c1"))$shift[[1]], mean(dat$A1))
 })
 
 test_that("unit factors follow the units of each growth factor", {
@@ -183,6 +237,21 @@ test_that("a standardized fit carries a consistent raw-scale solution and uncert
   expect_null(getSpecification(raw)$fitting$standardization)
   expect_equal(raw@mxOutput@output$Minus2LogLikelihood, out$Minus2LogLikelihood, tolerance = 1e-8)
   expect_equal(OpenMx::omxGetParameters(raw@mxOutput), OpenMx::omxGetParameters(m), tolerance = 1e-3)
+})
+
+test_that("renaming the outcomes of a standardized fit does not change it", {
+  skip_on_cran()
+  dat <- .with_class_like_names(.golden_data(n = 200))
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  fit <- function(y_var) {
+    set.seed(20191029)
+    suppressMessages(getMGM(dat = dat, t_var = c("T", "T"), y_var = y_var, curveFun = "QUAD", intrinsic = FALSE,
+                            records = list(1:9, 1:9), y_model = "LGCM"))@mxOutput
+  }
+  named <- fit(c("A", "c1A")); renamed <- fit(c("A", "B"))
+  expect_equal(named@output$Minus2LogLikelihood, renamed@output$Minus2LogLikelihood, tolerance = 1e-10)
+  expect_equal(unname(OpenMx::omxGetParameters(named)), unname(OpenMx::omxGetParameters(renamed)), tolerance = 1e-8)
+  expect_equal(unname(named@output$standardErrors), unname(renamed@output$standardErrors), tolerance = 1e-8)
 })
 
 test_that("other functional forms and mediation models are fitted as built", {
