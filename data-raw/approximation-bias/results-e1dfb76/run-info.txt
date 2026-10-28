@@ -1,0 +1,12 @@
+commit: e1dfb76e5b34c16d8d0353725a8e5409215b7d6c
+uncommitted changes: FALSE
+nlpsem: 1.0.0.9006
+R: R version 4.5.3 (2026-03-11)
+OpenMx: 2.22.11
+platform: aarch64-apple-darwin20
+persons per data set: 5000
+data seed: 2026
+fitting seed: 20191029
+optimizer: CSOLNP, tries = 3, one thread
+started: 2026-10-28 02:12:56 UTC
+finished: 2026-10-28 02:33:55 UTC

@@ -9,6 +9,7 @@ excluded from the built package (`.Rbuildignore`).
 | `regenerate_extdata.R` | Driver: loads the package and runs the seven `regen_*.R` scripts. |
 | `regen_getLGCM.R` ... `regen_getMIX.R` | One `inst/extdata/*_examples.RData` each; used by the vignettes and the tests. |
 | `make_golden_fits.R` | `tests/testthat/golden/fit_golden.rds`, the reference values for the fitting-layer tests. |
+| `approximation-bias/run_approximation_bias.R` | The approximation sizes quoted in the help of `getSimData()`, `getLCSM()` and `getTVCmodel()`; results and design in `approximation-bias/`. |
 
 Regenerate the example fits only together with a release, and compare the new objects with the old ones
 (log-likelihoods and parameter estimates) before replacing them: the vignette text quotes numbers from

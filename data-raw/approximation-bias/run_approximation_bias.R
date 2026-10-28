@@ -134,7 +134,7 @@ fits <- do.call(rbind, lapply(results, `[[`, "fit")); estimates <- do.call(rbind
 utils::write.csv(fits, file.path(out_dir, "fits.csv"), row.names = FALSE)
 utils::write.csv(estimates, file.path(out_dir, "estimates.csv"), row.names = FALSE)
 git <- function(...) tryCatch(system2("git", c("-C", shQuote(source_dir), ...), stdout = TRUE, stderr = FALSE), error = function(e) NA)
-writeLines(c(paste("source:", source_dir), paste("commit:", git("rev-parse", "HEAD")),
+writeLines(c(paste("commit:", git("rev-parse", "HEAD")),
              paste("uncommitted changes:", length(git("status", "--porcelain")) > 0),
              paste("nlpsem:", read.dcf(file.path(source_dir, "DESCRIPTION"), fields = "Version")[1, 1]),
              paste("R:", R.version.string), paste("OpenMx:", as.character(utils::packageVersion("OpenMx"))),
