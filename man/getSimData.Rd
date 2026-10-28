@@ -124,7 +124,7 @@ quadratic and nonparametric forms but not for the negative exponential and Jenss
 occasions and the default values, the mean of \code{eta1} (negative exponential) or \code{eta2}
 (Jenss-Bayley) is up to about 2.5\% too large in magnitude, and with a random ratio the covariance of
 \code{eta2} and the ratio is about 40\% too large. The midpoint error shrinks with shorter intervals or less
-curvature.
+curvature. These sizes come from one generated data set of 5,000 persons for each model.
 
 The elements of a class list of \code{params} are:
 \describe{

@@ -110,7 +110,7 @@ its default values (ten yearly occasions), the mean of \code{eta1} (negative exp
 curvature. With \code{intrinsic = TRUE}, the model is also fitted through a first-order Taylor expansion of the
 rate around the mean growth ratio, which shifts these means by a smaller amount in the opposite direction;
 together, the two approximations make the covariance of \code{eta2} and the ratio of a Jenss-Bayley model
-about 40\% too large in those data.
+about 40\% too large in those data (one generated data set of 5,000 persons for each model).
 }
 
 \examples{

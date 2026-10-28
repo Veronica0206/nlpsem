@@ -46,9 +46,9 @@ test_that("fits reproduce the stored reference values for every sub-model and fu
     if (!is.null(ref$error) || !isTRUE(ref$status == 0)) next
     res <- .fit_golden_case(cases[[nm]], .golden_case_data(cases[[nm]], dat))
     # Validity first: convergence, admissible covariance matrices, a positive-definite Hessian and
-    # complete standard errors; then numerical agreement.
+    # complete finite positive standard errors; then numerical agreement.
     expect_equal(res$status, 0, info = nm)
-    expect_identical(res$issues, character(0), info = nm)
+    expect_identical(.golden_validity_problems(res), character(0), info = nm)
     expect_equal(res$minus2LL, ref$minus2LL, tolerance = 1e-6, info = nm)
     expect_equal(names(res$estimates), names(ref$estimates), info = nm)
     expect_equal(res$estimates, ref$estimates, tolerance = 1e-4, info = nm)
@@ -64,4 +64,17 @@ test_that("getDiagnostics() reports the inadmissible reference solutions", {
     expect_equal(res$minus2LL, golden[[nm]]$minus2LL, tolerance = 1e-6, info = nm)
     expect_gt(length(res$issues), 0, label = paste("number of diagnostic issues of", nm))
   }
+})
+
+test_that("the reference gate requires a positive-definite Hessian and complete standard errors", {
+  skip_on_cran()
+  keys <- c("Calculate Hessian", "Standard Errors")
+  old <- lapply(keys, function(key) OpenMx::mxOption(NULL, key))
+  on.exit(for (i in seq_along(keys)) OpenMx::mxOption(NULL, keys[i], old[[i]]), add = TRUE)
+  for (key in keys) OpenMx::mxOption(NULL, key, "No")
+  case <- .golden_cases()$LGCM_LIN
+  res <- .fit_golden_case(case, .golden_case_data(case))
+  # getDiagnostics() records the missing standard errors as unavailable, not as an issue
+  expect_identical(res$issues, character(0))
+  expect_match(.golden_validity_problems(res), "standard errors: 0 of 6 available", all = FALSE)
 })

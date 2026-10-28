@@ -13,6 +13,19 @@
   from baseline and the TVC's baseline predicts the outcome's growth factors), and longitudinal mediation
   models (linear or bilinear spline, with a baseline or longitudinal predictor). A new section of the
   workflow vignette generates data, fits the matching model and compares the estimates with the truth.
+* `getSimData()` reads named parameters by name: a mean vector in another order (such as `c(eta1 = 2, eta0 = 20)`
+  for the means of a decomposed TVC) previously generated a different model while reporting the same true
+  values. Values must be finite, covariance matrices symmetric and positive definite, and paths of the exact
+  length (a single baseline mediation path is no longer copied to every growth factor). Simulated processes
+  are named only when the data are assembled, so prefixes such as `y_var = "M"`, `"TVC"` or `"TIC"` no longer
+  drop or overwrite columns, and prefixes or covariate names that would duplicate a column are rejected.
+* Multiple-group TVC plots draw each group's full model-implied mean at that group's own mean occasions, as
+  its growth-component curve, rather than at the occasions of all groups.
+* Observed curves no longer disappear from plots when a group or class has 1,000 or more observations at fewer
+  than ten distinct occasions (ggplot2's default smoother cannot fit them); the observed mean at each
+  occasion is drawn instead.
+* Positive reference fits in the tests must also have a positive-definite Hessian and complete standard errors,
+  which `getDiagnostics()` records as unavailable rather than as an issue.
 * The help of `getSimData()`, `getLCSM()` and `getTVCmodel()` describes two approximations measured on
   generated data: the first-order Taylor expansion of models with a random growth ratio or knot (about 1% or
   less on the growth factor means, but a TVC effect 5% to 10% too high with a negative exponential curve and

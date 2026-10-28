@@ -258,12 +258,55 @@ test_that("mixture and multiple-group TVC plots add each class's full model-impl
   labels <- ggplot2::ggplot_build(p)$plot$scales$get_scales("linetype")$get_labels()
   expect_true(all(c("Model Implied Growth Component (TVC Effect Excluded)", "Model Implied Mean Outcome (TVC Effect Included)") %in% labels))
   full <- p$layers[[5]]$data
-  times <- colMeans(dat[, paste0("T", 1:9)])
   par <- OpenMx::omxGetParameters(fit)
-  # With a direct TVC, each group's full mean is its growth component plus its kappa times its TVC means.
+  # With a direct TVC, each group's full mean is its growth component plus its kappa times its TVC means,
+  # at the group's own mean occasions.
   for (k in 1:2) {
+    times <- colMeans(fit@submodels[[k]]@data$observed[, paste0("T", 1:9)])
+    expect_equal(full$time[full$Class == k], unname(times))
     mean0 <- c(OpenMx::mxEvalByName(paste0("c", k, "Y_mean0"), fit@submodels[[k]]))
     expect_equal(full$value[full$Class == k],
                  unname(mean0[1] + mean0[2] * times + par[paste0("c", k, "kappa")] * par[paste0("c", k, "TVC_m", 1:9)]), tolerance = 1e-8)
   }
+})
+
+test_that("groups with different schedules each get their own full means and an observed curve", {
+  skip_on_cran()
+  OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+  set.seed(1027); n <- 400; g <- rep(1:2, each = n / 2)
+  b0 <- 10 + rnorm(n, sd = 2); b1 <- 1 + rnorm(n, sd = 0.3)
+  dat <- data.frame(id = 1:n, group = g)
+  for (j in 1:6) {
+    t <- (j - 1) * ifelse(g == 1, 1, 2); x <- rnorm(n, mean = 0.7 * t, sd = 1)
+    dat[[paste0("T", j)]] <- t; dat[[paste0("X", j)]] <- x; dat[[paste0("Y", j)]] <- b0 + b1 * t + 0.5 * x + rnorm(n, sd = 0.5)
+  }
+  fit <- suppressWarnings(suppressMessages(getMGroup(dat = dat, grp_var = "group", sub_Model = "TVC", t_var = "T", y_var = "Y",
+    records = 1:6, curveFun = "LIN", intrinsic = FALSE, TVC = "X", y_model = "LGCM", decompose = 0)))
+  expect_identical(getDiagnostics(fit)$issues, character(0))
+  p <- plot(fit, draw = FALSE)@figures[[1]][[1]]
+  full <- Filter(function(l) inherits(l$geom, "GeomPoint"), p$layers)[[1]]$data
+  expect_equal(full$time[full$Class == 1], 0:5)
+  expect_equal(full$time[full$Class == 2], seq(0, 10, 2))
+  for (k in 1:2) {
+    expect_equal(full$value[full$Class == k], nlpsem:::.tvc_full_mean(fit@mxOutput@submodels[[k]], paste0("Y", 1:6)), tolerance = 1e-10)
+  }
+  # 1,200 observations per group at six occasions: the observed curve is drawn, without warnings
+  observed <- which(vapply(p$layers, function(l) inherits(l$stat, "StatSummary"), logical(1)))
+  expect_length(observed, 1)
+  built <- expect_no_warning(suppressMessages(ggplot2::ggplot_build(p)))
+  expect_equal(nrow(built$data[[observed]]), 12)
+})
+
+test_that("the observed curve falls back to occasion means only where the default smoother cannot fit", {
+  build <- function(time) {
+    d <- data.frame(time = time, value = time + rnorm(length(time)), Class = rep(1:2, length.out = length(time)))
+    p <- ggplot2::ggplot() + nlpsem:::.observed_curve(d, ggplot2::aes(x = time, y = value, group = Class))
+    list(stat = class(p$layers[[1]]$stat)[1], rows = nrow(suppressMessages(ggplot2::ggplot_build(p))$data[[1]]))
+  }
+  set.seed(3)
+  fixed <- build(rep(0:4, length.out = 2400))
+  expect_identical(fixed$stat, "StatSummary"); expect_equal(fixed$rows, 10)
+  expect_identical(build(rep(0:4, length.out = 400))$stat, "StatSmooth")
+  varying <- build(runif(2400, 0, 4))
+  expect_identical(varying$stat, "StatSmooth"); expect_gt(varying$rows, 0)
 })

@@ -209,3 +209,56 @@ test_that("multivariate, TVC and mediation inputs that do not describe a model a
   p$beta_my[1, 2] <- 0.1
   expect_error(getSimData(sub_Model = "MED", curveFun = "LIN", x_type = "longitudinal", params = p), "later ones")
 })
+
+test_that("named parameters keep their meaning in any order", {
+  p <- nlpsem:::.sim_default_params(list(sub_Model = "TVC", form = "LIN", intrinsic = FALSE, nT = 10, decompose = 1))
+  p$tvc$mean <- c(eta0 = 20, eta1 = 2)
+  q <- p; q$tvc$mean <- rev(q$tvc$mean); q$mean <- rev(q$mean)
+  a <- getSimData(n = 200, sub_Model = "TVC", curveFun = "LIN", decompose = 1, params = p, seed = 9)
+  b <- getSimData(n = 200, sub_Model = "TVC", curveFun = "LIN", decompose = 1, params = q, seed = 9)
+  expect_identical(as.data.frame(a), as.data.frame(b))
+  expect_identical(attr(a, "growth_factors"), attr(b, "growth_factors"))
+  m <- nlpsem:::.sim_default_params(list(sub_Model = "MED", form = "BLS", x_type = "longitudinal"))
+  r <- m; r$x$mean <- rev(r$x$mean); r$m$mean <- rev(r$m$mean); r$y$mean <- rev(r$y$mean)
+  expect_identical(as.data.frame(getSimData(n = 50, sub_Model = "MED", curveFun = "BLS", x_type = "longitudinal", params = m, seed = 2)),
+                   as.data.frame(getSimData(n = 50, sub_Model = "MED", curveFun = "BLS", x_type = "longitudinal", params = r, seed = 2)))
+})
+
+test_that("column prefixes do not collide with the roles of the simulated processes", {
+  stems <- function(d) unique(sub("[0-9]+$", "", names(d)))
+  med <- getSimData(n = 20, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", y_var = "M", m_var = "Mediator",
+                    x_var = "Predictor", seed = 1)
+  expect_identical(stems(med), c("id", "Mediator", "M", "T", "Predictor"))
+  ref <- getSimData(n = 20, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", seed = 1)
+  expect_identical(unname(as.matrix(med[paste0("M", 1:10)])), unname(as.matrix(ref[paste0("Y", 1:10)])))
+  expect_identical(unname(as.matrix(med[paste0("Mediator", 1:10)])), unname(as.matrix(ref[paste0("M", 1:10)])))
+  tvc <- getSimData(n = 20, sub_Model = "TVC", curveFun = "LIN", decompose = 1, y_var = "TVC", TVC = "Covariate", seed = 1)
+  expect_identical(stems(tvc), c("id", "TVC", "Covariate", "T"))
+  expect_identical(stems(getSimData(n = 20, curveFun = "LIN", y_var = "TIC", seed = 1)), c("id", "TIC", "T"))
+  expect_identical(stems(getSimData(n = 20, sub_Model = "MGM", curveFun = "LIN", y_var = c("Y", "TIC"), seed = 1)), c("id", "Y", "TIC", "T"))
+  expect_error(getSimData(n = 20, curveFun = "LIN", y_var = "T"), "duplicated columns: T1")
+  p <- nlpsem:::.sim_default_params(list(sub_Model = "LGCM", form = "LIN", intrinsic = FALSE, nT = 10))
+  p$tic_mean <- 0; p$tic_cov <- 1; p$beta <- matrix(0.5, 2, 1)
+  expect_error(getSimData(n = 20, curveFun = "LIN", params = p, growth_TIC = "Y3"), "duplicated columns: Y3")
+})
+
+test_that("malformed parameter values are rejected before any data are drawn", {
+  p <- nlpsem:::.sim_default_params(list(sub_Model = "LGCM", form = "QUAD", intrinsic = FALSE, nT = 10))
+  bad <- function(change, pattern) { q <- p; q <- change(q); expect_error(getSimData(n = 20, curveFun = "QUAD", params = q), pattern) }
+  bad(function(q) { q$cov[1, 2] <- 3; q }, "'cov' must be symmetric")
+  bad(function(q) { q$cov <- diag(c(1, -1, 1)); q }, "'cov' must be positive definite")
+  bad(function(q) { q$mean[["eta1"]] <- Inf; q }, "'mean' must be finite")
+  bad(function(q) { q$mean[["eta1"]] <- NA; q }, "'mean' must be finite")
+  bad(function(q) { q$mean <- c(q$mean, eta0 = 1); q }, "once each")
+  bad(function(q) { q$mean <- c(q$mean, eta3 = 1); q }, "once each")
+  bad(function(q) { q$residual <- -1; q }, "'residual' must be positive")
+  m <- nlpsem:::.sim_default_params(list(sub_Model = "MED", form = "LIN", x_type = "baseline"))
+  m$beta_xm <- 0.7
+  expect_error(getSimData(n = 20, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", params = m), "'beta_xm' must give 2 effects")
+  t <- nlpsem:::.sim_default_params(list(sub_Model = "TVC", form = "LIN", intrinsic = FALSE, nT = 10, decompose = 1))
+  t$beta_tvc <- 0.2
+  expect_error(getSimData(n = 20, sub_Model = "TVC", curveFun = "LIN", decompose = 1, params = t), "'beta_tvc' must be 2 finite")
+  l <- nlpsem:::.sim_default_params(list(sub_Model = "LGCM", form = "LIN", intrinsic = FALSE, nT = 10))
+  expect_error(getSimData(n = 20, curveFun = "LIN", params = list(l, l), cluster = list(mean = 0, cov = -1, beta = rbind(0, c(0, 1)))),
+               "'cluster\\$cov' must be a symmetric positive-definite")
+})

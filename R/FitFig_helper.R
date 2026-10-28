@@ -43,7 +43,7 @@
 #' @noRd
 #'
 #' @importFrom tidyr pivot_longer
-#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_smooth labs scale_linetype_manual scale_x_continuous guides guide_legend theme_bw theme element_text element_rect geom_step scale_color_manual margin
+#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_smooth stat_summary labs scale_linetype_manual scale_x_continuous guides guide_legend theme_bw theme element_text element_rect geom_step scale_color_manual margin
 #' @importFrom grDevices colorRampPalette
 #' @importFrom OpenMx mxGetExpected
 #'
@@ -151,18 +151,31 @@
   as.numeric(expected[1, columns])
 }
 
-## The same for each class of a mixture or each group of a multiple-group TVC model, at the mean occasions
-## of all persons (those of the class- or group-specific growth-component curves); as changes from the
-## first wave when change = TRUE.
+## The same for each class of a mixture, at the mean occasions of all persons, or for each group of a
+## multiple-group TVC model, at the group's own data and mean occasions; as changes from the first wave when
+## change = TRUE.
 .tvc_class_full_means <- function(model, columns, time_columns, xstarts, change = FALSE){
-  observed <- if (length(model@data)) model@data$observed else
-    do.call(rbind, lapply(model@submodels, function(sub) sub@data$observed))
-  times <- colMeans(observed[, time_columns, drop = FALSE], na.rm = TRUE) + xstarts
+  groups <- !length(model@data)
   do.call(rbind, lapply(seq_along(model@submodels), function(k){
+    observed <- if (groups) model@submodels[[k]]@data$observed else model@data$observed
+    times <- colMeans(observed[, time_columns, drop = FALSE], na.rm = TRUE) + xstarts
     value <- .tvc_full_mean(model@submodels[[k]], columns, observed)
     if (change) data.frame(time = times[-1], value = value[-1] - value[1], Class = k) else
       data.frame(time = times, value = value, Class = k)
   }))
+}
+
+## Observed curve: ggplot2's default smoother, unless that would be a GAM (1,000 or more rows in a group) on
+## fewer than ten distinct occasions, which it cannot fit; the mean at each occasion is drawn then.
+.observed_curve <- function(data, mapping, ...){
+  group <- if ("Class" %in% names(data)) data$Class else rep(1L, nrow(data))
+  rows <- max(table(group))
+  occasions <- min(tapply(data$time, group, function(x) length(unique(x[!is.na(x)]))))
+  if (rows >= 1000 && occasions < 10){
+    stat_summary(data = data, mapping = mapping, fun = mean, geom = "line", na.rm = TRUE, ...)
+  } else{
+    geom_smooth(data = data, mapping = mapping, se = FALSE, ...)
+  }
 }
 
 .plot_algebra_ci <- function(model, eval_model, eval_name, se_name){
@@ -254,9 +267,9 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
         geom_line(aes(linetype = "Model Implied Growth Status"), color = "black", linewidth = 1) +
         geom_line(aes(x = time, y = Y_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
         geom_line(aes(x = time, y = Y_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
-        geom_smooth(data = dat_raw, aes(x = time, y = value, group = 1,
+        .observed_curve(dat_raw, aes(x = time, y = value, group = 1,
                                         linetype = "Smooth Line of Observed Growth Status"),
-                    color = "black", linewidth = 1, se = FALSE) +
+                    color = "black", linewidth = 1) +
         (if (tvc) geom_line(data = full, aes(x = time, y = value, group = 1,
                                              linetype = "Model Implied Mean Outcome (TVC Effect Included)"),
                             color = "black", linewidth = 0.8)) +
@@ -313,9 +326,9 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
         geom_line(aes(linetype = "Model Implied Change from Baseline"), color = "black", linewidth = 1) +
         geom_line(aes(x = time, y = cY_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
         geom_line(aes(x = time, y = cY_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
-        geom_smooth(data = dat_raw, aes(x = time, y = value, group = 1,
+        .observed_curve(dat_raw, aes(x = time, y = value, group = 1,
                                         linetype = "Smooth Line of Observed Change from Baseline"),
-                    color = "black", linewidth = 1, se = FALSE) +
+                    color = "black", linewidth = 1) +
         (if (tvc) geom_line(data = full, aes(x = time, y = value, group = 1,
                                              linetype = "Model Implied Mean Change from Baseline (TVC Effect Included)"),
                             color = "black", linewidth = 0.8)) +
@@ -416,8 +429,8 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
             geom_line(aes(linetype = "Model Implied Growth Status"), linewidth = 1) +
             geom_line(aes(x = time, y = Y_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
             geom_line(aes(x = time, y = Y_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
-            geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Growth Status"),
-                        linewidth = 1, se = FALSE) +
+            .observed_curve(dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Growth Status"),
+                        linewidth = 1) +
             (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
                                                  linetype = "Model Implied Mean Outcome (TVC Effect Included)"), linewidth = 0.8)) +
             (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
@@ -480,8 +493,8 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
             geom_line(aes(linetype = "Model Implied Change from Baseline"), linewidth = 1) +
             geom_line(aes(x = time, y = cY_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
             geom_line(aes(x = time, y = cY_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
-            geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Change from Baseline"),
-                        linewidth = 1, se = FALSE) +
+            .observed_curve(dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Change from Baseline"),
+                        linewidth = 1) +
             (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
                                                  linetype = "Model Implied Mean Change from Baseline (TVC Effect Included)"), linewidth = 0.8)) +
             (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
@@ -588,8 +601,8 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
           geom_line(aes(linetype = "Model Implied Growth Status"), linewidth = 1) +
           geom_line(aes(x = time, y = Y_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
           geom_line(aes(x = time, y = Y_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Growth Status"), linewidth = 1) +
-          geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Growth Status"),
-                      linewidth = 1, se = FALSE) +
+          .observed_curve(dat_raw, aes(x = time, y = value, group = Class, linetype = "Smooth Line of Observed Growth Status"),
+                      linewidth = 1) +
           (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
                                                linetype = "Model Implied Mean Outcome (TVC Effect Included)"), linewidth = 0.8)) +
           (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +
@@ -654,9 +667,9 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
           geom_line(aes(linetype = "Model Implied Change from Baseline"),  linewidth = 1) +
           geom_line(aes(x = time, y = cY_hat_l, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
           geom_line(aes(x = time, y = cY_hat_u, linetype = "95% Pointwise Confidence Interval on Model Implied Change from Baseline"), linewidth = 1) +
-          geom_smooth(data = dat_raw, aes(x = time, y = value, group = Class,
+          .observed_curve(dat_raw, aes(x = time, y = value, group = Class,
                                           linetype = "Smooth Line of Observed Change from Baseline"),
-                      linewidth = 1, se = FALSE) +
+                      linewidth = 1) +
           (if (tvc) geom_line(data = full, aes(x = time, y = value, group = Class, color = as.factor(Class),
                                                linetype = "Model Implied Mean Change from Baseline (TVC Effect Included)"), linewidth = 0.8)) +
           (if (tvc) geom_point(data = full, aes(x = time, y = value, color = as.factor(Class)), inherit.aes = FALSE, size = 1.5)) +

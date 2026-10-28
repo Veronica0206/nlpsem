@@ -102,7 +102,8 @@
 
 # Fit one case deterministically (fixed optimizer, fixed seed for the k-means step of mixtures) and
 # return the quantities that are compared: -2 log-likelihood, free-parameter estimates, status code,
-# and the problems getDiagnostics() reports (covariance admissibility, Hessian, standard errors).
+# the problems getDiagnostics() reports (covariance admissibility, Hessian, standard errors), and the
+# Hessian and standard-error availability it records.
 .fit_golden_case <- function(case, dat) {
   OpenMx::mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
   set.seed(20191029)
@@ -111,9 +112,24 @@
   if (!is.null(case$tries)) args <- c(args, list(tries = case$tries))
   fit <- suppressMessages(suppressWarnings(do.call(fn, c(list(dat = dat), args))))
   model <- fit@mxOutput
+  diagnostics <- getDiagnostics(fit)
   list(minus2LL = unname(model@output$Minus2LogLikelihood),
        estimates = OpenMx::omxGetParameters(model),
        status = unname(model@output$status$code),
-       issues = getDiagnostics(fit)$issues,
+       issues = diagnostics$issues,
+       hessian = diagnostics$hessian$status,
+       standard_errors = unlist(diagnostics$standard_errors[c("expected", "available", "nonfinite", "nonpositive")]),
        seconds = unname(model@output$wallTime))
+}
+
+# What keeps a fit from counting as positive reference coverage: the issues getDiagnostics() reports, and
+# missing uncertainty information, which getDiagnostics() records as unavailable rather than as an issue.
+.golden_validity_problems <- function(res) {
+  se <- res$standard_errors
+  c(res$issues,
+    if (!identical(res$hessian, "positive_definite")) paste("Hessian is", res$hessian),
+    if (se[["available"]] < se[["expected"]] || se[["nonfinite"]] > 0 || se[["nonpositive"]] > 0) {
+      paste0("standard errors: ", se[["available"]], " of ", se[["expected"]], " available, ", se[["nonfinite"]],
+             " nonfinite, ", se[["nonpositive"]], " nonpositive")
+    })
 }

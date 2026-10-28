@@ -75,7 +75,7 @@
 #' occasions and the default values, the mean of \code{eta1} (negative exponential) or \code{eta2}
 #' (Jenss-Bayley) is up to about 2.5\% too large in magnitude, and with a random ratio the covariance of
 #' \code{eta2} and the ratio is about 40\% too large. The midpoint error shrinks with shorter intervals or less
-#' curvature.
+#' curvature. These sizes come from one generated data set of 5,000 persons for each model.
 #'
 #' The elements of a class list of \code{params} are:
 #' \describe{
@@ -152,6 +152,10 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   if (is.null(y_var)) y_var <- if (sub_Model == "MGM") c("Y", "Z") else "Y"
   if (sub_Model == "MGM" && (length(y_var) < 2L || anyDuplicated(y_var))) stop("'y_var' must name two or more processes.")
   if (sub_Model != "MGM" && length(y_var) != 1L) stop("'y_var' must be one prefix.")
+  for (nm in c("t_var", "TVC", "m_var", "x_var")){
+    if (!is.character(get(nm)) || length(get(nm)) != 1L || is.na(get(nm))) stop("'", nm, "' must be one prefix.")
+  }
+  if (!is.character(y_var) || anyNA(y_var)) stop("'y_var' must be character prefixes.")
   if (!is.numeric(n) || length(n) != 1L || n < 2 || n != round(n)) stop("'n' must be an integer of at least 2.")
   if (!is.numeric(nT) || length(nT) != 1L || nT < 3 || nT != round(nT)) stop("'nT' must be an integer of at least 3.")
   if (is.null(times)) times <- seq_len(nT) - 1
@@ -195,8 +199,15 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   } else if (!is.null(cluster)){
     if (!is.null(prop)) stop("Give either 'prop' or 'cluster', not both.")
     nX <- length(cluster$mean)
-    if (!is.matrix(cluster$beta) || !identical(dim(cluster$beta), c(nClass, nX + 1L)) || any(cluster$beta[1, ] != 0)){
-      stop("'cluster$beta' must be a ", nClass, " x ", nX + 1L, " matrix with a first row of zeros.")
+    if (!is.numeric(cluster$mean) || !nX || !all(is.finite(cluster$mean))) stop("'cluster$mean' must be finite numbers.")
+    cluster$cov <- as.matrix(cluster$cov)
+    if (!identical(dim(cluster$cov), c(nX, nX)) || !is.numeric(cluster$cov) || !all(is.finite(cluster$cov)) ||
+        !isSymmetric(unname(cluster$cov)) || min(eigen(cluster$cov, symmetric = TRUE, only.values = TRUE)$values) <= 0){
+      stop("'cluster$cov' must be a symmetric positive-definite ", nX, " x ", nX, " matrix.")
+    }
+    if (!is.matrix(cluster$beta) || !identical(dim(cluster$beta), c(nClass, nX + 1L)) || !all(is.finite(cluster$beta)) ||
+        any(cluster$beta[1, ] != 0)){
+      stop("'cluster$beta' must be a ", nClass, " x ", nX + 1L, " matrix of finite numbers with a first row of zeros.")
     }
     if (is.null(cluster_TIC)) cluster_TIC <- paste0("gx", seq_len(nX))
     if (length(cluster_TIC) != nX) stop("'cluster_TIC' must name the ", nX, " cluster TIC(s).")
@@ -206,9 +217,20 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     class <- 1L + rowSums(runif(n) > t(apply(prob, 1, cumsum))[, -nClass, drop = FALSE])
   } else{
     if (is.null(prop)) prop <- rep(1 / nClass, nClass)
-    if (!is.numeric(prop) || length(prop) != nClass || any(prop <= 0)) stop("'prop' must be ", nClass, " positive numbers.")
+    if (!is.numeric(prop) || length(prop) != nClass || !all(is.finite(prop)) || any(prop <= 0)) stop("'prop' must be ", nClass, " positive numbers.")
     prop <- prop / sum(prop)
     class <- sample.int(nClass, n, replace = TRUE, prob = prop)
+  }
+
+  # Column names of the data: the processes are stored under their roles and named only here
+  roles <- if (sub_Model == "MED") c(if (x_type == "longitudinal") c(.X = x_var), .M = m_var, .y1 = y_var) else
+    c(stats::setNames(y_var, paste0(".y", seq_along(y_var))), if (sub_Model == "TVC") c(.TVC = TVC))
+  out_names <- c("id", unlist(lapply(roles, paste0, seq_len(nT)), use.names = FALSE), paste0(t_var, seq_len(nT)),
+                 if (sub_Model == "MED" && x_type == "baseline") x_var, growth_TIC, if (!is.null(X)) cluster_TIC,
+                 if (nClass > 1L) "class")
+  if (anyDuplicated(out_names)){
+    stop("The prefixes and covariate names give duplicated columns: ",
+         paste(unique(out_names[duplicated(out_names)]), collapse = ", "), ".")
   }
 
   # Individual occasions
@@ -232,13 +254,12 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   }
 
   dat <- data.frame(id = seq_len(n))
-  prefix <- c(stats::setNames(y_var, y_var), TVC = TVC, M = m_var, X = x_var)
-  for (nm in setdiff(names(columns), c("TIC", "XB"))){
-    for (j in seq_len(nT)) dat[[paste0(prefix[[nm]], j)]] <- columns[[nm]][, j]
+  for (role in names(roles)){
+    for (j in seq_len(nT)) dat[[paste0(roles[[role]], j)]] <- columns[[role]][, j]
   }
   for (j in seq_len(nT)) dat[[paste0(t_var, j)]] <- occasions[, j]
-  if (!is.null(columns$XB)) dat[[x_var]] <- columns$XB[, 1]
-  if (nTIC > 0) for (j in seq_len(nTIC)) dat[[growth_TIC[j]]] <- columns$TIC[, j]
+  if (!is.null(columns$.XB)) dat[[x_var]] <- columns$.XB[, 1]
+  if (nTIC > 0) for (j in seq_len(nTIC)) dat[[growth_TIC[j]]] <- columns$.TIC[, j]
   if (!is.null(X)) for (j in seq_along(cluster_TIC)) dat[[cluster_TIC[j]]] <- X[, j]
   if (nClass > 1L) dat$class <- class
 
@@ -375,31 +396,49 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
 .sim_check_params <- function(p, k, ctx){
   where <- paste0(" (class ", k, ")")
   if (!is.list(p)) stop("Each class needs a list of parameters", where, ".")
+  # Values are checked before any coercion: finite numbers of the exact length, symmetric positive-definite
+  # covariance matrices, and named means reordered to the order of the growth factors.
+  check_num <- function(x, what, len = NULL){
+    if (!is.numeric(x) || !length(x) || !all(is.finite(x)) || (!is.null(len) && length(x) != len)){
+      stop("'", what, "' must be ", if (is.null(len)) "finite numbers" else paste(len, "finite number(s)"), where, ".")
+    }
+    x
+  }
+  check_positive <- function(x, what){
+    if (check_num(x, what, 1L) <= 0) stop("'", what, "' must be positive", where, ".")
+    x
+  }
   check_cov <- function(cov, size, what, labels){
     cov <- as.matrix(cov)
     if (!identical(dim(cov), c(size, size))) stop("'", what, "' must be a ", size, " x ", size, " matrix for ", labels, where, ".")
+    check_num(cov, what)
+    if (!isSymmetric(unname(cov))) stop("'", what, "' must be symmetric", where, ".")
+    if (min(eigen(cov, symmetric = TRUE, only.values = TRUE)$values) <= 0) stop("'", what, "' must be positive definite", where, ".")
     cov
   }
   check_mean <- function(mean, factors, what){
-    if (is.null(names(mean)) || !all(factors %in% names(mean))) stop("'", what, "' must name ", paste(factors, collapse = ", "), where, ".")
-    mean
+    nm <- names(mean)
+    if (!is.numeric(mean) || is.null(nm) || anyDuplicated(nm) || !setequal(nm, factors)){
+      stop("'", what, "' must name ", paste(factors, collapse = ", "), " once each", where, ".")
+    }
+    check_num(mean[factors], what)
   }
   check_rates <- function(rel_rate, what){
-    if (is.null(rel_rate) || length(rel_rate) != ctx$nT - 1L || rel_rate[1] != 1){
-      stop("'", what, "' must give the relative rates of the ", ctx$nT - 1L, " intervals, the first 1", where, ".")
-    }
+    if (is.null(rel_rate)) stop("'", what, "' is missing", where, ".")
+    check_num(rel_rate, what, ctx$nT - 1L)
+    if (rel_rate[1] != 1) stop("'", what, "' must give the relative rates of the ", ctx$nT - 1L, " intervals, the first 1", where, ".")
     rel_rate
   }
   check_tic <- function(p, nr){
     if (is.null(p[["beta"]])) return(p)
-    p[["beta"]] <- as.matrix(p[["beta"]])
+    p[["beta"]] <- as.matrix(check_num(p[["beta"]], "beta"))
     nTIC <- ncol(p[["beta"]])
-    if (nrow(p[["beta"]]) != nr || is.null(p$tic_mean) || length(p$tic_mean) != nTIC ||
-        !identical(dim(as.matrix(p$tic_cov)), c(nTIC, nTIC))){
+    if (nrow(p[["beta"]]) != nr || is.null(p$tic_mean) || is.null(p$tic_cov)){
       stop("Growth TICs need 'tic_mean', 'tic_cov' and a 'beta' with one row per growth factor that varies",
            " between persons", where, ".")
     }
-    p$tic_cov <- as.matrix(p$tic_cov)
+    p$tic_mean <- check_num(p$tic_mean, "tic_mean", nTIC)
+    p$tic_cov <- check_cov(p$tic_cov, nTIC, "tic_cov", "the growth TICs")
     p
   }
   factors <- ctx$factors; random <- ctx$random; nr <- length(random)
@@ -407,40 +446,42 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     if (is.null(p$mean) || is.null(p$cov) || is.null(p$residual)) stop("Each class needs 'mean', 'cov' and 'residual'", where, ".")
     p$mean <- check_mean(p$mean, factors, "mean")
     p$cov <- check_cov(p$cov, nr, "cov", paste(random, collapse = ", "))
-    if (!is.numeric(p$residual) || length(p$residual) != 1L || p$residual <= 0) stop("'residual' must be positive", where, ".")
+    p$residual <- check_positive(p$residual, "residual")
     if (ctx$form == "NonP") p$rel_rate <- check_rates(p$rel_rate, "rel_rate")
     p <- check_tic(p, nr)
   }
   if (ctx$sub_Model == "TVC"){
-    if (!is.numeric(p$kappa) || length(p$kappa) != 1L) stop("'kappa' must be one number", where, ".")
+    p$kappa <- check_num(p$kappa, "kappa", 1L)
     if (!is.list(p$tvc)) stop("'tvc' must be a list", where, ".")
     if (ctx$decompose == 0){
-      if (length(p$tvc$mean) != ctx$nT || length(p$tvc$var) != ctx$nT || any(p$tvc$var <= 0)){
-        stop("'tvc' needs the 'mean' and positive 'var' of the TVC at each of the ", ctx$nT, " occasions", where, ".")
-      }
+      p$tvc$mean <- check_num(p$tvc$mean, "tvc$mean", ctx$nT)
+      p$tvc$var <- check_num(p$tvc$var, "tvc$var", ctx$nT)
+      if (any(p$tvc$var <= 0)) stop("'tvc$var' must be positive at each of the ", ctx$nT, " occasions", where, ".")
     } else{
       p$tvc$mean <- check_mean(p$tvc$mean, c("eta0", "eta1"), "tvc$mean")
       p$tvc$cov <- check_cov(p$tvc$cov, 2L, "tvc$cov", "eta0, eta1")
       p$tvc$rel_rate <- check_rates(p$tvc$rel_rate, "tvc$rel_rate")
-      if (!is.numeric(p$tvc$residual) || length(p$tvc$residual) != 1L || p$tvc$residual <= 0) stop("'tvc$residual' must be positive", where, ".")
-      if (length(p$beta_tvc) != nr) stop("'beta_tvc' must give one effect per growth factor that varies between persons", where, ".")
-      if (!is.numeric(p$res_cov) || length(p$res_cov) != 1L) stop("'res_cov' must be one number", where, ".")
+      p$tvc$residual <- check_positive(p$tvc$residual, "tvc$residual")
+      p$beta_tvc <- check_num(p$beta_tvc, "beta_tvc", nr)
+      p$res_cov <- check_num(p$res_cov, "res_cov", 1L)
       nTIC <- if (is.null(p[["beta"]])) 0L else ncol(p[["beta"]])
       if (is.null(p$cov_bl)) p$cov_bl <- rep(0, nTIC)
-      if (length(p$cov_bl) != nTIC) stop("'cov_bl' must give one covariance per growth TIC", where, ".")
+      if (nTIC > 0) p$cov_bl <- check_num(p$cov_bl, "cov_bl", nTIC) else if (length(p$cov_bl)) stop("'cov_bl' needs growth TICs", where, ".")
     }
   }
   if (ctx$sub_Model == "MGM"){
     nP <- length(ctx$y_var)
     if (!is.list(p$mean) || length(p$mean) != nP) stop("'mean' must be a list with one mean vector per process", where, ".")
     if (is.null(names(p$mean))) names(p$mean) <- ctx$y_var
+    if (!setequal(names(p$mean), ctx$y_var) || anyDuplicated(names(p$mean))) stop("'mean' must name the processes ", paste(ctx$y_var, collapse = ", "), where, ".")
     p$mean <- lapply(p$mean[ctx$y_var], check_mean, factors = factors, what = "mean")
     p$cov <- check_cov(p$cov, nP * nr, "cov", paste0(nr, " growth factors of each of ", nP, " processes"))
-    if (is.null(dim(p$residual))) p$residual <- diag(p$residual, nP)
+    if (is.null(dim(p$residual))) p$residual <- diag(check_num(p$residual, "residual", nP), nP)
     p$residual <- check_cov(p$residual, nP, "residual", "the processes")
     if (ctx$form == "NonP"){
       if (!is.list(p$rel_rate) || length(p$rel_rate) != nP) stop("'rel_rate' must be a list with one vector per process", where, ".")
       if (is.null(names(p$rel_rate))) names(p$rel_rate) <- ctx$y_var
+      if (!setequal(names(p$rel_rate), ctx$y_var)) stop("'rel_rate' must name the processes ", paste(ctx$y_var, collapse = ", "), where, ".")
       p$rel_rate <- lapply(p$rel_rate[ctx$y_var], check_rates, what = "rel_rate")
     }
   }
@@ -451,17 +492,23 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     if (long){
       p$x$mean <- check_mean(p$x$mean, factors, "x$mean")
       p$x$cov <- check_cov(p$x$cov, nf, "x$cov", paste(random, collapse = ", "))
-    } else if (length(p$x$mean) != 1L || length(p$x$var) != 1L || p$x$var <= 0){
-      stop("A baseline predictor needs one 'mean' and a positive 'var'", where, ".")
+    } else{
+      p$x$mean <- check_num(p$x$mean, "x$mean", 1L)
+      p$x$var <- check_positive(p$x$var, "x$var")
     }
     for (v in c("m", "y")){
       p[[v]]$mean <- check_mean(p[[v]]$mean, factors, paste0(v, "$mean"))
       p[[v]]$cov <- check_cov(p[[v]]$cov, nf, paste0(v, "$cov"), paste(random, collapse = ", "))
     }
     path <- function(b, what, from){
-      b <- if (from == 1L) matrix(b, nf, 1L) else as.matrix(b)
+      check_num(b, what)
+      if (from == 1L){
+        if (length(b) != nf) stop("'", what, "' must give ", nf, " effects, one per growth factor", where, ".")
+        return(matrix(b, nf, 1L))
+      }
+      b <- as.matrix(b)
       if (!identical(dim(b), c(nf, from))) stop("'", what, "' must be a ", nf, " x ", from, " matrix", where, ".")
-      if (from > 1L && any(b[upper.tri(b)] != 0)) stop("In '", what, "', a growth factor affects only itself and later ones", where, ".")
+      if (any(b[upper.tri(b)] != 0)) stop("In '", what, "', a growth factor affects only itself and later ones", where, ".")
       b
     }
     p$beta_xm <- path(p$beta_xm, "beta_xm", if (long) nf else 1L)
@@ -516,11 +563,11 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   cols <- list()
   if (!is.null(p[["beta"]])){
     x <- .sim_mvn(nk, p$tic_mean, p$tic_cov, paste0("the 'tic_cov' of class ", k))
-    cols$TIC <- x
+    cols$.TIC <- x
     zeta <- zeta + sweep(x, 2, p$tic_mean) %*% t(p[["beta"]])
   }
   gf[, random] <- gf[, random] + zeta
-  cols[[ctx$y_var]] <- .sim_curve(ctx$form, gf, occasions, p$rel_rate) +
+  cols$.y1 <- .sim_curve(ctx$form, gf, occasions, p$rel_rate) +
     matrix(rnorm(nk * ctx$nT, sd = sqrt(p$residual)), nk, ctx$nT)
   list(columns = cols, gf = gf)
 }
@@ -534,7 +581,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     P <- ctx$y_var[q]
     gf <- matrix(p$mean[[P]][factors], nk, length(factors), byrow = TRUE, dimnames = list(NULL, factors))
     gf[, random] <- gf[, random] + zeta[, (q - 1) * nr + seq_len(nr), drop = FALSE]
-    cols[[P]] <- .sim_curve(ctx$form, gf, occasions, p$rel_rate[[P]]) + E[[q]]
+    cols[[paste0(".y", q)]] <- .sim_curve(ctx$form, gf, occasions, p$rel_rate[[P]]) + E[[q]]
     gfs[[q]] <- gf; colnames(gfs[[q]]) <- paste0(P, "_", factors)
   }
   list(columns = cols, gf = do.call(cbind, gfs))
@@ -549,7 +596,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   if (ctx$decompose == 0){
     if (nTIC > 0){
       x <- .sim_mvn(nk, p$tic_mean, p$tic_cov, paste0("the 'tic_cov' of class ", k))
-      cols$TIC <- x
+      cols$.TIC <- x
       zeta <- zeta + sweep(x, 2, p$tic_mean) %*% t(p[["beta"]])
     }
     gf[, random] <- gf[, random] + zeta
@@ -568,8 +615,8 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     S[nTIC + 1:2, nTIC + 1:2] <- p$tvc$cov
     W <- .sim_mvn(nk, mean, S, paste0("the joint covariance of the TICs and the TVC growth factors of class ", k))
     if (nTIC > 0){
-      cols$TIC <- W[, seq_len(nTIC), drop = FALSE]
-      zeta <- zeta + sweep(cols$TIC, 2, p$tic_mean) %*% t(p[["beta"]])
+      cols$.TIC <- W[, seq_len(nTIC), drop = FALSE]
+      zeta <- zeta + sweep(cols$.TIC, 2, p$tic_mean) %*% t(p[["beta"]])
     }
     x0 <- W[, nTIC + 1L]; x1 <- W[, nTIC + 2L]
     zeta <- zeta + outer(x0 - p$tvc$mean[["eta0"]], p$beta_tvc)
@@ -584,8 +631,8 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     y <- .sim_curve(ctx$form, gf, occasions, p$rel_rate) + p$kappa * state + E[[2]]
     xgf <- cbind(TVC_eta0 = x0, TVC_eta1 = x1)
   }
-  cols[[ctx$y_var]] <- y
-  cols$TVC <- tvc
+  cols$.y1 <- y
+  cols$.TVC <- tvc
   colnames(gf) <- paste0("Y_", factors)
   list(columns = cols, gf = cbind(gf, xgf))
 }
@@ -601,7 +648,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   } else{
     xb <- rnorm(nk, p$x$mean, sqrt(p$x$var))
     dx <- matrix(xb - p$x$mean, nk, 1L)
-    cols$XB <- matrix(xb, nk, 1L)
+    cols$.XB <- matrix(xb, nk, 1L)
   }
   mg <- sweep(draw("m") + dx %*% t(p$beta_xm), 2, p$m$mean[random], "+"); colnames(mg) <- random
   yg <- sweep(draw("y") + dx %*% t(p$beta_xy) + sweep(mg, 2, p$m$mean[random]) %*% t(p$beta_my), 2,
@@ -609,11 +656,11 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   colnames(yg) <- random
   E <- .sim_residuals(nk, nT, p$residual)
   if (long){
-    cols$X <- .sim_med_curve(form, xg, p$x$mean[["gamma"]], occasions) + E[[1]]
+    cols$.X <- .sim_med_curve(form, xg, p$x$mean[["gamma"]], occasions) + E[[1]]
     E <- E[-1]
   }
-  cols$M <- .sim_med_curve(form, mg, p$m$mean[["gamma"]], occasions) + E[[1]]
-  cols[[ctx$y_var]] <- .sim_med_curve(form, yg, p$y$mean[["gamma"]], occasions) + E[[2]]
+  cols$.M <- .sim_med_curve(form, mg, p$m$mean[["gamma"]], occasions) + E[[1]]
+  cols$.y1 <- .sim_med_curve(form, yg, p$y$mean[["gamma"]], occasions) + E[[2]]
   colnames(mg) <- paste0("M_", random); colnames(yg) <- paste0("Y_", random)
   if (long) colnames(xg) <- paste0("X_", random)
   list(columns = cols, gf = if (long) cbind(xg, mg, yg) else cbind(mg, yg))
