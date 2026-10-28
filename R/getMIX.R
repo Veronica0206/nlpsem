@@ -27,7 +27,8 @@
 #' be a list of numeric vectors, where each vector provides the indices of the observed study waves for each longitudinal process.
 #' @param y_var A string defining the prefix of the column names corresponding to the outcome variable for each study wave. This
 #' is applicable when \code{sub_Model} is not \code{"MGM"}. For \code{sub_Model} being \code{"MGM"}, \code{y_var} should be a
-#' string vector where each element corresponds to the prefix of the column names for each outcome variable across the study waves.
+#' string vector where each element corresponds to the prefix of the column names for each outcome variable across the study waves;
+#' see \code{\link{getMGM}} for the prefixes that are rejected because their labels would be ambiguous.
 #' @param curveFun A string specifying the functional forms of the growth curve(s). Supported options for \code{y_model = "LGCM"}
 #' include: \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"} (or \code{"EXP"}),
 #' \code{"Jenss-Bayley"} (or \code{"JB"}), and \code{"bilinear spline"} (or \code{"BLS"}). Supported options for \code{y_model =
@@ -176,6 +177,7 @@ getMIX <- function(dat, prop_starts, sub_Model, cluster_TIC = NULL, t_var, recor
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC, TVC = TVC, m_var = m_var,
                    x_var = x_var, x_type = x_type, cluster_TIC = cluster_TIC)
+  if (identical(sub_Model, "MGM")) validate_mgm_names(y_var, y_model)
   nClass <- length(prop_starts)
   if (paramOut && !is.null(names)) {
     expected_names <- .auto_names_subModel(sub_Model, curveFun, intrinsic, growth_TIC,

@@ -333,3 +333,39 @@ validate_columns <- function(dat, t_var, y_var, records,
   }
   list(codes = as.integer(codes), nClass = length(levels), levels = levels)
 }
+
+#' Check that the process prefixes of a multivariate model give unambiguous parameter labels
+#'
+#' Between-process parameters are labelled by joining the prefixes of the two processes (the pair
+#' \code{"A"}, \code{"B"} gives \code{"AB_psi00"}), so a joined pair must not equal a process prefix or
+#' another pair's; latent change scores use the prefixes in lower case, so these must differ too.
+#'
+#' @param y_var Character vector of process prefixes.
+#' @param y_model Optional string, \code{"LGCM"} or \code{"LCSM"}.
+#' @keywords internal
+#' @noRd
+validate_mgm_names <- function(y_var, y_model = NULL) {
+  y_var <- as.character(y_var)
+  if (anyDuplicated(y_var)) stop("The process prefixes in 'y_var' must be distinct.", call. = FALSE)
+  if (identical(y_model, "LCSM") && anyDuplicated(tolower(y_var))) {
+    stop("The process prefixes in 'y_var' must differ in more than letter case for a latent change score model.",
+         call. = FALSE)
+  }
+  if (length(y_var) < 2L) return(invisible(TRUE))
+  idx <- utils::combn(seq_along(y_var), 2)
+  keys <- apply(idx, 2, function(i) paste0(y_var[i], collapse = ""))
+  pairs <- apply(idx, 2, function(i) paste0("(\"", y_var[i[1]], "\", \"", y_var[i[2]], "\")"))
+  for (j in seq_along(keys)) {
+    if (keys[j] %in% y_var) {
+      stop("Ambiguous multivariate names: process \"", keys[j], "\" and pair ", pairs[j], " both use the identifier \"",
+           keys[j], "\". Rename one process prefix.", call. = FALSE)
+    }
+  }
+  dup <- which(duplicated(keys))
+  if (length(dup)) {
+    first <- match(keys[dup[1]], keys)
+    stop("Ambiguous multivariate names: pairs ", pairs[first], " and ", pairs[dup[1]], " both use the identifier \"",
+         keys[dup[1]], "\". Rename one process prefix.", call. = FALSE)
+  }
+  invisible(TRUE)
+}

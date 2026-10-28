@@ -22,10 +22,13 @@ the construction the fitted model assumes; growth factors and residuals are the 
 | `midpoint` | each interval's change as the rate at its midpoint times its length, as a latent change score model integrates its rates |
 | `midpoint_taylor` | both, the construction a latent change score model with a random ratio assumes |
 
-A bias that disappears in an arm is caused by the construction that arm matches. Linear, quadratic and
-fixed-ratio models involve neither approximation and serve as controls. One data set per model gives a
-single estimate with its standard error (the `z` column is the estimate minus the true value, divided by
-the standard error); it is not a replicated study of bias or coverage.
+A bias that disappears in an arm is caused by the construction that arm matches. The controls involve neither
+approximation: the linear and quadratic growth curve models, the quadratic latent change score model (its
+midpoint rate is exact for a quadratic curve), and the fixed-ratio negative exponential growth curve and TVC
+models (`LGCM_LIN`, `LGCM_QUAD`, `LCSM_QUAD`, `LGCM_EXP_f`, `TVC_d3_EXP_f`). Fixed-ratio negative exponential
+and Jenss-Bayley latent change score models are not controls: they keep the midpoint error. One data set per
+model gives a single estimate with its standard error (the `z` column is the estimate minus the true value,
+divided by the standard error); it is not a replicated study of bias or coverage.
 
 ## Results (commit e1dfb76)
 

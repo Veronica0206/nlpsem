@@ -73,8 +73,8 @@ Default is \code{NULL}.}
 \item{cluster_TIC}{A character vector of column names for the cluster TICs. Default is \code{"gx1"},
 \code{"gx2"}, ... when \code{cluster} is given.}
 
-\item{y_var}{The prefix of the outcome columns; for \code{sub_Model = "MGM"}, one prefix per process.
-Defaults are \code{"Y"} and, for \code{"MGM"}, \code{c("Y", "Z")}.}
+\item{y_var}{The prefix of the outcome columns; for \code{sub_Model = "MGM"}, one prefix per process, with the
+restrictions of \code{\link{getMGM}}. Defaults are \code{"Y"} and, for \code{"MGM"}, \code{c("Y", "Z")}.}
 
 \item{t_var}{The prefix of the occasion columns, shared by all processes. Default is \code{"T"}.}
 

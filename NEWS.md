@@ -19,6 +19,17 @@
   length (a single baseline mediation path is no longer copied to every growth factor). Simulated processes
   are named only when the data are assembled, so prefixes such as `y_var = "M"`, `"TVC"` or `"TIC"` no longer
   drop or overwrite columns, and prefixes or covariate names that would duplicate a column are rejected.
+* Multivariate models reject outcome prefixes whose parameter labels would be ambiguous. The parameters shared
+  by two outcomes are labelled by joining the two prefixes, so with `y_var = c("A", "B", "AB")` the covariance
+  of outcomes A and B and the variance of outcome AB had the same label, and with `c("A", "BC", "AB", "C")`
+  two pairs shared one; the builder failed or forced the two parameters equal, standardized fits scaled one
+  pair with the other's factors, and `getSimData()` reported the wrong true values. `getMGM()`, `getMGroup()`,
+  `getMIX()` and `getSimData()` now stop before fitting or simulating, naming the conflict; latent change
+  score models also reject prefixes that differ only in letter case. Prefixes that were unambiguous keep
+  their labels and results.
+* Multivariate output takes residual variances, residual covariances and relative rates from their exact
+  labels: a partial match collected `MY_residuals` with `Y_residuals` (and `XYZ_RES` with `YZ_RES`), so
+  `paramOut = TRUE` failed after fitting.
 * Multiple-group TVC plots draw each group's full model-implied mean at that group's own mean occasions, as
   its growth-component curve, rather than at the occasions of all groups.
 * Observed curves no longer disappear from plots when a group or class has 1,000 or more observations at fewer

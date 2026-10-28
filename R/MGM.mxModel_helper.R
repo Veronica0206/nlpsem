@@ -11,6 +11,7 @@
 #' @importFrom OpenMx mxPath mxModel mxAlgebraFromString mxMatrix mxData mxFitFunctionML
 #'
 .build_MGM <- function(dat, t_var, y_var, curveFun, intrinsic, records, y_model, starts, pfx, model_names, extra, GF_loadings, AddPara){
+  validate_mgm_names(y_var, y_model)
   nClass <- length(pfx)
   y_var_L <- tolower(y_var)
   # Define manifest variables

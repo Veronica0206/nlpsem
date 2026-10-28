@@ -32,7 +32,10 @@ with repeated measurements and occasions for multiple longitudinal outcomes.}
 variable for the corresponding outcome variable at each study wave.}
 
 \item{y_var}{A vector of strings, with each element representing the prefix for column names corresponding to a
-particular outcome variable at each study wave.}
+particular outcome variable at each study wave. The parameters shared by two outcomes are labelled by joining their
+prefixes (\code{"Y"} and \code{"Z"} give \code{"YZ"}), so prefixes for which a joined pair equals a prefix or another
+pair (such as \code{"A"}, \code{"B"} and \code{"AB"}) are rejected; with \code{y_model = "LCSM"}, the prefixes must
+also differ in more than letter case.}
 
 \item{curveFun}{A string specifying the functional forms of the growth curve(s). Supported options for \code{y_model = "LGCM"} include:
 \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"}

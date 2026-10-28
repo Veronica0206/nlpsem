@@ -58,7 +58,8 @@ be a list of numeric vectors, where each vector provides the indices of the obse
 
 \item{y_var}{A string defining the prefix of the column names corresponding to the outcome variable for each study wave. This
 is applicable when \code{sub_Model} is not \code{"MGM"}. For \code{sub_Model} being \code{"MGM"}, \code{y_var} should be a
-string vector where each element corresponds to the prefix of the column names for each outcome variable across the study waves.}
+string vector where each element corresponds to the prefix of the column names for each outcome variable across the study waves;
+see \code{\link{getMGM}} for the prefixes that are rejected because their labels would be ambiguous.}
 
 \item{curveFun}{A string specifying the functional forms of the growth curve(s). Supported options for \code{y_model = "LGCM"}
 include: \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"} (or \code{"EXP"}),

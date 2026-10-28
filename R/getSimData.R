@@ -40,8 +40,8 @@
 #' @param growth_TIC A character vector of column names for the growth TICs (\code{"LGCM"} and \code{"TVC"}). Default is \code{"ex1"}, \code{"ex2"}, ... when \code{params} has growth-TIC effects.
 #' @param cluster_TIC A character vector of column names for the cluster TICs. Default is \code{"gx1"},
 #' \code{"gx2"}, ... when \code{cluster} is given.
-#' @param y_var The prefix of the outcome columns; for \code{sub_Model = "MGM"}, one prefix per process.
-#' Defaults are \code{"Y"} and, for \code{"MGM"}, \code{c("Y", "Z")}.
+#' @param y_var The prefix of the outcome columns; for \code{sub_Model = "MGM"}, one prefix per process, with the
+#' restrictions of \code{\link{getMGM}}. Defaults are \code{"Y"} and, for \code{"MGM"}, \code{c("Y", "Z")}.
 #' @param t_var The prefix of the occasion columns, shared by all processes. Default is \code{"T"}.
 #' @param TVC The prefix of the TVC columns. Default is \code{"TVC"}.
 #' @param m_var,x_var The prefixes of the mediator and predictor columns for \code{sub_Model = "MED"} (a baseline
@@ -151,6 +151,7 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   if (sub_Model == "TVC" && !isTRUE(decompose %in% 0:3)) stop("decompose must be 0, 1, 2 or 3.")
   if (is.null(y_var)) y_var <- if (sub_Model == "MGM") c("Y", "Z") else "Y"
   if (sub_Model == "MGM" && (length(y_var) < 2L || anyDuplicated(y_var))) stop("'y_var' must name two or more processes.")
+  if (sub_Model == "MGM") validate_mgm_names(y_var, y_model)
   if (sub_Model != "MGM" && length(y_var) != 1L) stop("'y_var' must be one prefix.")
   for (nm in c("t_var", "TVC", "m_var", "x_var")){
     if (!is.character(get(nm)) || length(get(nm)) != 1L || is.na(get(nm))) stop("'", nm, "' must be one prefix.")

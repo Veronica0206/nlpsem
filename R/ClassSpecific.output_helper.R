@@ -691,10 +691,9 @@
         mean_se[[traj]] <- mxSE(paste0("Class", k, ".c", k, y_var[traj], "_mean0"), model, forceName = TRUE, silent = TRUE)
         psi_est[[traj]] <- mxEvalByName(paste0("c", k, y_var[traj], "_psi0"), model = model@submodels[[k]])
         psi_se[[traj]] <- mxSE(paste0("Class", k, ".c", k, y_var[traj], "_psi0"), model, forceName = TRUE, silent = TRUE)
-        res_est[[traj]] <- model@output$estimate[grep(paste0("c", k, y_var[traj], "_residuals"),
-                                                      names(model@output$estimate))]
-        res_se[[traj]] <- model@output$standardErrors[, 1][grep(paste0("c", k, y_var[traj], "_residuals"),
-                                                                names(model@output$standardErrors[, 1]))]
+        res <- .free_by_label(model, paste0("c", k, y_var[traj], "_residuals"))
+        res_est[[traj]] <- res$est
+        res_se[[traj]] <- res$se
         outcome_est[[traj]] <- c(unlist(mean_est[[traj]]), psi_est[[traj]][row(psi_est[[traj]]) >= col(psi_est[[traj]])],
                                  res_est[[traj]])
         outcome_se[[traj]] <- c(unlist(mean_se[[traj]]), psi_se[[traj]][row(psi_se[[traj]]) >= col(psi_se[[traj]])], res_se[[traj]])
@@ -707,9 +706,9 @@
                                                          "_psi"), model = model@submodels[[k]])
           psi_btw_se[[pair_idx]] <- mxSE(paste0("Class", k, ".c", k, y_var[traj_i], y_var[traj_j + 1], "_psi"),
                                          model, forceName = TRUE, silent = TRUE)
-          res_btw_est[[length(res_btw_est) + 1]] <- model@output$estimate[grep(paste0("c", k, y_var[traj_i], y_var[traj_j + 1], "_RES"), names(model@output$estimate))]
-          res_btw_se[[length(res_btw_se) + 1]] <- model@output$standardErrors[, 1][grep(paste0("c", k, y_var[traj_i], y_var[traj_j + 1], "_RES"),
-                                                                                        names(model@output$standardErrors[, 1]))]
+          res <- .free_by_label(model, paste0("c", k, y_var[traj_i], y_var[traj_j + 1], "_RES"))
+          res_btw_est[[length(res_btw_est) + 1]] <- res$est
+          res_btw_se[[length(res_btw_se) + 1]] <- res$se
           btw_est <- .append_between_output(btw_est, psi_btw_est[[pair_idx]], res_btw_est[[length(res_btw_est)]])
           btw_se <- .append_between_output(btw_se, psi_btw_se[[pair_idx]], res_btw_se[[length(res_btw_se)]])
         }
@@ -736,10 +735,9 @@
           chg_bl_m.se_L[[traj]] <- mxSE(paste0("Class", k, ".c", k, y_var[traj], "chg_bl_m"), model, forceName = TRUE, silent = TRUE)
           chg_bl_v.se_L[[traj]] <- diag(mxSE(paste0("Class", k, ".c", k, y_var[traj], "chg_bl_v"), model, forceName = TRUE, silent = TRUE))
           if (curveFun %in% c("nonparametric", "NonP")){
-            rel_val_est_L[[traj]] <- model@output$estimate[grep(paste0("c", k, y_var[traj], "_rel_rate"),
-                                                                names(model@output$estimate))]
-            rel_val_se_L[[traj]] <- model@output$standardErrors[, 1][grep(paste0("c", k, y_var[traj], "_rel_rate"),
-                                                                          names(model@output$standardErrors[, 1]))]
+            rel <- .free_by_label(model, paste0("c", k, y_var[traj], "_rel_rate", 2:(length(records[[traj]]) - 1)))
+            rel_val_est_L[[traj]] <- rel$est
+            rel_val_se_L[[traj]] <- rel$se
           }
         }
         if (curveFun %in% c("nonparametric", "NonP")){
