@@ -168,9 +168,13 @@
 ## Observed curve: ggplot2's default smoother, unless that would be a GAM (1,000 or more rows in a group) on
 ## fewer than ten distinct occasions, which it cannot fit; the mean at each occasion is drawn then.
 .observed_curve <- function(data, mapping, ...){
+  # Match the rows available to the smoother: an occasion whose outcomes are all missing cannot
+  # support a basis knot, even though its times are present in the fitted data.
+  data <- data[is.finite(data$time) & is.finite(data$value), , drop = FALSE]
   group <- if ("Class" %in% names(data)) data$Class else rep(1L, nrow(data))
-  rows <- max(table(group))
-  occasions <- min(tapply(data$time, group, function(x) length(unique(x[!is.na(x)]))))
+  rows <- if (nrow(data)) max(table(group)) else 0L
+  occasions <- if (nrow(data)) min(vapply(split(data$time, group, drop = TRUE),
+                                          function(x) length(unique(x)), integer(1))) else 0L
   if (rows >= 1000 && occasions < 10){
     stat_summary(data = data, mapping = mapping, fun = mean, geom = "line", na.rm = TRUE, ...)
   } else{
@@ -225,6 +229,9 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
     dat <- as.data.frame(model@data$observed)
   }
   raw_y_var <- y_var
+  # Preserve the manifested-group codes before reserving ID for plotting row identity.
+  # The public grouping column itself may be named ID.
+  group_codes <- if (!is.null(grp_var)) dat[[grp_var]] else NULL
   dat$ID <- 1:nrow(dat)
   if (!is.null(nClass)){
     if (is.null(grp_var)){
@@ -233,7 +240,7 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
       class_labels <- paste0("Class ", seq_len(nClass), " (", round(class_props * 100, 1), "%)")
     }
     else if (!is.null(grp_var)){
-      class_props <- table(dat[, grp_var])/length(dat[, grp_var])
+      class_props <- table(group_codes)/length(group_codes)
       class_labels <- paste0("Group ", seq_len(nClass), " (", round(class_props * 100, 1), "%)")
     }
   }
@@ -565,14 +572,14 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
     }
     else if (!is.null(grp_var)){
       if (y_model == "LGCM"){
-        dat_traj <- dat[, c("ID", grp_var, paste0(y_var, records))]
+        dat_traj <- data.frame(ID = dat$ID, Class = group_codes,
+                               dat[, paste0(y_var, records), drop = FALSE], check.names = FALSE)
         if (sub_Model %in% c("LGCM", "LCSM", "TVC")){
           y_var <- "Y"
         }
         else if (sub_Model == "MED"){
           y_var <- med_role
         }
-        names(dat_traj)[2] <- "Class"
         dat_time <- dat[, c("ID", paste0(t_var, records))]
         dat_traj_l <- pivot_longer(dat_traj, cols = -c(ID, Class), names_to = "Wave", values_to = "value")
         dat_traj_l$Wave <- substring(dat_traj_l$Wave, nchar(raw_y_var) + 1L)
@@ -627,7 +634,7 @@ getFitFig <- function(model, nClass, cluster_TIC, grp_var, sub_Model, t_var, rec
         figure <- list(fig.status)
       }
       else if (y_model == "LCSM"){
-        dat_chg <- cbind(dat[, c("ID", grp_var)],
+        dat_chg <- cbind(data.frame(ID = dat$ID, Class = group_codes),
                          dat[, c(paste0(y_var, records[-1]))] - dat[, c(paste0(y_var, records[1]))])
         if (sub_Model %in% c("LGCM", "LCSM", "TVC")){
           y_var <- "Y"

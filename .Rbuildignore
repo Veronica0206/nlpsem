@@ -8,3 +8,4 @@
 ^docs$
 ^LICENSE\.md$
 ^test-results$
+^cran-comments\.md$

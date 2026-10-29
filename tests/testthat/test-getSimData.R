@@ -262,3 +262,30 @@ test_that("malformed parameter values are rejected before any data are drawn", {
   expect_error(getSimData(n = 20, curveFun = "LIN", params = list(l, l), cluster = list(mean = 0, cov = -1, beta = rbind(0, c(0, 1)))),
                "'cluster\\$cov' must be a symmetric positive-definite")
 })
+
+test_that("simulation names cannot be interpreted as data-frame column positions", {
+  p <- nlpsem:::.sim_default_params(list(sub_Model = "LGCM", form = "LIN", intrinsic = FALSE, nT = 10))
+  p$tic_mean <- 0; p$tic_cov <- 1; p$beta <- matrix(0.5, 2, 1)
+  for (bad in list(1, NA_character_, "")) {
+    expect_error(getSimData(n = 20, curveFun = "LIN", params = p, growth_TIC = bad), "growth_TIC.*character column names")
+    expect_error(getSimData(n = 20, curveFun = "LIN", params = list(p, p),
+                            cluster = list(mean = 0, cov = matrix(1), beta = rbind(c(0, 0), c(0, 1))),
+                            cluster_TIC = bad), "cluster_TIC.*character column names")
+  }
+  d <- getSimData(n = 20, curveFun = "LIN", params = p, growth_TIC = "1", seed = 7)
+  expect_identical(d$id, 1:20)
+  expect_true("1" %in% names(d))
+  ref <- getSimData(n = 20, sub_Model = "TVC", curveFun = "LIN", decompose = 1, seed = 7)
+  named <- getSimData(n = 20, sub_Model = "TVC", curveFun = "LIN", decompose = 1,
+                      y_var = c(outcome = "Y"), TVC = c(covariate = "TVC"), seed = 7)
+  expect_identical(named, ref)
+})
+
+test_that("nonfinite simulation sizes and schedules are rejected", {
+  for (bad in c(NA_real_, NaN, Inf, -Inf)) {
+    expect_error(getSimData(curveFun = "LIN", n = bad), "'n'.*finite integer")
+    expect_error(getSimData(curveFun = "LIN", nT = bad), "'nT'.*finite integer")
+    expect_error(getSimData(curveFun = "LIN", times = c(0:8, bad), jitter = 0), "'times'.*finite increasing")
+    expect_error(getSimData(curveFun = "LIN", jitter = bad), "'jitter'")
+  }
+})

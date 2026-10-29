@@ -1,3 +1,28 @@
+# nlpsem 1.0.0
+
+* Adds simulation of univariate, multivariate, time-varying covariate and mediation
+  trajectories, with attached generating parameters and individual growth factors.
+* Retains fitted-model specifications and adds standard inspection and plotting
+  methods. `getDiagnostics()` checks convergence, covariance admissibility,
+  uncertainty information and mixture component sizes; new fits warn about
+  detected problems while still returning the fitted object.
+* Restores per-person nonlinear least-squares starts for exponential, Jenss-Bayley
+  and bilinear spline curves. Nonlinear quadratic, exponential and Jenss-Bayley
+  fits use internal scaling and return estimates, standard errors and likelihoods
+  in the original units. The SEM optimizer and retry policy are unchanged.
+* Corrects mediation starts, posterior normalization, multivariate parameter
+  naming and output, confidence interval labels, and group-specific trajectory
+  plots. Simulator arguments are checked before generation.
+* Rejects nonfinite simulation schedules and numeric covariate names that could
+  overwrite existing data. Plotting preserves groups named `ID` and handles
+  occasions with entirely missing outcomes when selecting the observed curve.
+* Adds a fitted-model workflow, regenerates the stored examples, and documents
+  the limitations of inadmissible example fits and fitting approximations.
+  Single-sample approximation demonstrations are not repeated-simulation
+  estimates of bias or interval coverage.
+* Preserves the existing S4 output slots. Invalid or ambiguous custom names now
+  fail explicitly; examples of earlier development changes are retained below.
+
 # nlpsem 1.0.0.9006 (standardized fitting development update)
 
 * New `getSimData()` simulates wide-format longitudinal data in which each person's repeated measures follow

@@ -2,7 +2,7 @@ title: nlpsem
 template:
   bootstrap: 5
 development:
-  mode: devel
+  mode: auto
 destination: docs
 
 home:
@@ -18,7 +18,7 @@ navbar:
   components:
     intro:
       text: Get started
-      href: articles/phase_c_workflow.html
+      href: articles/fitted_model_workflow.html
 
 reference:
   - title: Fit longitudinal models
@@ -58,7 +58,7 @@ articles:
   - title: Start here
     navbar: ~
     contents:
-      - phase_c_workflow
+      - fitted_model_workflow
       - nlpsem_overview
   - title: Modeling guides
     contents:

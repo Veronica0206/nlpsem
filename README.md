@@ -12,7 +12,7 @@ on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
 
-## Development 1.0.0.9006
+## Version 1.0.0
 
 Quadratic, negative exponential and Jenss-Bayley models are fitted to standardized
 data and converted back exactly: the estimates, standard errors and likelihood are
@@ -27,11 +27,12 @@ fits use recorded heuristic fallbacks; they are not counted as NLS convergence.
 The final SEM optimizer is unchanged. The matched comparison protocol explicitly
 uses CSOLNP and identical saved unfitted models on each platform.
 
-The preceding development update fixes mediation wave/covariance starts, one-class mixture
+Version 1.0.0 fixes mediation wave/covariance starts, one-class mixture
 post-processing, posterior normalization and class-count validation, multivariate
-summary columns, parameter names and confidence-interval labels. It adds opt-in
+summary columns, parameter names and confidence-interval labels. It adds
 `getDiagnostics()` checks for stored covariance admissibility, Hessian and standard
-error information, and mixture component sizes. It does not refit or constrain models.
+error information, and mixture component sizes. New fits warn when these checks find
+issues; `getDiagnostics()` supplies the details without refitting or constraining models.
 
 ```r
 print(fit)
@@ -41,12 +42,13 @@ getSpecification(fit)$specification
 plot(fit, draw = FALSE)
 ```
 
-The [NLS validation record](.github/VALIDATION-1.0.0.9005.md) separates completed
-checks from outstanding numerical qualification. The fitting-layer reference values
+The [V1.0.0 validation record](.github/VALIDATION-1.0.0.md) separates completed
+checks from the limits of numerical qualification. The fitting-layer reference values
 were regenerated with 1.0.0.9006; each fit is compared with its reference only after
 it passes the `getDiagnostics()` checks (see `NEWS.md`). The saved examples were
 regenerated with 1.0.0.9006 (`inst/extdata/REGENERATED.txt`); `getDiagnostics()` flags four
-of them, which the guides note. This development version is not a V1.0.0 release.
+of them, which the guides note. These stored objects retain their original development-version
+provenance; they are illustrative examples rather than evidence that every model is admissible.
 
 New estimate tables retain full precision. Older serialized tables retain their
 historical rounding and need recomputation or refitting to recover precision. S4
@@ -203,7 +205,7 @@ See `NEWS.md` for a more comprehensive summary of changes from version 0.3.
 The package includes an overview vignette and scenario-specific example
 vignettes:
 
-- `vignette("phase_c_workflow")`
+- `vignette("fitted_model_workflow")`
 - `vignette("nlpsem_overview")`
 - `vignette("getLGCM_examples")`
 - `vignette("getLCSM_examples")`

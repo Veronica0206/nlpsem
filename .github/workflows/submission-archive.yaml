@@ -1,0 +1,106 @@
+name: Submission archive validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NOT_CRAN: "false"
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+
+jobs:
+  build:
+    name: Build source archive / R release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - name: Build and check the submission archive
+        shell: Rscript {0}
+        run: |
+          status <- system2(file.path(R.home("bin"), "R"), c("CMD", "build", "--no-manual", "."))
+          if (status != 0L) stop("Source archive build failed.")
+          version <- read.dcf("DESCRIPTION")[1, "Version"]
+          archive <- paste0("nlpsem_", version, ".tar.gz")
+          rcmdcheck::rcmdcheck(archive, args = c("--as-cran", "--no-manual"),
+                              error_on = "warning", check_dir = "release-check")
+          dir.create("submission", showWarnings = FALSE)
+          stopifnot(file.copy(archive, "submission"))
+          writeLines(system2("git", c("rev-parse", "HEAD"), stdout = TRUE),
+                     "submission/source-revision.txt")
+          writeLines(capture.output(sessionInfo()), "submission/build-environment.txt")
+      - name: Hash the checked archive
+        run: cd submission && sha256sum nlpsem_*.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: submission-source
+          path: submission/
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: submission-release-check
+          path: release-check/
+          retention-days: 90
+
+  check-archive:
+    name: Check same archive / ${{ matrix.r }} / ${{ matrix.os }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, r: devel}
+          - {os: windows-latest, r: release}
+          - {os: macos-latest, r: release}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.r }}
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - uses: actions/download-artifact@v8
+        with:
+          name: submission-source
+          path: checked-source
+      - name: Check the archive built by R release
+        shell: Rscript {0}
+        run: |
+          archive <- list.files("checked-source", pattern = "[.]tar[.]gz$", full.names = TRUE)
+          stopifnot(length(archive) == 1L)
+          rcmdcheck::rcmdcheck(archive, args = c("--as-cran", "--no-manual"),
+                              error_on = "warning", check_dir = "archive-check")
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: submission-check-${{ matrix.os }}-${{ matrix.r }}
+          path: archive-check/
+          retention-days: 90
+

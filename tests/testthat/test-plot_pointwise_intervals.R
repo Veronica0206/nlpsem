@@ -314,3 +314,35 @@ test_that("the observed curve falls back to occasion means only where the defaul
   varying <- build(runif(2400, 0, 4))
   expect_identical(varying$stat, "StatSmooth"); expect_gt(varying$rows, 0)
 })
+
+test_that("observed curves count only occasions with usable outcomes", {
+  d <- data.frame(time = rep(0:9, each = 200), value = rep(0:9, each = 200))
+  d$value[d$time == 9] <- NA_real_
+  p <- ggplot2::ggplot() + nlpsem:::.observed_curve(d, ggplot2::aes(x = time, y = value))
+  built <- expect_no_warning(suppressMessages(ggplot2::ggplot_build(p)))
+  expect_equal(built$data[[1]]$x, 0:8)
+  expect_equal(built$data[[1]]$y, 0:8)
+  d$value[] <- NA_real_
+  p <- ggplot2::ggplot() + nlpsem:::.observed_curve(d, ggplot2::aes(x = time, y = value))
+  built <- expect_no_warning(suppressMessages(ggplot2::ggplot_build(p)))
+  expect_equal(nrow(built$data[[1]]), 0)
+})
+
+test_that("a grouping column named ID retains its group identities in plots", {
+  fit <- .load_extdata("getMGroup_examples.RData")$MGroup_Math_BLS_LGCM_f@mxOutput
+  figure <- function(model, grp_var) getFigure(model, nClass = 2, grp_var = grp_var,
+    sub_Model = "LGCM", y_var = "M", curveFun = "BLS", t_var = "T", records = 1:9,
+    xstarts = 0, outcome = "Math")@figures[[1]][[1]]
+  original <- figure(fit, "SEX")
+  for (k in seq_along(fit@submodels)) {
+    dat <- fit@submodels[[k]]@data@observed
+    dat$ID <- dat$SEX
+    dat$SEX <- NULL
+    fit@submodels[[k]]@data@observed <- dat
+  }
+  renamed <- figure(fit, "ID")
+  expect_equal(renamed$layers[[4]]$data, original$layers[[4]]$data)
+  expect_equal(renamed$scales$get_scales("colour")$labels, original$scales$get_scales("colour")$labels)
+  built <- expect_no_warning(suppressMessages(ggplot2::ggplot_build(renamed)))
+  expect_equal(length(unique(built$data[[4]]$group)), 2)
+})

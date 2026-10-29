@@ -113,18 +113,22 @@ trajectory is the exact growth curve at the person's own growth factors; a laten
 describes the same trajectory by its rates of change. The nonparametric form is a growth curve whose slope in
 each interval is \code{eta1} times the interval's relative rate.
 
-Two approximations in the fitting functions affect how closely their estimates recover the generating values.
-With a random growth ratio or knot, a model is fitted through a first-order Taylor expansion of the curve
-around the mean ratio or knot. On its own this shifts the means of the growth factors by about 1\% or less
-with the default values, but more when a TVC changes over time in a similar shape to the curve: with a
-negative exponential curve and \code{decompose = 1} or \code{3}, for example, the TVC effect is 5\% to 10\%
-too high and the mean of \code{eta1} or of the ratio up to 3\% too low. A latent change score model takes each
-interval's change as the rate at the midpoint of the interval times its length, which is exact for the
-quadratic and nonparametric forms but not for the negative exponential and Jenss-Bayley forms; with ten yearly
-occasions and the default values, the mean of \code{eta1} (negative exponential) or \code{eta2}
-(Jenss-Bayley) is up to about 2.5\% too large in magnitude, and with a random ratio the covariance of
-\code{eta2} and the ratio is about 40\% too large. The midpoint error shrinks with shorter intervals or less
-curvature. These sizes come from one generated data set of 5,000 persons for each model.
+Two approximations in the fitting functions can affect recovery of the generating values. A model with a
+random growth ratio or knot uses a first-order Taylor expansion around its mean. A latent change score model
+approximates each interval's change by its midpoint rate times its length. The latter is exact for quadratic
+and nonparametric curves, but not for negative exponential and Jenss-Bayley curves; its error shrinks with
+shorter intervals or less curvature.
+
+In one generated data set of 5,000 persons per configuration, using the default parameters and ten yearly
+occasions, the observed errors in growth-factor means were about 1\% for models using the Taylor expansion
+alone. For a negative exponential TVC model with \code{decompose = 1} or \code{3}, the TVC effect was
+5\% to 10\% above its generating value and the mean of \code{eta1} or of the ratio up to 3\% below.
+The latent change score fits had errors up to about 2.5\% in the magnitude of the mean of \code{eta1}
+(negative exponential) or \code{eta2} (Jenss-Bayley); the random-ratio Jenss-Bayley fit's covariance of
+\code{eta2} and the ratio was about 40\% above its generating value. Matched-data comparisons using the
+fitting approximations reduced these discrepancies. These percentages describe those particular samples,
+not a replicated estimate of bias, a bound on error, or an assessment of interval coverage. The reproducible
+examples are in \file{data-raw/approximation-bias} in the source repository.
 
 The elements of a class list of \code{params} are:
 \describe{

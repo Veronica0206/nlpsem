@@ -64,18 +64,22 @@
 #' describes the same trajectory by its rates of change. The nonparametric form is a growth curve whose slope in
 #' each interval is \code{eta1} times the interval's relative rate.
 #'
-#' Two approximations in the fitting functions affect how closely their estimates recover the generating values.
-#' With a random growth ratio or knot, a model is fitted through a first-order Taylor expansion of the curve
-#' around the mean ratio or knot. On its own this shifts the means of the growth factors by about 1\% or less
-#' with the default values, but more when a TVC changes over time in a similar shape to the curve: with a
-#' negative exponential curve and \code{decompose = 1} or \code{3}, for example, the TVC effect is 5\% to 10\%
-#' too high and the mean of \code{eta1} or of the ratio up to 3\% too low. A latent change score model takes each
-#' interval's change as the rate at the midpoint of the interval times its length, which is exact for the
-#' quadratic and nonparametric forms but not for the negative exponential and Jenss-Bayley forms; with ten yearly
-#' occasions and the default values, the mean of \code{eta1} (negative exponential) or \code{eta2}
-#' (Jenss-Bayley) is up to about 2.5\% too large in magnitude, and with a random ratio the covariance of
-#' \code{eta2} and the ratio is about 40\% too large. The midpoint error shrinks with shorter intervals or less
-#' curvature. These sizes come from one generated data set of 5,000 persons for each model.
+#' Two approximations in the fitting functions can affect recovery of the generating values. A model with a
+#' random growth ratio or knot uses a first-order Taylor expansion around its mean. A latent change score model
+#' approximates each interval's change by its midpoint rate times its length. The latter is exact for quadratic
+#' and nonparametric curves, but not for negative exponential and Jenss-Bayley curves; its error shrinks with
+#' shorter intervals or less curvature.
+#'
+#' In one generated data set of 5,000 persons per configuration, using the default parameters and ten yearly
+#' occasions, the observed errors in growth-factor means were about 1\% for models using the Taylor expansion
+#' alone. For a negative exponential TVC model with \code{decompose = 1} or \code{3}, the TVC effect was
+#' 5\% to 10\% above its generating value and the mean of \code{eta1} or of the ratio up to 3\% below.
+#' The latent change score fits had errors up to about 2.5\% in the magnitude of the mean of \code{eta1}
+#' (negative exponential) or \code{eta2} (Jenss-Bayley); the random-ratio Jenss-Bayley fit's covariance of
+#' \code{eta2} and the ratio was about 40\% above its generating value. Matched-data comparisons using the
+#' fitting approximations reduced these discrepancies. These percentages describe those particular samples,
+#' not a replicated estimate of bias, a bound on error, or an assessment of interval coverage. The reproducible
+#' examples are in \file{data-raw/approximation-bias} in the source repository.
 #'
 #' The elements of a class list of \code{params} are:
 #' \describe{
@@ -154,16 +158,29 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   if (sub_Model == "MGM") validate_mgm_names(y_var, y_model)
   if (sub_Model != "MGM" && length(y_var) != 1L) stop("'y_var' must be one prefix.")
   for (nm in c("t_var", "TVC", "m_var", "x_var")){
-    if (!is.character(get(nm)) || length(get(nm)) != 1L || is.na(get(nm))) stop("'", nm, "' must be one prefix.")
+    value <- get(nm)
+    if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)){
+      stop("'", nm, "' must be one nonempty character prefix.")
+    }
+    assign(nm, unname(value))
   }
-  if (!is.character(y_var) || anyNA(y_var)) stop("'y_var' must be character prefixes.")
-  if (!is.numeric(n) || length(n) != 1L || n < 2 || n != round(n)) stop("'n' must be an integer of at least 2.")
-  if (!is.numeric(nT) || length(nT) != 1L || nT < 3 || nT != round(nT)) stop("'nT' must be an integer of at least 3.")
+  if (!is.character(y_var) || anyNA(y_var) || any(!nzchar(y_var))) stop("'y_var' must be nonempty character prefixes.")
+  y_var <- unname(y_var)
+  check_tic_names <- function(x, what){
+    if (!is.null(x) && (!is.character(x) || anyNA(x) || any(!nzchar(x)))){
+      stop("'", what, "' must contain nonempty character column names.")
+    }
+    unname(x)
+  }
+  growth_TIC <- check_tic_names(growth_TIC, "growth_TIC")
+  cluster_TIC <- check_tic_names(cluster_TIC, "cluster_TIC")
+  if (!is.numeric(n) || length(n) != 1L || !is.finite(n) || n < 2 || n != round(n)) stop("'n' must be a finite integer of at least 2.")
+  if (!is.numeric(nT) || length(nT) != 1L || !is.finite(nT) || nT < 3 || nT != round(nT)) stop("'nT' must be a finite integer of at least 3.")
   if (is.null(times)) times <- seq_len(nT) - 1
-  if (!is.numeric(times) || length(times) != nT || any(diff(times) <= 0)){
-    stop("'times' must be ", nT, " increasing numbers.")
+  if (!is.numeric(times) || length(times) != nT || any(!is.finite(times)) || any(diff(times) <= 0)){
+    stop("'times' must be ", nT, " finite increasing numbers.")
   }
-  if (!is.numeric(jitter) || length(jitter) != 1L || jitter < 0 || (nT > 2 && jitter >= min(diff(times)) / 2)){
+  if (!is.numeric(jitter) || length(jitter) != 1L || !is.finite(jitter) || jitter < 0 || (nT > 2 && jitter >= min(diff(times)) / 2)){
     stop("'jitter' must be non-negative and smaller than half the shortest interval between planned occasions.")
   }
   if (!is.null(seed)){
