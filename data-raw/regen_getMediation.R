@@ -22,7 +22,7 @@ xstarts <- mean(baseT)
 Med2_LGCM_BLS <- getMediation(
   dat = RMS_dat0, t_var = rep("T", 2), y_var = "M", m_var = "R",
   x_type = "baseline", x_var = "ex1", curveFun = "bilinear spline",
-  records = list(1:9, 1:9),
+  records = list(1:9, 1:9), tries = 10,
   paramOut = TRUE
 )
 set.seed(20191029)
