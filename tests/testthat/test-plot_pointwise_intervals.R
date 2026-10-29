@@ -64,9 +64,9 @@ test_that("the reported BLS example has covariance-aware public plot intervals",
   dat <- out@figures[[1]][[1]]$data
   at20 <- dat[which.min(abs(dat$time-20)),]
   expect_equal(at20$time,20)
-  expect_equal(at20$Y_hat,75.62448,tolerance=1e-5)
+  mean0 <- c(OpenMx::mxEvalByName("Y_mean0", fit))
+  expect_equal(at20$Y_hat, mean0[1] + 20 * mean0[2], tolerance=1e-10)
   .expect_plot_se(at20,"Y_hat","Y_mean0[1,1] + 20 * Y_mean0[2,1]",fit)
-  expect_equal(at20$Y_hat_u-at20$Y_hat,1.24766,tolerance=1e-4)
   # After the knot, uncertainty in the estimated knot contributes to the interval.
   after <- .plot_test_data(fit,times=40)
   .expect_plot_se(after,"Y_hat",paste0("Y_mean0[1,1] + Y_mean0[2,1]*Y_mean0[4,1] + ",
@@ -221,14 +221,18 @@ test_that("TVC plots label the growth component and add the full model-implied m
   expect_true("Model Implied Growth Component (TVC Effect Excluded)" %in% labels)
   expect_true("Model Implied Mean Outcome (TVC Effect Included)" %in% labels)
   expect_false("Model Implied Growth Status" %in% labels)
-  # With a direct TVC, the full mean is the growth component plus kappa times the TVC mean (the stored
-  # algebra values of this shipped fit agree with its parameters to about 1e-7).
+  # With a direct TVC, the full mean is the growth component plus kappa times the TVC mean. The model's
+  # loadings smooth |t - knot| as sqrt((t - knot)^2 + 1e-6) and the plotted curve does not, so at an occasion
+  # near the knot the two differ by up to the half-difference of the slopes times 1e-3.
   full <- p$layers[[5]]$data
   times <- colMeans(fit$data$observed[, paste0("T", 1:9)])
   component <- nlpsem:::.plot_curve_delta(nlpsem:::.plot_gf_distribution(fit, fit, "Y", "Y", "TVC", "BLS"), times, "BLS")$est
   par <- OpenMx::omxGetParameters(fit)
   expect_equal(full$time, unname(times))
-  expect_equal(full$value - component, unname(par["kappa"] * par[paste0("TVC_m", 1:9)]), tolerance = 1e-6)
+  gap <- abs(full$value - component - unname(par["kappa"] * par[paste0("TVC_m", 1:9)]))
+  knot <- c(OpenMx::mxEvalByName("Y_mean0", fit))[4]
+  expect_lt(max(gap[abs(times - knot) > 0.1]), 1e-5)
+  expect_lt(max(gap), 1e-3)
 })
 
 test_that("a fit with the records in descending order can be plotted", {

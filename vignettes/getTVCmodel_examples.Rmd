@@ -18,12 +18,12 @@ has_data <- nzchar(system.file("extdata", "getTVCmodel_examples.RData", package 
 knitr::opts_chunk$set(eval = has_data)
 ```
 
-The saved examples below were generated with nlpsem 1.0.0.9000 and are retained
-for historical reproducibility. Rendering this guide does not refit its disabled
-model-fitting chunks. Refit with the current version for a new analysis, use
-`getDiagnostics()` to check admissibility and uncertainty, and compare multiple
-starts for difficult nonlinear or mixture models. These historical examples are
-not evidence of final V1.0.0 numerical qualification.
+The saved examples below were generated with nlpsem 1.0.0.9006; `extdata/REGENERATED.txt`
+records the versions and how the fits compare with the previous ones. Rendering this
+guide does not refit its disabled model-fitting chunks. Refit with the current version
+for a new analysis, use `getDiagnostics()` to check admissibility and uncertainty, and
+compare multiple starts for difficult nonlinear or mixture models. These examples are
+not evidence of numerical qualification.
 
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
@@ -105,6 +105,10 @@ show(Figure2)
 
 Figures 1 and 2 show each model's growth component, which leaves out the TVC effect; the dashed line adds it back. With the TVC entered directly, the growth component leaves out the TVC's full value at each occasion, while with interval-specific slopes it leaves out only the slope effect, so the two components describe different quantities.
 
+The saved Model 1 is a local optimum of a likelihood with several: its -2LL is 47324.02, while the same
+model reaches 47225.92 when time is measured in months instead of years. Compare the solutions from
+several starts before interpreting a random-knot model.
+
 ## Example 2: Fit reduced bilinear spline LGCMs with a decomposed TVC (interval-specific slopes, interval-specific changes, and change from baseline) to examine the influence of baseline teacher-reported approach to learning and the development in reading ability on the development of mathematics ability. It also includes a visualization showcasing the growth status of mathematics ability.
 ```{r, message = FALSE, eval = FALSE}
 set.seed(20191029)
@@ -137,7 +141,6 @@ Figure4 <- getFigure(
   outcome = "Mathematics"
 )
 show(Figure4)
-# This historical example is inadmissible; the plot is illustrative only.
 Figure5 <- getFigure(
   model = Math_TVCchgBL_BLS_r@mxOutput, sub_Model = "TVC", y_var = "M", curveFun = "BLS", 
   y_model = "LGCM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
@@ -146,17 +149,15 @@ Figure5 <- getFigure(
 show(Figure5)
 ```
 
-## Diagnose the historical change-from-baseline example
+## Check the change-from-baseline example
 
-The saved `Math_TVCchgBL_BLS_r` example has optimizer status 0 but a materially
-negative latent residual variance (`Y_psi22`, approximately -1.3955). It must not
-be interpreted as an admissible fitted random-effects model. The figure illustrates
-the plotting API, not acceptance of this solution. Inspect the recorded diagnostics:
+The saved `Math_TVCchgBL_BLS_r` example reaches optimizer status 0, and `getDiagnostics()`
+reports no issues:
 
-```{r historical-diagnostics}
-getDiagnostics(Math_TVCchgBL_BLS_r)
+```{r change-diagnostics}
+getDiagnostics(Math_TVCchgBL_BLS_r)$issues
 ```
 
-Refitting, model revision, and stability/admissibility checks are required before
-using this specification for substantive inference. No covariance constraint has
-been silently imposed to replace the historical model.
+An earlier fit of the same call (nlpsem 1.0.0.9000) also reached status 0, at a poorer
+optimum (-2LL 64317.60 against 64207.48) with a negative latent residual variance
+(`Y_psi22`, about -1.40): optimizer status alone does not distinguish such solutions.

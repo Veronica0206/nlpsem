@@ -50,9 +50,8 @@
 #' print(Math_LGCM_BLS_r)
 #' head(coef(Math_LGCM_BLS_r))
 #' logLik(Math_LGCM_BLS_r)
-#' # Older shipped fits remain usable with explicit plotting arguments:
-#' figure <- plot(Math_LGCM_BLS_r, sub_Model = "LGCM", y_var = "M",
-#'                curveFun = "BLS", t_var = "T", records = 1:9, draw = FALSE)
+#' # The fit records its specification, so plotting takes only presentation choices:
+#' figure <- plot(Math_LGCM_BLS_r, xlab = "Month", outcome = "Mathematics", draw = FALSE)
 NULL
 
 #' @rdname fit-methods

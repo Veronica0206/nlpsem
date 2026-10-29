@@ -41,16 +41,20 @@ test_that("diagnostics distinguish numerical checks from fit acceptance without 
 })
 
 test_that("status zero does not hide inadmissible shipped latent covariances", {
-  examples <- .load_extdata("getTVCmodel_examples.RData")
-  output <- getDiagnostics(examples$Math_TVCchgBL_BLS_r)
+  # The shipped multiple-group random-knot example reaches status 0 with positive variances but an
+  # indefinite growth-factor covariance matrix in group 1.
+  examples <- .load_extdata("getMGroup_examples.RData")
+  output <- getDiagnostics(examples$MGroup_Math_BLS_LGCM_f)
   expect_true(output$optimizer$status_zero)
   latent <- subset(output$covariance, block == "Latent disturbances")
-  expect_true(any(latent$minimum_variance < -1))
-  expect_true(any(latent$status == "negative_variance"))
-  original <- subset(output$covariance, matrix == "Y_psi_r")
-  expect_equal(original$minimum_variance, -1.395537, tolerance = 1e-5)
-  expect_equal(original$minimum_eigenvalue, -5.197491, tolerance = 1e-5)
+  expect_true(all(latent$minimum_variance > 0))
+  expect_identical(latent$status[grepl("Class1", latent$model)], "indefinite")
+  expect_identical(latent$status[grepl("Class2", latent$model)], "positive_definite")
+  original <- subset(output$covariance, matrix == "c1Y_psi0")
+  expect_equal(original$minimum_eigenvalue, -0.005265433, tolerance = 1e-5)
   expect_true(any(grepl("Covariance problem", output$issues, fixed = TRUE)))
+  # The change-from-baseline TVC example, inadmissible in its 1.0.0.9000 fit, now passes.
+  expect_identical(getDiagnostics(.load_extdata("getTVCmodel_examples.RData")$Math_TVCchgBL_BLS_r)$issues, character(0))
 })
 
 test_that("covariance diagnostics are scale-aware and allow deterministic zero disturbances", {

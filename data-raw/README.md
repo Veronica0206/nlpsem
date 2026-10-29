@@ -17,9 +17,9 @@ them. `inst/extdata/REGENERATED.txt` records the R and OpenMx versions used.
 
 The bivariate random-knot model (`RM_PLGCM.f`) and the three-class bivariate mixture (`RM_BLS_PLGCM3`) have
 multimodal likelihoods: in October 2026 a sweep over residual-correlation starts (`res_cor` 0.1 to 0.95) for
-`RM_PLGCM.f` ended at -2LL values between 62505 and 62609 (all status 0 or 6), and `RM_BLS_PLGCM3` reached the same
-61903.6 solution from the 1.0 default starts and from the 0.3-era calls. The regenerated objects are the fits the
-documented calls produce; `REGENERATED.txt` lists how they compare with the previous objects.
+`RM_PLGCM.f` ended at -2LL values between 62505 and 62609 (all status 0 or 6). With the 1.0.0.9006 starts the
+documented call reaches 62505.36, and `RM_BLS_PLGCM3` reaches 61865.29 (its 0.4.1 value). The regenerated objects are
+the fits the documented calls produce; `REGENERATED.txt` lists how they compare with the previous objects.
 
 ## Verified data reconstruction
 

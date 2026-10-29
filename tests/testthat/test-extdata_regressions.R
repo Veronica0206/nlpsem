@@ -1,9 +1,3 @@
-.legacy_estimate_display <- function(x) {
-  x$Estimate <- round(x$Estimate, 4)
-  x$SE <- round(x$SE, 4)
-  x
-}
-
 # Regression tests driven by the fitted example objects shipped in inst/extdata. They exercise
 # the plotting, output, factor-score, likelihood-ratio and summary paths without re-fitting
 # any model, so they run in seconds.
@@ -103,7 +97,7 @@ test_that("mediation trajectories are built from the role-named growth factors a
   }
 })
 
-test_that("output helpers preserve the rounded presentation of shipped estimate tables", {
+test_that("output helpers reproduce the shipped estimate tables at full precision", {
   eL <- .load_extdata("getLGCM_examples.RData")
   eC <- .load_extdata("getLCSM_examples.RData")
   eT <- .load_extdata("getTVCmodel_examples.RData")
@@ -112,7 +106,7 @@ test_that("output helpers preserve the rounded presentation of shipped estimate 
 
   obj <- eL$Math_LGCM_TIC_BLS_f
   expect_silent(out <- nlpsem:::getLGCM.output(obj@mxOutput, growth_TIC = c("ex1", "ex2"), names = obj@Estimates$Name))
-  expect_equal(.legacy_estimate_display(out), obj@Estimates)
+  expect_equal((out), obj@Estimates)
 
   lcsm <- list(Read_LCSM_NonP = list("nonparametric", NULL),
                Read_LCSM_NonP_TIC = list("nonparametric", c("ex1", "ex2")),
@@ -121,29 +115,29 @@ test_that("output helpers preserve the rounded presentation of shipped estimate 
                Read_LCSM_JB_r = list("Jenss-Bayley", NULL))
   for (nm in names(lcsm)) {
     obj <- eC[[nm]]
-    expect_equal(.legacy_estimate_display(nlpsem:::getLCSM.output(obj@mxOutput, curveFun = lcsm[[nm]][[1]], growth_TIC = lcsm[[nm]][[2]],
+    expect_equal((nlpsem:::getLCSM.output(obj@mxOutput, curveFun = lcsm[[nm]][[1]], growth_TIC = lcsm[[nm]][[2]],
                                          names = obj@Estimates$Name)), obj@Estimates, info = nm)
   }
 
   tvc <- c(Math_TVCslp_BLS_f = 1, Math_TVCslp_BLS_r = 1, Math_TVCchg_BLS_r = 2, Math_TVCchgBL_BLS_r = 3)
   for (nm in names(tvc)) {
     obj <- eT[[nm]]
-    expect_equal(.legacy_estimate_display(nlpsem:::getTVC.output(obj@mxOutput, curveFun = "BLS", records = 1:9, y_model = "LGCM",
+    expect_equal((nlpsem:::getTVC.output(obj@mxOutput, curveFun = "BLS", records = 1:9, y_model = "LGCM",
                                         decompose = tvc[[nm]], growth_TIC = "ex1", names = obj@Estimates$Name)),
                  obj@Estimates, info = nm)
   }
 
   for (nm in c("RM_PLGCM.r", "RM_PLGCM.f")) {
     obj <- eG[[nm]]
-    expect_equal(.legacy_estimate_display(nlpsem:::getMGM.output(obj@mxOutput, y_var = c("R", "M"), records = list(1:9, 1:9), curveFun = "BLS",
+    expect_equal((nlpsem:::getMGM.output(obj@mxOutput, y_var = c("R", "M"), records = list(1:9, 1:9), curveFun = "BLS",
                                         y_model = "LGCM", names = obj@Estimates$Name)), obj@Estimates, info = nm)
   }
 
   obj <- eD$Med2_LGCM_BLS
-  expect_equal(.legacy_estimate_display(nlpsem:::getMED.output(obj@mxOutput, y_var = "M", m_var = "R", x_type = "baseline", x_var = "ex1",
+  expect_equal((nlpsem:::getMED.output(obj@mxOutput, y_var = "M", m_var = "R", x_type = "baseline", x_var = "ex1",
                                       curveFun = "bilinear spline", names = obj@Estimates$Name)), obj@Estimates)
   obj <- eD$Med3_LGCM_BLS
-  expect_equal(.legacy_estimate_display(nlpsem:::getMED.output(obj@mxOutput, y_var = "S", m_var = "M", x_type = "longitudinal", x_var = "R",
+  expect_equal((nlpsem:::getMED.output(obj@mxOutput, y_var = "S", m_var = "M", x_type = "longitudinal", x_var = "R",
                                       curveFun = "bilinear spline", names = obj@Estimates$Name)), obj@Estimates)
 })
 
@@ -173,7 +167,7 @@ test_that("automatic parameter names match the shipped estimate tables", {
   # (and the cluster-TIC coefficients for mixture models).
   grp <- eR$MGroup_Read_EXP_LGCM_TIC_r
   nms <- nlpsem:::.auto_names_subModel("LGCM", "EXP", FALSE, c("ex1", "ex2"), 1:9, NULL, NULL, "R", NULL, NULL, NULL)
-  expect_equal(.legacy_estimate_display(nlpsem:::getMGroup.output(grp@mxOutput, nClass = 2, sub_Model = "LGCM", y_var = "R", curveFun = "EXP",
+  expect_equal((nlpsem:::getMGroup.output(grp@mxOutput, nClass = 2, sub_Model = "LGCM", y_var = "R", curveFun = "EXP",
                                          x_type = NULL, records = 1:9, growth_TIC = c("ex1", "ex2"), y_model = NULL,
                                          decompose = NULL, names = nms)), grp@Estimates)
   # RM_BLS_PLGCM3 (three classes with cluster TICs): the whole stored table, including the cluster-TIC rows,
@@ -187,7 +181,7 @@ test_that("automatic parameter names match the shipped estimate tables", {
                                 cluster_TIC = c("gx1", "gx2"), y_var = c("R", "M"), curveFun = "BLS",
                                 x_type = NULL, records = list(1:9, 1:9), growth_TIC = NULL,
                                 y_model = "LGCM", decompose = NULL, names = nms)
-  expect_equal(.legacy_estimate_display(out), mix@Estimates)
+  expect_equal((out), mix@Estimates)
   cb <- mix@mxOutput$classbeta
   beta_rows <- out[-seq_len(3 * length(nms)), ]
   expect_equal(beta_rows$Name, c(t(cb$labels[-1, , drop = FALSE])))

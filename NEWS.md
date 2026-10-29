@@ -19,6 +19,11 @@
   length (a single baseline mediation path is no longer copied to every growth factor). Simulated processes
   are named only when the data are assembled, so prefixes such as `y_var = "M"`, `"TVC"` or `"TIC"` no longer
   drop or overwrite columns, and prefixes or covariate names that would duplicate a column are rejected.
+* The fitted examples in `inst/extdata` were regenerated with this version (`REGENERATED.txt` lists how each
+  compares with the 1.0.0.9000 objects). Fourteen reproduce their likelihood, seven reach a better optimum
+  (`Math_TVCchgBL_BLS_r` is now admissible, and the bilinear spline example again gives the knot and path quoted
+  in the LGCM guide), and two reach a poorer one (`Math_TVC_BLS_f`, `Math_BLS_LGCM3`). `getDiagnostics()` flags
+  four stored solutions with slightly indefinite class or group covariance matrices; the guides note them.
 * The fitting functions warn when a new fit fails the checks of `getDiagnostics()`: a nonzero optimizer
   status, an inadmissible covariance matrix, a Hessian that is not positive definite, incomplete standard
   errors or an empty mixture class. The fit is still returned; the warning (class

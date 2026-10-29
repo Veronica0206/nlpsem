@@ -94,7 +94,8 @@ test_that("shipped mixture probabilities retain dimensions and coherent summarie
   expect_equal(dim(out@prob), c(500L, 3L))
   expect_true(all(is.finite(out@prob)))
   expect_equal(rowSums(out@prob), rep(1, 500), tolerance = 1e-12)
-  expect_equal(out@entropy, .6504447, tolerance = 1e-6)
+  # relative entropy from the posterior probabilities, computed independently
+  expect_equal(out@entropy, 1 + sum(out@prob * log(out@prob)) / (500 * log(3)), tolerance = 1e-12)
   expect_error(getPosterior(model, 2), "number of fitted")
   expect_error(getPosterior(model, 4), "number of fitted")
   multivariate <- objects$RM_BLS_PLGCM3@mxOutput
@@ -103,7 +104,9 @@ test_that("shipped mixture probabilities retain dimensions and coherent summarie
   out <- getSummary(list(multivariate), HetModels = TRUE)
   expect_equal(grep("^%Class", names(out), value = TRUE), paste0("%Class", 1:3))
   expect_false(any(grepl("[.]x$|[.]y$", names(out))))
-  expect_equal(unlist(out[paste0("%Class", 1:3)], use.names = FALSE), c("22.2%", "52.6%", "25.2%"))
+  assigned <- tabulate(max.col(getPosterior(multivariate, 3)@prob, ties.method = "first"), nbins = 3)
+  expect_equal(sum(assigned), 500L)
+  expect_equal(unlist(out[paste0("%Class", 1:3)], use.names = FALSE), paste0(assigned / 500 * 100, "%"))
   mixed <- getSummary(list(model, multivariate), HetModels = TRUE)
   expect_equal(nrow(mixed), 2L)
   expect_identical(mixed$Model, c("Model1", "Model2"))

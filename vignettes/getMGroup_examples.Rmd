@@ -18,12 +18,12 @@ has_data <- nzchar(system.file("extdata", "getMGroup_examples.RData", package = 
 knitr::opts_chunk$set(eval = has_data)
 ```
 
-The saved examples below were generated with nlpsem 1.0.0.9000 and are retained
-for historical reproducibility. Rendering this guide does not refit its disabled
-model-fitting chunks. Refit with the current version for a new analysis, use
-`getDiagnostics()` to check admissibility and uncertainty, and compare multiple
-starts for difficult nonlinear or mixture models. These historical examples are
-not evidence of final V1.0.0 numerical qualification.
+The saved examples below were generated with nlpsem 1.0.0.9006; `extdata/REGENERATED.txt`
+records the versions and how the fits compare with the previous ones. Rendering this
+guide does not refit its disabled model-fitting chunks. Refit with the current version
+for a new analysis, use `getDiagnostics()` to check admissibility and uncertainty, and
+compare multiple starts for difficult nonlinear or mixture models. These examples are
+not evidence of numerical qualification.
 
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
@@ -78,6 +78,13 @@ Figure1 <- getFigure(
 )
 show(Figure1)
 ```
+
+The saved solution of this model reaches optimizer status 0, but `getDiagnostics()` reports a
+slightly indefinite covariance matrix of the growth factors in the first group (smallest
+eigenvalue about -0.003), so refitting the call above returns it with a warning. An earlier fit of
+the same call (nlpsem 1.0.0.9000) reached an admissible solution with a lower likelihood (-2LL
+31245.64 against 31204.94). Compare the solutions from several starts, or consider a fixed knot,
+before interpreting the group-specific variances.
 
 ## Example 2: Fit multiple group negative exponential LGCM with time-invariant covariates (TICs) to evaluate the difference in the development of reading ability. This model includes two growth TICs, baseline values of teacher-reported approach to learning and attentional focus. Point estimates and corresponding standard errors (SEs) of all parameters are presented within the original parameter space.
 ```{r, message = FALSE, eval = FALSE}

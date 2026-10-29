@@ -120,6 +120,7 @@ test_that("plot draws by default and returns the figure invisibly", {
 
 test_that("legacy serialized fits retain inspection and explicit plotting support", {
   fit <- .load_extdata("getLGCM_examples.RData")$Math_LGCM_BLS_r
+  attr(fit, "nlpsem") <- NULL  # as saved before fits recorded their specification
   expect_null(getSpecification(fit))
   expect_output(print(fit), "nlpsem fit")
   expect_equal(summary(fit), summary(fit@mxOutput))

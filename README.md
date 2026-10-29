@@ -44,10 +44,9 @@ plot(fit, draw = FALSE)
 The [NLS validation record](.github/VALIDATION-1.0.0.9005.md) separates completed
 checks from outstanding numerical qualification. The fitting-layer reference values
 were regenerated with 1.0.0.9006; each fit is compared with its reference only after
-it passes the `getDiagnostics()` checks (see `NEWS.md`). The saved examples remain
-historical evidence. In particular, the saved `Math_TVCchgBL_BLS_r` example is
-inadmissible despite optimizer status 0; see the TVC guide. This development version
-is not a V1.0.0 release.
+it passes the `getDiagnostics()` checks (see `NEWS.md`). The saved examples were
+regenerated with 1.0.0.9006 (`inst/extdata/REGENERATED.txt`); `getDiagnostics()` flags four
+of them, which the guides note. This development version is not a V1.0.0 release.
 
 New estimate tables retain full precision. Older serialized tables retain their
 historical rounding and need recomputation or refitting to recover precision. S4
