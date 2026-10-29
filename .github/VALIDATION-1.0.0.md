@@ -1,9 +1,10 @@
 # nlpsem 1.0.0 validation
 
-The release candidate starts from development commit e9a631e5f3eb6c8067107f9c358b667b0eb9ad87.
-The final review corrects simulator argument validation and plotting edge cases, qualifies
-single-sample approximation results, and prepares release metadata. NLS initialization,
-the SEM optimizer and retry settings, reference values and numerical tolerances are unchanged.
+This review extends candidate de5769206a61fbbdfbd0daba19d755b1dceab642. It corrects
+mediation disturbance covariance starts, fitted change-score plotting and selected
+waves, and simulator truth metadata for shifted time origins. The per-person NLS
+method, SEM optimizer and retry controls, numerical reference values and comparison
+tolerances are preserved.
 
 ## Checks and retained evidence
 
@@ -21,11 +22,20 @@ establish that a run passed.
   cases and a 50-replicate linear LGCM mean-recovery screen on three platforms.
 - The documentation workflow builds the reference pages and all articles.
 
-Targeted local review on R 4.5.3/OpenMx 2.22.11 passed 234 simulator assertions,
-108 plotting assertions, and 219 diagnostics/standardization assertions. All 23
-shipped example fits rendered 34 figures without plotting warnings. Additional
-checks reproduced rejection of missing SEs and a warning for an inadmissible
-mixture solution despite optimizer status zero.
+Targeted review on R 4.5.3/OpenMx 2.22.11 includes 104 mediation-start/NLS
+assertions, 387 plotting assertions, and 85 new simulator-origin assertions.
+All 23 shipped example fits rendered 34 figures without plotting warnings;
+eight additional selected-wave and coarse nonlinear figures were inspected.
+Sixty-two deterministic simulator comparisons retained exactly the generated
+data, original truth, growth factors, settings and RNG behavior. The added
+truth attributes are metadata, not changes to random generation.
+
+The 688-model construction replay has 596 exact matches, 12 approved constant
+renames, eight approved historical mediation-start corrections and 72 approved
+derived LCSM mean corrections, with no unexplained changes locally. The
+comparator's 76 self-tests include rejection of incorrect or partial formula
+changes. Replay supplies historical starts; separate tests and fitted references
+exercise the corrected automatic starts.
 
 The maintainer's submission bundle retains the full local test/check logs,
 review findings, archive manifest and final hosted run identifiers.

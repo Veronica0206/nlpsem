@@ -10,6 +10,7 @@
 # symbols rather than quoted strings. The variables listed below are not
 # actually global; they are column names used inside tidy-evaluation contexts.
 utils::globalVariables(c(
+  "interval_start",
   "BL_mean", "M_alpha", "M_alpha0", "M_alpha1", "M_alpha2", "M_alphar", "M_mean",
   "M_mug", "M_psi00", "M_psi01", "M_psi11", "M_psi12", "M_psi1r", "M_psi22",
   "M_psi_r", "M_psir2", "M_psirr", "Omega", "X_mean", "X_mean0",

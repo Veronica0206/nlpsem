@@ -313,4 +313,72 @@ bad <- g$new
 bad$matrices$S$values[2, 2] <- 9
 bad$matrices$S$values[cbind(c(2L, 3L), c(3L, 2L))] <- 2.7
 reject_med("MED changing variance and covariance consistently still fails", g$old, bad)
+# Independent reporting-formula fixtures: only the documented centered-rate
+# replacement is accepted; no likelihood structure or unrelated output changes.
+lcsm_fixture <- function(curve = "EXP", prefix = "") {
+  old <- list(matrices = list(S = constant()), algebras = list(), submodels = list())
+  new <- old
+  slice <- if (curve == "EXP") "2" else "2:3"
+  last <- if (curve == "EXP") "3" else "4"
+  for (j in 1:2) {
+    key <- paste0(prefix, c("Yslp_m", "Ychg_bl_m")[j])
+    loading <- paste0(prefix, if (j == 1L) "r_loads" else "s_loads[-1, ]")
+    head <- paste0(loading, " %*% rbind(", prefix, "Y_mean0[", slice, ", ], ")
+    old$algebras[[key]] <- list(formula = paste0(head, "0)"))
+    new$algebras[[key]] <- list(formula = paste0(head, prefix, "Y_mean0[", last, ", ] - ", prefix, "Y_mug)"))
+  }
+  list(old = old, new = new)
+}
+compare_lcsm <- function(old, new, id = "LCSM_EXP_r_tic1") {
+  invisible(capture.output(result <- compare_model_structures(setNames(list(old), id),
+    setNames(list(new), id), expected_count = 1L)))
+  result
+}
+reject_lcsm <- function(label, old, new, id = "LCSM_EXP_r_tic1") {
+  message <- tryCatch({compare_lcsm(old, new, id); NA_character_}, error = conditionMessage)
+  if (is.na(message)) stop(label, ": unexpected acceptance")
+  pass(label, TRUE)
+}
+for (curve in c("EXP", "JB")) {
+  f_lcsm <- lcsm_fixture(curve)
+  for (id in c(paste0("LCSM_", curve, "_r_tic1"), paste0("LCSM_", curve, "_r_tic2"),
+               paste0("TVC_LCSM_", curve, "_r_d0_tic1"), paste0("TVC_LCSM_", curve, "_r_d2_tic0"))) {
+    pass(paste("centered-rate reporting is accepted for", id), {
+      x <- compare_lcsm(f_lcsm$old, f_lcsm$new, id)
+      stopifnot(x$approved_lcsm_means == 1L, x$lcsm_means_only == 1L, x$exact == 0L)
+    })
+  }
+  a <- lcsm_fixture(curve, "c1"); b <- lcsm_fixture(curve, "c2")
+  old <- list(submodels = list(Class1 = a$old, Class2 = b$old))
+  new <- list(submodels = list(Class1 = a$new, Class2 = b$new))
+  for (container in c("MGroup", "MIX", "MIXc")) {
+    pass(paste("centered-rate class reporting", container, curve), {
+      x <- compare_lcsm(old, new, paste0(container, "_LCSM_", curve, "_r_tic1"))
+      stopifnot(x$approved_lcsm_means == 1L, length(x$lcsm_mean_scopes) == 2L)
+    })
+  }
+}
+h <- lcsm_fixture()
+for (id in c("LCSM_EXP_r_tic0", "LCSM_EXP_f_tic1", "LGCM_EXP_r_tic1",
+             "TVC_LCSM_EXP_r_d0_tic0", "MGM_LCSM_EXP_r")) {
+  reject_lcsm(paste("reporting approval excludes", id), h$old, h$new, id)
+}
+for (replacement in c("Y_mean0[3, ] + Y_mug", "Y_mean0[2, ] - Y_mug",
+                      "Y_mean0[3, ] - c1Y_mug", "0.01")) {
+  bad <- h$new
+  bad$algebras$Yslp_m$formula <- paste0("r_loads %*% rbind(Y_mean0[2, ], ", replacement, ")")
+  reject_lcsm("incorrect centered-rate expression is rejected", h$old, bad)
+}
+bad <- h$new
+bad$algebras$Ychg_bl_m <- h$old$algebras$Ychg_bl_m
+reject_lcsm("both reporting quantities must be corrected together", h$old, bad)
+bad <- h$new
+bad$matrices$S$values[1, 1] <- 3
+reject_lcsm("reporting correction cannot hide a covariance change", h$old, bad)
+bad <- h$new
+bad$algebras$Yslp_m$extra <- "unrelated"
+reject_lcsm("reporting correction cannot hide another algebra field", h$old, bad)
+bad <- h$new
+bad$algebras$likelihood <- list(formula = "changed")
+reject_lcsm("reporting correction cannot hide another algebra", h$old, bad)
 cat("All", checks, "structural comparator self-tests passed.\n")

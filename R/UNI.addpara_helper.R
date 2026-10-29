@@ -97,13 +97,18 @@
     }
     else if (curveFun %in% c("negative exponential", "EXP")){
       if (intrinsic){
+        # The RAM rate latent is centered at Y_mug. Covariates can give that
+        # deviation a nonzero mean, which contributes through the last loading.
+        rate_shift <- if (!is.null(growth_TIC) || (!is.null(decompose) && decompose != 0)) {
+          paste0(pfx[k], "Y_mean0[3, ] - ", pfx[k], "Y_mug")
+        } else "0"
         rate_loads <- mxAlgebraFromString(paste0("cbind(", pfx[k], "Y_mug * exp(-", pfx[k], "Y_mug * M_MID_TIME[-1, ]), ",
                                                  "", pfx[k], "Y_mueta1 * exp(-", pfx[k], "Y_mug * M_MID_TIME[-1, ]) * ",
                                                  "(1 - ", pfx[k], "Y_mug * M_MID_TIME[-1, ]))"),
                                           name = paste0(pfx[k], "r_loads"))
         status_loads <- mxAlgebraFromString(paste0("Omega %*% ", pfx[k], "r_loads"),
                                             name = paste0(pfx[k], "s_loads"))
-        slp_m <- mxAlgebraFromString(paste0(pfx[k], "r_loads %*% rbind(", pfx[k], "Y_mean0[2, ], 0)"),
+        slp_m <- mxAlgebraFromString(paste0(pfx[k], "r_loads %*% rbind(", pfx[k], "Y_mean0[2, ], ", rate_shift, ")"),
                                      name = paste0(pfx[k], "Yslp_m"))
         slp_v <- if ((is.null(decompose)||decompose == 0) && is.null(growth_TIC)) {
           mxAlgebraFromString(paste0(pfx[k], "r_loads %*% ", pfx[k], "Y_psi0[2:3, 2:3] %*% t(", pfx[k], "r_loads)"),
@@ -116,7 +121,7 @@
                                          name = paste0(pfx[k], "Ychg_inv_m"))
         chg_inv_v <- mxAlgebraFromString(paste0("t(M_LAG_SQ[-1, ] * diag2vec(", pfx[k], "Yslp_v))"),
                                          name = paste0(pfx[k], "Ychg_inv_v"))
-        chg_bl_m <- mxAlgebraFromString(paste0(pfx[k], "s_loads[-1, ] %*% rbind(", pfx[k], "Y_mean0[2, ], 0)"),
+        chg_bl_m <- mxAlgebraFromString(paste0(pfx[k], "s_loads[-1, ] %*% rbind(", pfx[k], "Y_mean0[2, ], ", rate_shift, ")"),
                                         name = paste0(pfx[k], "Ychg_bl_m"))
         chg_bl_v <- if ((is.null(decompose)||decompose == 0) && is.null(growth_TIC)) {
           mxAlgebraFromString(paste0(pfx[k], "s_loads[-1, ] %*% ", pfx[k], "Y_psi0[2:3, 2:3] %*% t(", pfx[k], "s_loads[-1, ])"), name = paste0(pfx[k], "Ychg_bl_v"))
@@ -157,6 +162,9 @@
     }
     else if (curveFun %in% c("Jenss-Bayley", "JB")){
       if (intrinsic){
+        rate_shift <- if (!is.null(growth_TIC) || (!is.null(decompose) && decompose != 0)) {
+          paste0(pfx[k], "Y_mean0[4, ] - ", pfx[k], "Y_mug")
+        } else "0"
         ADD1 <- mxMatrix(type = "Full", nrow = length(m_lag), ncol = 1, values = rep(1, length(m_lag)),
                          free = FALSE, name = "ADD1")
         rate_loads <- mxAlgebraFromString(paste0("cbind(ADD1, ", pfx[k], "Y_mug * exp(", pfx[k], "Y_mug * M_MID_TIME[-1, ]), ",
@@ -165,7 +173,7 @@
                                           name = paste0(pfx[k], "r_loads"))
         status_loads <- mxAlgebraFromString(paste0("Omega %*% ", pfx[k], "r_loads"),
                                             name = paste0(pfx[k], "s_loads"))
-        slp_m <- mxAlgebraFromString(paste0(pfx[k], "r_loads %*% rbind(", pfx[k], "Y_mean0[2:3, ], 0)"),
+        slp_m <- mxAlgebraFromString(paste0(pfx[k], "r_loads %*% rbind(", pfx[k], "Y_mean0[2:3, ], ", rate_shift, ")"),
                                      name = paste0(pfx[k], "Yslp_m"))
         slp_v <- if ((is.null(decompose)||decompose == 0) && is.null(growth_TIC)) {
           mxAlgebraFromString(paste0(pfx[k], "r_loads %*% ", pfx[k], "Y_psi0[2:4, 2:4] %*% t(", pfx[k], "r_loads)"),
@@ -178,7 +186,7 @@
                                          name = paste0(pfx[k], "Ychg_inv_m"))
         chg_inv_v <- mxAlgebraFromString(paste0("t(M_LAG_SQ[-1, ] * diag2vec(", pfx[k], "Yslp_v))"),
                                          name = paste0(pfx[k], "Ychg_inv_v"))
-        chg_bl_m <- mxAlgebraFromString(paste0(pfx[k], "s_loads[-1, ] %*% rbind(", pfx[k], "Y_mean0[2:3, ], 0)"),
+        chg_bl_m <- mxAlgebraFromString(paste0(pfx[k], "s_loads[-1, ] %*% rbind(", pfx[k], "Y_mean0[2:3, ], ", rate_shift, ")"),
                                         name = paste0(pfx[k], "Ychg_bl_m"))
         chg_bl_v <- if ((is.null(decompose)||decompose == 0) && is.null(growth_TIC)) {
           mxAlgebraFromString(paste0(pfx[k], "s_loads[-1, ] %*% ", pfx[k], "Y_psi0[2:4, 2:4] %*% t(", pfx[k], "s_loads[-1, ])"), name = paste0(pfx[k], "Ychg_bl_v"))

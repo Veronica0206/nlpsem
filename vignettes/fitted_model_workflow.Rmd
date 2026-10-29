@@ -116,9 +116,8 @@ one entry per outcome, with growth-status or change/rate plots within that entry
 ## Check a model on simulated data
 
 `getSimData()` generates wide-format data from a model with known parameter values.
-Each data set carries those values as the attribute `truth`, named as in the estimate
-table of the matching fit, so a fit can be compared with the values that generated
-the data. This example generates six measurements for 500 people from a quadratic
+Each data set carries those values as the attribute `truth`, retaining the generating
+parameterization and time origin. This example generates six measurements for 500 people from a quadratic
 latent growth curve model with the default parameter values.
 
 ```{r simulate-data, message=FALSE}
@@ -131,6 +130,32 @@ sim_fit <- getLGCM(
 estimates <- sim_fit@Estimates[match(names(truth), sim_fit@Estimates$Name), ]
 data.frame(truth = truth, estimate = round(estimates$Estimate, 3), SE = round(estimates$SE, 3))
 ```
+
+Equal parameter names do not always mean equal parameters. For example, a quadratic
+growth curve's `eta0` is its level at time zero, while an LCSM's `eta0` is its level
+at the first fitted occasion. For quadratic and nonparametric data, `truth_lcsm`
+supplies the parameter targets at the first generated occasion:
+
+```{r simulate-time-origin}
+shifted <- getSimData(n = 30, curveFun = "QUAD", times = 5:14, jitter = 0, seed = 1)
+cbind(LGCM = attr(shifted, "truth")[c("mueta0", "psi00")],
+      LCSM = attr(shifted, "truth_lcsm")[c("mueta0", "psi00")])
+attr(shifted, "truth_info")$first_observation_time
+```
+
+The quadratic transformation includes the mean, covariance and covariate effects;
+the initial mean and variance above are 125 and 166.25 for the LCSM, versus the
+time-zero values 50 and 25. The nonparametric generator already starts at the first
+observation. These targets cover all generated records; a later selected baseline
+needs reparameterization, potentially for each person if that time is jittered.
+`truth_info` records the origin, reference records and applicable limits.
+
+`truth_lcsm` is unavailable for EXP and JB: their midpoint approximation, and a
+random ratio's nonlinear transformation, preclude treating a simple conversion
+as an exact recovery target. Direct comparisons with the generating `truth` need
+a zero first fitted time for every person and the approximation qualifications in
+`?getSimData`. For TVC models, transformed factor targets alone do not establish
+equivalence of the full growth-curve and change-score data-generating models.
 
 The data also carry each person's growth factors (`growth_factors`) and the full
 generating values (`settings`). Supply `params` to change the generating values, and

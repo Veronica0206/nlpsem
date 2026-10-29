@@ -59,11 +59,21 @@ exact. ADD1 constants remain exact even within the numerical allowance. All othe
 differences fail. This allowance does not alter numerical fitting-reference
 tolerances.
 
-The comparator requires all 688 model identifiers and reports four separate
-counts: exact matches, approved ADD1 renames only, roundoff only, and approved
-renames plus roundoff. It also reports the largest accepted absolute and scaled
+The comparator also permits the previously reviewed longitudinal mediation M-X
+residual starting covariance correction, with exact checks on its named cells
+and the unchanged residual diagonal starts. The final 1.0.0 review additionally
+permits two exact derived reporting-formula corrections (`Yslp_m` and
+`Ychg_bl_m`) for covariate-bearing random-rate EXP/JB change score models. Their
+last mean factor now includes its covariate-induced deviation from the expansion
+point. Both formulas must match the specified transformation together; fitting
+equations, all other algebras and all matrix structure remain checked.
+
+The comparator requires all 688 model identifiers and separately reports exact
+matches, each approved change, roundoff alone and approved changes with roundoff.
+It also reports the largest accepted absolute and scaled
 numeric discrepancy. Its self-tests reject missing or misreferenced constants,
-meaningful value changes, type/dimension mismatches, and unrelated mutations.
+meaningful value changes, type/dimension mismatches, incorrect or incomplete
+reporting-formula corrections, and unrelated mutations.
 
 The snapshot records historical behavior; it is not an independent statistical
 reference. The new review regression tests separately cover distinct mediation

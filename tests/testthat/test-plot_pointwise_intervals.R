@@ -88,15 +88,16 @@ test_that("fixed knots and covariate-adjusted mean uncertainty are propagated", 
 test_that("parametric change-score intervals include random-rate uncertainty", {
   e <- .load_extdata("getLCSM_examples.RData")
   cases <- list(
-    list(nm="Read_LCSM_QUAD",curve="QUAD",change="Y_mean0[2,1]*2+Y_mean0[3,1]*4",rate="Y_mean0[2,1]+4*Y_mean0[3,1]"),
-    list(nm="Read_LCSM_EXP_r",curve="EXP",change="Y_mean0[2,1]*(1-exp(-Y_mean0[3,1]*2))",rate="Y_mean0[2,1]*Y_mean0[3,1]*exp(-Y_mean0[3,1]*2)"),
-    list(nm="Read_LCSM_JB_r",curve="JB",change="Y_mean0[2,1]*2+Y_mean0[3,1]*(exp(Y_mean0[4,1]*2)-1)",rate="Y_mean0[2,1]+Y_mean0[3,1]*Y_mean0[4,1]*exp(Y_mean0[4,1]*2)")
+    list(nm="Read_LCSM_QUAD",curve="QUAD"),
+    list(nm="Read_LCSM_EXP_r",curve="EXP"),
+    list(nm="Read_LCSM_JB_r",curve="JB")
   )
   for (case in cases){
     fit <- e[[case$nm]]@mxOutput
-    out <- .plot_test_data(fit,curve=case$curve,family="LCSM",y_model="LCSM",times=2)
-    .expect_plot_se(out,"cY_hat",case$change,fit)
-    .expect_plot_se(out,"dY_hat",case$rate,fit)
+    times <- c(OpenMx::mxEvalByName("M_TIME",fit))[-1]
+    out <- .plot_test_data(fit,curve=case$curve,family="LCSM",y_model="LCSM",times=times)
+    .expect_plot_se(out,"cY_hat","Ychg_bl_m",fit)
+    .expect_plot_se(out,"dY_hat","Yslp_m",fit)
   }
 })
 
@@ -104,7 +105,8 @@ test_that("nonparametric rate intervals include uncertainty in estimated relativ
   e <- .load_extdata("getLCSM_examples.RData")
   for (nm in c("Read_LCSM_NonP","Read_LCSM_NonP_TIC")){
     fit <- e[[nm]]@mxOutput
-    out <- .plot_test_data(fit,curve="NonP",family="LCSM",y_model="LCSM",times=1:8)
+    times <- c(OpenMx::mxEvalByName("M_TIME",fit))[-1]
+    out <- .plot_test_data(fit,curve="NonP",family="LCSM",y_model="LCSM",times=times)
     .expect_plot_se(out,"dY_hat","Yslp_m",fit)
     .expect_plot_se(out,"cY_hat","Ychg_bl_m",fit)
   }

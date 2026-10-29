@@ -2,6 +2,11 @@
 
 * Adds simulation of univariate, multivariate, time-varying covariate and mediation
   trajectories, with attached generating parameters and individual growth factors.
+  `truth_info` identifies the generating parameterization and time origin;
+  `truth_lcsm` supplies first-occasion targets for quadratic and nonparametric
+  change-score models. Shifted-time growth-curve intercepts must not be compared
+  directly with change-score initial levels. Nonlinear approximation limits
+  remain explicit.
 * Retains fitted-model specifications and adds standard inspection and plotting
   methods. `getDiagnostics()` checks convergence, covariance admissibility,
   uncertainty information and mixture component sizes; new fits warn about
@@ -13,6 +18,19 @@
 * Corrects mediation starts, posterior normalization, multivariate parameter
   naming and output, confidence interval labels, and group-specific trajectory
   plots. Simulator arguments are checked before generation.
+* Mediation disturbance covariance starts use row-aligned structural regression
+  residuals, before the existing numerical path damping, rather than subtracting
+  incorrectly ordered or incomplete explained-covariance terms. This corrects
+  negative starts with opposing direct and indirect effects and inconsistent
+  samples under missingness. Per-person NLS, path damping and optimizer settings
+  are unchanged.
+* Change-score plots follow the fitted interval recurrence, including exponential
+  and Jenss-Bayley models. Selected waves retain the original fitted intervals,
+  changes are rebased to the first selected occasion, and their uncertainty uses
+  the joint parameter covariance. Nonparametric subsets no longer recycle times
+  or fail because the full fitted vectors have a different length.
+  Reported random-rate change means also retain the covariate-induced mean rate
+  deviation, so the derived output agrees with the fitted model.
 * Rejects nonfinite simulation schedules and numeric covariate names that could
   overwrite existing data. Plotting preserves groups named `ID` and handles
   occasions with entirely missing outcomes when selecting the observed curve.

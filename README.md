@@ -18,7 +18,7 @@ Quadratic, negative exponential and Jenss-Bayley models are fitted to standardiz
 data and converted back exactly: the estimates, standard errors and likelihood are
 reported in the original units, and `getSpecification()` records the scaling.
 `options(nlpsem.standardize = FALSE)` fits on the raw scale. Other functional forms
-and mediation models are fitted as before.
+and mediation models retain raw-scale fitting.
 
 The 1.0.0.9005 update made EXP, Jenss-Bayley and bilinear spline starting values use per-person
 `stats::nls()` with the 0.3 curve formulas and default Gauss-Newton algorithm.
@@ -33,6 +33,18 @@ summary columns, parameter names and confidence-interval labels. It adds
 `getDiagnostics()` checks for stored covariance admissibility, Hessian and standard
 error information, and mixture component sizes. New fits warn when these checks find
 issues; `getDiagnostics()` supplies the details without refitting or constraining models.
+
+Mediation disturbance covariance starts use aligned structural regression residuals
+before numerical path damping. This avoids invalid covariance starts when
+direct and indirect effects oppose each other or observations are missing, while
+preserving the per-person NLS method and optimizer controls.
+
+LCSM change plots follow the fitted interval recurrence and rebase selected waves
+with covariance-aware intervals. `getSimData()` retains generating growth-curve
+parameters in `truth`, identifies their parameterization and time origin in
+`truth_info`, and supplies first-occasion LCSM targets in `truth_lcsm` for quadratic
+and nonparametric models. A time-zero growth-curve intercept is a different target
+from an LCSM initial level when the first modeled time is nonzero.
 
 ```r
 print(fit)

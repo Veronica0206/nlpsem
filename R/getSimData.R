@@ -5,9 +5,11 @@
 #' several outcomes, a mediation structure, and several latent classes. The same data can be fitted with a
 #' latent growth curve model or a latent change score model (\code{getLGCM()} or \code{getLCSM()}, or
 #' \code{y_model} in \code{getTVCmodel()}, \code{getMGM()}, \code{getMGroup()} and \code{getMIX()}), and
-#' mediation data with \code{getMediation()}. The true parameter values are attached to the data under the names
-#' that these fitting functions use in their \code{Estimates}, which are the same for both models, so that a fit
-#' can be compared with the values that generated the data.
+#' mediation data with \code{getMediation()}. The generating parameter values are attached to the data under
+#' the names used in \code{Estimates}. Identical names do not imply identical parameter definitions: the
+#' quadratic, negative exponential and Jenss--Bayley growth curves have time-zero intercepts, whereas a
+#' change score model's intercept is the level at the first fitted occasion. See \emph{Truth and time origin}
+#' below before comparing a fit with the attached values.
 #'
 #' @param n An integer: the number of persons. Default is \code{500}.
 #' @param sub_Model A string: \code{"LGCM"} (one outcome), \code{"TVC"} (an outcome with a time-varying
@@ -50,18 +52,24 @@
 #' session is restored afterwards. Default is \code{NULL}.
 #'
 #' @return A data frame with columns \code{id}, the repeated measures, the occasions \code{t_var1}, ..., the
-#' TICs and, for several classes, \code{class}. Its attribute \code{"truth"} holds the true parameter values,
-#' named as in the \code{Estimates} of the matching fitting function, or of \code{getMIX()} for several classes
+#' TICs and, for several classes, \code{class}. Its attribute \code{"truth"} holds the generating parameter
+#' values without changing their time origin, named as in the \code{Estimates} of the matching fitting function,
+#' or of \code{getMIX()} for several classes
 #' (with the class weights as log odds \code{p2}, ... against the first class, or as cluster-TIC coefficients
 #' \code{beta20}, ...); derived quantities (rates and changes of a latent change score model, mediation and
-#' total effects) are not included. Attribute \code{"growth_factors"} holds each person's growth factors, and
-#' attribute \code{"settings"} the arguments.
+#' total effects) are not included. For quadratic and nonparametric curves, \code{"truth_lcsm"} holds the
+#' corresponding parameter targets with growth factors anchored at the first generated occasion. It is
+#' \code{NULL} for other curves. Attribute \code{"truth_info"} identifies the generating intercept reference,
+#' first occasion, reference records, and the availability and limits of \code{"truth_lcsm"}.
+#' Attribute \code{"growth_factors"} holds each person's generating growth factors, and attribute
+#' \code{"settings"} the arguments.
 #'
 #' @details Growth factors, TICs and the baseline of a TVC or of a mediation predictor are drawn from
 #' multivariate normal distributions, each person's repeated measures follow the functional form at their own
 #' occasions, and normal residuals are added (correlated between processes at the same occasion). Each
-#' trajectory is the exact growth curve at the person's own growth factors; a latent change score model
-#' describes the same trajectory by its rates of change. The nonparametric form is a growth curve whose slope in
+#' trajectory is the exact growth curve at the person's own growth factors. A latent change score model uses
+#' an initial level and rates of change; its parameterization and approximation need to be considered when
+#' fitting these data. The nonparametric form is a growth curve whose slope in
 #' each interval is \code{eta1} times the interval's relative rate.
 #'
 #' Two approximations in the fitting functions can affect recovery of the generating values. A model with a
@@ -70,6 +78,32 @@
 #' and nonparametric curves, but not for negative exponential and Jenss-Bayley curves; its error shrinks with
 #' shorter intervals or less curvature.
 #'
+#' @section Truth and time origin:
+#' The \code{"truth"} attribute always retains the generating parameterization. For quadratic, negative
+#' exponential and Jenss--Bayley curves, direct comparisons with same-named change score parameters require
+#' the first fitted occasion to be zero for every person, in addition to the approximation qualifications
+#' above. The nonparametric curve is already anchored at its first generated occasion. Bilinear-spline
+#' growth curves use the first segment's time-zero intercept; bilinear-spline mediation uses status at the
+#' process's knot. Valid nonzero-time growth-curve simulation is supported.
+#'
+#' For a quadratic curve beginning at \eqn{t_0}, the change score initial factor is
+#' \eqn{\eta_{0,L} = \eta_0 + t_0\eta_1 + t_0^2\eta_2}; the other factors retain their definitions.
+#' The \code{"truth_lcsm"} attribute applies this exact linear transformation to means, disturbance
+#' covariances, covariate effects and conditional intercepts, including cross-process covariances and each
+#' class's parameters. For example, the default quadratic curve starting at time 5 has initial mean 125 and
+#' variance 166.25, whereas \code{"truth"} retains the time-zero values 50 and 25. For nonparametric curves,
+#' \code{"truth_lcsm"} equals \code{"truth"}.
+#'
+#' These targets refer to all generated records, starting at \code{times[1]}; they are not automatically
+#' rebased when a fit selects a later baseline. A later jittered baseline can require a different
+#' transformation for each person. In TVC models the transformed targets describe the outcome growth
+#' factors and their covariate effects, and do not establish equivalence between the full TVC-augmented
+#' growth curve and a change score recurrence. For negative exponential and Jenss--Bayley curves,
+#' \code{"truth_lcsm"} is not supplied: midpoint integration and, with a random ratio, nonlinear
+#' distribution changes require further qualifications. No first-order transformation is presented as an
+#' exact recovery target.
+#'
+#' @details
 #' In one generated data set of 5,000 persons per configuration, using the default parameters and ten yearly
 #' occasions, the observed errors in growth-factor means were about 1\% for models using the Taylor expansion
 #' alone. For a negative exponential TVC model with \code{decompose = 1} or \code{3}, the TVC effect was
@@ -121,6 +155,9 @@
 #' dat <- getSimData(n = 200, curveFun = "QUAD", seed = 20261027)
 #' head(dat[, 1:6])
 #' attr(dat, "truth")
+#' shifted <- getSimData(n = 30, curveFun = "QUAD", times = 5:14, jitter = 0, seed = 1)
+#' attr(shifted, "truth")[c("mueta0", "psi00")]
+#' attr(shifted, "truth_lcsm")[c("mueta0", "psi00")]
 #' \donttest{
 #' fit <- getLGCM(dat = dat, t_var = "T", y_var = "Y", curveFun = "QUAD", intrinsic = FALSE,
 #'                records = 1:10, paramOut = TRUE)
@@ -282,6 +319,8 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
   if (nClass > 1L) dat$class <- class
 
   attr(dat, "truth") <- .sim_truth(ctx, params, prop, cluster)
+  attr(dat, "truth_lcsm") <- .sim_lcsm_truth(ctx, params, prop, cluster, times[1])
+  attr(dat, "truth_info") <- .sim_truth_info(ctx, times)
   attr(dat, "growth_factors") <- GF
   attr(dat, "settings") <- list(n = n, sub_Model = sub_Model, curveFun = curveFun, intrinsic = intrinsic, nT = nT,
                                 times = times, jitter = jitter, decompose = decompose,
@@ -846,4 +885,53 @@ getSimData <- function(n = 500, sub_Model = "LGCM", curveFun, intrinsic = FALSE,
     out[paste0("p", seq_along(params)[-1])] <- log(prop[-1] / prop[1])
   }
   out
+}
+
+## Exact first-record factor targets for the two curves without midpoint error.
+## This adds metadata only: the generating parameters and random draws are unchanged.
+.sim_lcsm_truth <- function(ctx, params, prop, cluster, first_time){
+  if (!ctx$form %in% c("QUAD", "NonP")) return(NULL)
+  lcsm_ctx <- ctx
+  lcsm_ctx$y_model <- "LCSM"
+  if (ctx$form == "NonP") return(.sim_truth(lcsm_ctx, params, prop, cluster))
+  A <- diag(3)
+  A[1, ] <- c(1, first_time, first_time^2)
+  transform_mean <- function(x) stats::setNames(drop(A %*% x), names(x))
+  converted <- lapply(params, function(p){
+    if (ctx$sub_Model == "MGM"){
+      p$mean <- lapply(p$mean, transform_mean)
+      block <- kronecker(diag(length(ctx$y_var)), A)
+      p$cov <- block %*% p$cov %*% t(block)
+    } else{
+      p$mean <- transform_mean(p$mean)
+      p$cov <- A %*% p$cov %*% t(A)
+      if (!is.null(p[["beta"]])) p$beta <- A %*% p$beta
+      if (ctx$sub_Model == "TVC" && ctx$decompose != 0){
+        p$beta_tvc <- drop(A %*% p$beta_tvc)
+      }
+    }
+    p
+  })
+  .sim_truth(lcsm_ctx, converted, prop, cluster)
+}
+
+## Interpretive metadata keeps equal output names from implying equal time origins.
+.sim_truth_info <- function(ctx, times){
+  reference <- if (ctx$form == "NonP") "first_observation" else if (ctx$form == "BLS"){
+    if (ctx$sub_Model == "MED") "process_knot" else "first_segment_time_zero"
+  } else "time_zero"
+  supported <- ctx$form %in% c("QUAD", "EXP", "JB", "NonP")
+  available <- ctx$form %in% c("QUAD", "NonP")
+  list(parameterization = if (ctx$sub_Model == "MED") "mediation" else "generating_growth_curve",
+       intercept_reference = reference,
+       intercept_time = if (reference == "process_knot") NULL else if (reference == "first_observation") times[1] else 0,
+       first_observation_time = times[1], reference_records = seq_along(times),
+       lcsm = list(supported_curve = supported, truth_available = available,
+                   same_parameter_definitions = supported && (ctx$form == "NonP" || times[1] == 0),
+                   target = "Growth-factor and covariate parameters at the first generated observation",
+                   qualification = if (!supported) "This curve is not supported by getLCSM()." else if (!available){
+                     "No exact LCSM targets supplied: midpoint integration and random-ratio transformations require additional qualifications."
+                   } else{
+                     "Exact factor transformation for all generated records; later selected baselines need reparameterization. TVC targets do not establish equivalence of the full TVC-augmented recurrence."
+                   }))
 }

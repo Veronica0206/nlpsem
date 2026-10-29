@@ -1,8 +1,10 @@
 # Compare the historical Phase C grid with a newly generated snapshot.
 # Usage: Rscript data-raw/compare_model_structures.R baseline.rds current.rds
 # Approved changes are the F5 split of identical ADD1 constants and the
-# reviewed longitudinal MED M-X residual starting covariance correction. No
-# free masks, labels, dimensions or formulas are normalized for the latter. A 1e-10 * max(1, abs(old), abs(new)) elementwise allowance covers
+# reviewed longitudinal MED M-X residual starting covariance correction, and
+# two exact centered random-rate mean formulas in derived LCSM output with
+# covariates. No fitting equations, free masks, labels or dimensions are
+# normalized. A 1e-10 * max(1, abs(old), abs(new)) elementwise allowance covers
 # cross-platform roundoff in numeric matrix values/bounds and data checksums only.
 # ADD1 constants, types,
 # dimensions, free masks, labels, and formulas remain exact.
@@ -21,6 +23,7 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
   }
   renamed <- character()
   mediation_starts <- character()
+  lcsm_means <- character()
   normalize <- function(old, new, path) {
     if (!is.null(old$error) || !is.null(new$error)) stop("Construction error at ", path)
     if (!is.null(old$matrices$ADD1) && is.null(new$matrices$ADD1)) {
@@ -107,6 +110,40 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
       new$matrices$S$values[cells] <- old_s$values[cells]
       mediation_starts <<- c(mediation_starts, path)
     }
+    # Only these covariate-bearing random-rate models can have a nonzero
+    # mean rate deviation. Approve the two exact reporting-formula changes;
+    # loadings, fitting equations, parameter structure and other output remain
+    # subject to the unchanged comparison below.
+    lcsm_id <- grepl(paste0("^(MGroup_|MIX_|MIXc_)?(",
+      "LCSM_(EXP|JB)_r_tic[12]|",
+      "TVC_LCSM_(EXP|JB)_r_(d0_tic1|d[123]_tic[01]))$"), scope[1L])
+    lcsm_single <- length(scope) == 1L && !grepl("^(MGroup_|MIX_|MIXc_)", scope[1L])
+    if (lcsm_id && (lcsm_single || class_scope)) {
+      prefix <- if (class_scope) paste0("c", scope[2L]) else ""
+      keys <- paste0(prefix, c("Yslp_m", "Ychg_bl_m"))
+      changed <- vapply(keys, function(key) {
+        !identical(old$algebras[[key]], new$algebras[[key]])
+      }, logical(1))
+      if (any(changed)) {
+        exp_curve <- grepl("_EXP_r_", scope[1L])
+        slice <- if (exp_curve) "2" else "2:3"
+        last <- if (exp_curve) "3" else "4"
+        for (j in seq_along(keys)) {
+          loading <- paste0(prefix, if (j == 1L) "r_loads" else "s_loads[-1, ]")
+          head <- paste0(loading, " %*% rbind(", prefix, "Y_mean0[", slice, ", ], ")
+          old_formula <- paste0(head, "0)")
+          new_formula <- paste0(head, prefix, "Y_mean0[", last, ", ] - ", prefix, "Y_mug)")
+          a <- old$algebras[[keys[j]]]; b <- new$algebras[[keys[j]]]
+          if (is.null(a$formula) || is.null(b$formula) ||
+              !identical(str2lang(a$formula), str2lang(old_formula)) ||
+              !identical(str2lang(b$formula), str2lang(new_formula))) {
+            stop("Incorrect LCSM centered-rate reporting formula at ", path, "/", keys[j])
+          }
+          new$algebras[[keys[j]]]$formula <- a$formula
+        }
+        lcsm_means <<- c(lcsm_means, path)
+      }
+    }
     if (!identical(names(old$submodels), names(new$submodels))) {
       stop("Submodel names differ at ", path)
     }
@@ -119,12 +156,15 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
   normalized <- current
   had_renames <- setNames(rep(FALSE, length(baseline)), names(baseline))
   had_mediation_starts <- had_renames
+  had_lcsm_means <- had_renames
   for (id in names(baseline)) {
     before <- length(renamed)
     before_mediation <- length(mediation_starts)
+    before_lcsm <- length(lcsm_means)
     normalized[[id]] <- normalize(baseline[[id]], current[[id]], id)
     had_renames[id] <- length(renamed) > before
     had_mediation_starts[id] <- length(mediation_starts) > before_mediation
+    had_lcsm_means[id] <- length(lcsm_means) > before_lcsm
   }
   exact <- vapply(names(baseline), function(id) identical(baseline[[id]], current[[id]]), logical(1))
   same_after_rename <- vapply(names(baseline), function(id) {
@@ -176,16 +216,20 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
   roundoff <- same & !same_after_rename
   rename_only <- same_after_rename & !exact & had_renames & !had_mediation_starts
   mediation_only <- same_after_rename & !exact & had_mediation_starts & !had_renames
-  roundoff_only <- roundoff & !had_renames & !had_mediation_starts
+  roundoff_only <- roundoff & !had_renames & !had_mediation_starts & !had_lcsm_means
+  lcsm_only <- same_after_rename & !exact & had_lcsm_means & !had_renames & !had_mediation_starts
   both <- roundoff & had_renames
   cat("Models:", length(baseline), "; exact:", sum(exact),
       "; approved ADD1 renames only:", sum(rename_only),
       "; approved MED starts only:", sum(mediation_only),
+      "; approved LCSM reporting means only:", sum(lcsm_only),
       "; roundoff only:", sum(roundoff_only),
       "; approved renames plus roundoff:", sum(both),
       "; approved MED starts plus roundoff:", sum(roundoff & had_mediation_starts),
+      "; approved LCSM means plus roundoff:", sum(roundoff & had_lcsm_means),
       "; unexplained:", sum(!same), "\n")
   if (length(mediation_starts)) cat("Corrected MED start scopes:", paste(mediation_starts, collapse = ", "), "\n")
+  if (length(lcsm_means)) cat("Corrected LCSM reporting scopes:", paste(lcsm_means, collapse = ", "), "\n")
   if (length(renamed)) cat("Renamed constant scopes:", paste(renamed, collapse = ", "), "\n")
   cat("Scaled numeric tolerance:", numeric_tolerance,
       "; maximum scaled roundoff:", max_scaled_roundoff,
@@ -202,6 +246,9 @@ compare_model_structures <- function(baseline, current, expected_count = 688L,
                  approved_mediation_starts = sum(same & had_mediation_starts),
                  mediation_start_scopes = mediation_starts, mediation_starts_only = sum(mediation_only),
                  mediation_starts_and_roundoff = sum(roundoff & had_mediation_starts),
+                 approved_lcsm_means = sum(same & had_lcsm_means),
+                 lcsm_mean_scopes = lcsm_means, lcsm_means_only = sum(lcsm_only),
+                 lcsm_means_and_roundoff = sum(roundoff & had_lcsm_means),
                  roundoff_equivalent = sum(roundoff), renames_only = sum(rename_only),
                  roundoff_only = sum(roundoff_only), renames_and_roundoff = sum(both),
                  numeric_tolerance = numeric_tolerance, max_abs_roundoff = max_roundoff,

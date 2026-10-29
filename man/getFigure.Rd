@@ -87,7 +87,7 @@ individual figures can be visualized using the \code{show()} function.
 This function generates visualizations for the output of a fitted model. When a Latent Growth Curve Model
 (LGCM) is fitted for the longitudinal process, it provides (class-specific) estimated growth status with 95\% pointwise confidence
 intervals. When a Latent Change Score Model (LCSM) is fitted for the longitudinal process, it provides (class-specific)
-estimated growth rate with 95\% pointwise confidence intervals and change from baseline with 95\% pointwise confidence intervals. These
+estimated interval-average growth rate with 95\% pointwise confidence intervals and change from baseline with 95\% pointwise confidence intervals. These
 visualizations are particularly useful for understanding the results and trajectories of different classes or groups
 within the model.
 Intervals use the delta method and the full estimated covariance of the growth parameters, including
@@ -98,6 +98,15 @@ when the knot has nonzero uncertainty and the two slopes differ, because the der
 Multiple-group change-score plots use each group's mean observation times; mixture plots use pooled
 mean times as a common reference grid.
 Change curves and their intervals are relative to the first selected observation time on that grid.
+LCSM plots use the fitted discrete change recurrence, including its midpoint approximation for exponential
+and Jenss--Bayley curves, rather than the corresponding continuous growth curve. Selecting a subset of
+fitted waves retains all intervening fitted increments and rebases the change to the first selected wave.
+Rates are the fitted change between consecutive selected waves divided by their time difference, displayed
+at the interval's ending time. Nonparametric rate plots show each rate as a horizontal segment across its
+corresponding interval. Their intervals propagate the joint covariance of these contrasts. Waves
+may be selected in fitted order or its reverse; arbitrary reorderings and repeated waves are rejected.
+For two selected waves, the single interval is displayed as a point with a vertical confidence interval.
+An observed mean is shown as a cross when only one distinct observation time is available for smoothing.
 }
 \examples{
 # Fitted models shipped with the package
