@@ -34,8 +34,10 @@ review findings, archive manifest and final hosted run identifiers.
 
 The reference inventory has 43 configurations: 33 positive comparisons, five
 explicitly nonconverged exclusions and five diagnostic-only inadmissible fixtures.
-Positive comparisons require convergence, finite likelihood, covariance
-availability, a positive-definite Hessian and complete finite positive SEs.
+Positive comparisons require convergence, agreement with the finite reference
+likelihood, no reported covariance issues, a positive-definite Hessian and
+complete finite positive SEs. The independent numerical smoke workflow additionally
+requires available covariance checks.
 
 Reference agreement is regression evidence. It does not prove global optimality,
 identification, or calibrated uncertainty across all data-generating settings.
@@ -55,4 +57,3 @@ Building or checking the archive does not publish the package. The maintainer
 submits the prepared source tarball through the CRAN submission form and confirms
 the resulting email. GitHub main, tags, releases and documentation deployment are
 separate from preparation of the submission candidate.
-

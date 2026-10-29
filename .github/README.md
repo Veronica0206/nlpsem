@@ -34,7 +34,7 @@ Action major versions follow the official
    pkgdown::build_site(preview = FALSE, examples = FALSE, new_process = TRUE)
    ```
 
-   The development site is written under `docs/dev/`. Reference examples remain
+   The release site is written under `docs/`. Reference examples remain
    visible, while the package check executes examples and the site build executes
    article chunks. Inspect the home, reference, and fitted-object workflow pages.
 5. Inspect each platform's actual run and the full fitting and minimum-dependency
