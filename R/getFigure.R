@@ -9,8 +9,10 @@
 #' Intervals use the delta method and the full estimated covariance of the growth parameters, including
 #' estimated rates, knots, and covariate-adjusted means. They describe uncertainty in the model-implied
 #' mean curve, not prediction intervals or simultaneous confidence bands. Bounds are not truncated to
-#' the observed-data range. At the exact estimated knot of a bilinear spline, an interval is omitted
-#' when the knot has nonzero uncertainty and the two slopes differ, because the derivative is not unique.
+#' the observed-data range. Intrinsic bilinear-spline curves retain the fitted smoothed loadings at the
+#' expansion knot and the mean knot deviation, including their joint uncertainty. For a nonintrinsic
+#' bilinear spline, an interval is omitted at the exact estimated knot when the knot has nonzero
+#' uncertainty and the two slopes differ, because the derivative is not unique.
 #' Multiple-group change-score plots use each group's mean observation times; mixture plots use pooled
 #' mean times as a common reference grid.
 #' Change curves and their intervals are relative to the first selected observation time on that grid.

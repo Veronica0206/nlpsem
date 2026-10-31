@@ -86,8 +86,29 @@
     est <- c(est, amplitude, center)
     terms <- c(terms, paste0(se_prefix, amplitude_source, "[", last - 1L, ",1]"), paste0(se_prefix, "_mug"))
   }
+  intrinsic_bls <- curveFun %in% c("bilinear spline", "BLS") && sub_Model != "MED" &&
+    any(startsWith(eval_model@latentVars, "deltag"))
+  if (intrinsic_bls){
+    # Invert the reported mean transformation at the expansion knot. Its
+    # intercept includes (unadjusted contrast - slope) * mean knot deviation.
+    # Retain the unadjusted slopes separately: the random-knot loading uses
+    # those slopes, whereas the ordinary loadings use the adjusted means.
+    source <- if (paste0(eval_prefix, "_alpha_s") %in% names(eval_model@algebras)) "_alpha_s" else "_mean_s"
+    original <- c(mxEvalByName(paste0(eval_prefix, source), eval_model, compute = TRUE))
+    center <- c(mxEvalByName(paste0(eval_prefix, "_mug"), eval_model, compute = TRUE))
+    deviation <- est[4] - center
+    g <- paste0(se_prefix, "_mug")
+    slope <- paste0(se_prefix, source, "[2,1]")
+    contrast <- paste0(se_prefix, source, "[3,1]")
+    d <- paste0("(", terms[4], " - ", g, ")")
+    est <- c(est[1] + center * est[2] - (original[3] - original[2]) * deviation,
+             (est[2] + est[3]) / 2, (est[3] - est[2]) / 2, deviation, original[2:3], center)
+    terms <- c(paste0("(", terms[1], " + ", g, " * ", terms[2], " - (", contrast, " - ", slope, ") * ", d, ")"),
+               paste0("((", terms[2], " + ", terms[3], ") / 2)"),
+               paste0("((", terms[3], " - ", terms[2], ") / 2)"), d, slope, contrast, g)
+  }
   list(est = est, expression = paste0("rbind(", paste(terms, collapse = ","), ")"),
-       intrinsic_rate = intrinsic_rate)
+       intrinsic_rate = intrinsic_rate, intrinsic_bls = intrinsic_bls)
 }
 
 .plot_gf_distribution <- function(model, eval_model, eval_prefix, se_prefix, sub_Model, curveFun){
@@ -169,10 +190,21 @@
       }
     }
   } else if (curveFun %in% c("bilinear spline", "BLS")){
-    after <- tt > p[4]
-    estimate <- p[1] + p[2] * pmin(tt, p[4]) + p[3] * pmax(0, tt - p[4])
-    gradient <- cbind(one, pmin(tt, p[4]), pmax(0, tt - p[4]), (p[2] - p[3]) * after)
     if (quantity == "rate") stop("Bilinear-spline rate plots are not supported.")
+    if (isTRUE(distribution$intrinsic_bls)){
+      # p = adjusted internal level, slope, contrast, mean knot deviation,
+      #     unadjusted slope, contrast, expansion knot.
+      q <- tt - p[7]
+      smooth <- sqrt(q^2 + 1e-6)
+      knot_loading <- -p[6] * q / smooth - p[5]
+      estimate <- p[1] + p[2] * q + p[3] * smooth + knot_loading * p[4]
+      gradient <- cbind(one, q, smooth, knot_loading, -p[4] * one, -p[4] * q / smooth,
+                        -p[2] - p[3] * q / smooth + p[6] * p[4] * 1e-6 / smooth^3)
+    } else{
+      after <- tt > p[4]
+      estimate <- p[1] + p[2] * pmin(tt, p[4]) + p[3] * pmax(0, tt - p[4])
+      gradient <- cbind(one, pmin(tt, p[4]), pmax(0, tt - p[4]), (p[2] - p[3]) * after)
+    }
   } else stop("Unsupported curve function for trajectory intervals: ", curveFun)
   if (quantity == "change"){
     baseline <- length(estimate)
@@ -180,7 +212,7 @@
     gradient <- sweep(gradient[-baseline, , drop = FALSE], 2, gradient[baseline, ], "-")
   }
   out <- .plot_delta_ci(estimate, gradient, distribution$cov)
-  if (curveFun %in% c("bilinear spline", "BLS") &&
+  if (curveFun %in% c("bilinear spline", "BLS") && !isTRUE(distribution$intrinsic_bls) &&
       is.finite(distribution$cov[4, 4]) && distribution$cov[4, 4] > 0 && p[2] != p[3]){
     knot_tolerance <- sqrt(.Machine$double.eps) * max(1, abs(p[4]))
     at_knot <- abs(plot_times - p[4]) <= knot_tolerance

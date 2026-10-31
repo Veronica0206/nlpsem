@@ -15,6 +15,16 @@ per-process and per-class scales for linear and bilinear-spline starts, plus the
 unchanged `NULL` automatic estimate and fallback. Specified covariance matrices
 in derivative tests check propagation, not empirical interval coverage.
 
+The follow-up to merged revision 548cd83 extends RAM-referenced plotting tests
+to intrinsic bilinear splines. Curves and intervals retain the expansion knot,
+smoothed loadings, adjusted internal means and mean knot deviation. Tests cover
+simultaneous slope and knot effects, knot-only effects, class-local evaluation
+with parent covariance, TVC decompositions and multivariate processes. Stored
+BLS plot tests now use RAM expectations and numerical derivatives rather than
+the reconstructed sharp-spline formula. Nonintrinsic spline controls remain.
+The NLS method, optimizer, model equations, references and their tolerances
+are unchanged.
+
 ## Checks and retained evidence
 
 Use the workflow results for the commit being assessed. A configured workflow does not
