@@ -1,0 +1,105 @@
+name: Full fitting tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fitting:
+    # The numerical references were generated on macOS arm64. Several random-knot and
+    # random-ratio models have multimodal likelihoods whose optimizer path differs on
+    # Linux, so the reference comparison runs on macOS; Linux and Windows are covered
+    # by the three-platform R CMD check.
+    runs-on: macos-latest
+    timeout-minutes: 120
+    env:
+      NOT_CRAN: "true"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgload
+          needs: check
+      - name: Record source revision
+        run: |
+          mkdir -p test-results
+          git rev-parse HEAD > test-results/source-revision.txt
+      - name: Verify structural baseline and comparator
+        shell: bash
+        run: |
+          set -o pipefail
+          Rscript data-raw/test_structure_comparator.R 2>&1 | tee test-results/comparator-tests.log
+          Rscript -e 'source("data-raw/snapshot_models.R")' . test-results/model-structures.rds . replay data-raw/structural-baseline/phase-c-1.0.0.9002-inputs.rds 2>&1 | tee test-results/structures.log
+          Rscript data-raw/compare_model_structures.R data-raw/structural-baseline/phase-c-1.0.0.9002.rds test-results/model-structures.rds 2>&1 | tee test-results/structural-comparison.log
+      - name: Run all tests including numerical references
+        shell: bash
+        run: |
+          set -o pipefail
+          Rscript -e 'source("data-raw/run_validation_tests.R")' . . test-results/full-fitting 2>&1 | tee test-results/full-fitting.log
+      - name: Retain fitting evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-fitting-tests
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+  minimum-testthat:
+    name: testthat 3.2.0 / R 4.5.3
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NOT_CRAN: "true"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          # testthat 3.2.0 uses C APIs removed in R 4.6; current-R coverage
+          # remains in the fitting and three-platform package jobs.
+          r-version: "4.5.3"
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::pkgload
+            any::remotes
+            any::ellipsis
+          needs: check
+      - name: Install declared minimum testthat
+        shell: Rscript {0}
+        run: |
+          remotes::install_version("testthat", version = "3.2.0", dependencies = FALSE, upgrade = "never")
+          stopifnot(packageVersion("testthat") == "3.2.0")
+      - name: Check regular suite with minimum dependency
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results
+          git rev-parse HEAD > test-results/source-revision.txt
+          env -u LC_ALL Rscript -e 'stopifnot(packageVersion("testthat") == "3.2.0"); source("data-raw/run_validation_tests.R")' . all-except-golden test-results/minimum-testthat 2>&1 | tee test-results/minimum-testthat.log
+      - name: Retain minimum dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: minimum-testthat-tests
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 30

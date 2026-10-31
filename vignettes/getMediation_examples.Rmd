@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getMediation()` function. This function is designed to construct longitudinal mediation models, which evaluate how a baseline or longitudinal predictor affect the outcome process, mediated by an intermediary process.
 vignette: >
-  %\VignetteIndexEntry{getMediation_examples}
+  %\VignetteIndexEntry{Examples of Longitudinal Mediation Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,6 +17,18 @@ knitr::opts_chunk$set(
 has_data <- nzchar(system.file("extdata", "getMediation_examples.RData", package = "nlpsem"))
 knitr::opts_chunk$set(eval = has_data)
 ```
+
+The saved examples below were generated with nlpsem 1.0.0.9006; `extdata/REGENERATED.txt`
+records the versions and how the fits compare with the previous ones. They were fitted
+before version 1.0.0 changed the starting values of the mediation disturbance covariances:
+with the 1.0.0 starts, the call in Example 1 reaches the same likelihood and estimates (two
+standard errors differ), and the call in Example 2 reaches the same likelihood (within 0.002) at a point where the
+numerical Hessian is indefinite and three standard errors are unavailable, so
+`getMediation()` issues its diagnostics warning (`REGENERATED.txt` gives the details).
+Rendering this guide does not refit its disabled model-fitting chunks. Refit with the current version
+for a new analysis, use `getDiagnostics()` to check admissibility and uncertainty, and
+compare multiple starts for difficult nonlinear or mixture models. These examples are
+not evidence of numerical qualification.
 
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}

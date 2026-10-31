@@ -1,11 +1,28 @@
 #' @title Generate Visualization for Fitted Model
 #'
 #' @description This function generates visualizations for the output of a fitted model. When a Latent Growth Curve Model
-#' (LGCM) is fitted for the longitudinal process, it provides (class-specific) estimated growth status with 95\% confidence
+#' (LGCM) is fitted for the longitudinal process, it provides (class-specific) estimated growth status with 95\% pointwise confidence
 #' intervals. When a Latent Change Score Model (LCSM) is fitted for the longitudinal process, it provides (class-specific)
-#' estimated growth rate with 95\% confidence intervals and change from baseline with 95\% confidence intervals. These
+#' estimated interval-average growth rate with 95\% pointwise confidence intervals and change from baseline with 95\% pointwise confidence intervals. These
 #' visualizations are particularly useful for understanding the results and trajectories of different classes or groups
 #' within the model.
+#' Intervals use the delta method and the full estimated covariance of the growth parameters, including
+#' estimated rates, knots, and covariate-adjusted means. They describe uncertainty in the model-implied
+#' mean curve, not prediction intervals or simultaneous confidence bands. Bounds are not truncated to
+#' the observed-data range. At the exact estimated knot of a bilinear spline, an interval is omitted
+#' when the knot has nonzero uncertainty and the two slopes differ, because the derivative is not unique.
+#' Multiple-group change-score plots use each group's mean observation times; mixture plots use pooled
+#' mean times as a common reference grid.
+#' Change curves and their intervals are relative to the first selected observation time on that grid.
+#' LCSM plots use the fitted discrete change recurrence, including its midpoint approximation for exponential
+#' and Jenss--Bayley curves, rather than the corresponding continuous growth curve. Selecting a subset of
+#' fitted waves retains all intervening fitted increments and rebases the change to the first selected wave.
+#' Rates are the fitted change between consecutive selected waves divided by their time difference, displayed
+#' at the interval's ending time. Nonparametric rate plots show each rate as a horizontal segment across its
+#' corresponding interval. Their intervals propagate the joint covariance of these contrasts. Waves
+#' may be selected in fitted order or its reverse; arbitrary reorderings and repeated waves are rejected.
+#' For two selected waves, the single interval is displayed as a point with a vertical confidence interval.
+#' An observed mean is shown as a cross when only one distinct observation time is available for smoothing.
 #'
 #' @param model A fitted mxModel object. Specifically, this should be the \code{mxOutput} slot from the result returned by
 #' one of the estimation functions provided by this package.
@@ -56,50 +73,32 @@
 #' @export
 #'
 #' @examples
-#' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
-#' data("RMS_dat")
-#' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
-#' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' xstarts <- mean(baseT)
-#'
-#' \donttest{
-#' # Plot single group LGCM model
-#' set.seed(20191029)
-#' BLS_LGCM1 <- getLGCM(dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS",
-#'                      intrinsic = FALSE, records = 1:9)
+#' # Fitted models shipped with the package
+#' load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
+#' # Single-group bilinear spline latent growth curve model with time-invariant covariates
 #' Figure1 <- getFigure(
-#'   model = BLS_LGCM1@mxOutput, nClass = NULL, cluster_TIC = NULL, sub_Model = "LGCM",
-#'   y_var = "M", curveFun = "BLS", y_model = "LGCM", t_var = "T", records = 1:9,
-#'   m_var = NULL, x_var = NULL, x_type = NULL, xstarts = xstarts, xlab = "Month",
+#'   model = Math_LGCM_TIC_BLS_f@mxOutput, sub_Model = "LGCM", y_var = "M", curveFun = "BLS",
+#'   y_model = "LGCM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Month",
 #'   outcome = "Mathematics"
 #' )
 #' show(Figure1)
-#' # Plot mixture LGCM model
-#' BLS_LGCM2 <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.45, 0.55), sub_Model = "LGCM",
-#'   cluster_TIC = NULL, y_var = "M", t_var = "T", records = 1:9,
-#'   curveFun = "BLS", intrinsic = FALSE
-#' )
+#' # Three-class mixture of bilinear spline models
+#' load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))
 #' Figure2 <- getFigure(
-#'   model = BLS_LGCM2@mxOutput, nClass = 2, cluster_TIC = NULL, sub_Model = "LGCM",
-#'   y_var = "M", curveFun = "BLS", y_model = "LGCM", t_var = "T", records = 1:9,
-#'   m_var = NULL, x_var = NULL, x_type = NULL, xstarts = xstarts, xlab = "Month",
-#'   outcome = "Mathematics"
+#'   model = Math_BLS_LGCM3@mxOutput, nClass = 3, sub_Model = "LGCM", y_var = "M",
+#'   curveFun = "BLS", y_model = "LGCM", t_var = "T", records = 1:9, xstarts = xstarts,
+#'   xlab = "Month", outcome = "Mathematics"
 #' )
 #' show(Figure2)
-#' }
-#'
+#' # Longitudinal mediation model: one figure per process (outcome, mediator)
+#' load(system.file("extdata", "getMediation_examples.RData", package = "nlpsem"))
+#' Figure3 <- getFigure(
+#'   model = Med2_LGCM_BLS@mxOutput, sub_Model = "MED", y_var = "M", m_var = "R",
+#'   x_type = "baseline", x_var = "ex1", curveFun = "BLS", t_var = rep("T", 2),
+#'   records = list(1:9, 1:9), xstarts = xstarts, xlab = "Month",
+#'   outcome = c("Mathematics", "Reading")
+#' )
+#' show(Figure3)
 getFigure <- function(model, nClass = NULL, cluster_TIC = NULL, grp_var = NULL, sub_Model, y_var,
                       curveFun, y_model = NULL, t_var, records, m_var = NULL, x_type = NULL, x_var = NULL,
                       xstarts, xlab = "Time", outcome = "Process"){
@@ -149,7 +148,8 @@ getFigure <- function(model, nClass = NULL, cluster_TIC = NULL, grp_var = NULL, 
       figures_L[[traj]] <- getFitFig(model = model, nClass = nClass, cluster_TIC = cluster_TIC,
                                      grp_var = grp_var, sub_Model = sub_Model, t_var = t_var[traj],
                                      records = records[[traj]], y_var = traj_var[traj], curveFun = curveFun,
-                                     y_model = "LGCM", xstarts = xstarts, xlab = xlab, outcome = outcome[traj])
+                                     y_model = "LGCM", xstarts = xstarts, xlab = xlab, outcome = outcome[traj],
+                                     med_role = c("Y", "M", "X")[traj])
     }
     output <- figures_L
   }

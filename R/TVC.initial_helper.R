@@ -183,6 +183,7 @@ getTVC.initial <- function(dat, t_var, y_var, curveFun, records, growth_TIC, TVC
   }
   # Calculate initial values for growth factor-related parameters
   growth_factor <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
+  Y_curve_residuals <- attr(growth_factor, "residuals")
   # Calculate the number of growth factors of the specified functional form
   nGF <- ncol(growth_factor)
   gf_cov_total <- cov(growth_factor, use = "pairwise.complete.obs")
@@ -212,6 +213,7 @@ getTVC.initial <- function(dat, t_var, y_var, curveFun, records, growth_TIC, TVC
       as.numeric(lm(GF ~ ., data = data.frame(cbind(GF = growth_factor[, p], dat_covariate)),
                     na.action = na.exclude)$coefficients[-1])
     }), nrow = nGF, byrow = TRUE)
+    gf_beta <- .zero_aliased_effects(gf_beta)
   }
   # If `dat_covariate` does not exist (i.e., `growth_TIC` is not provided and TVC is added in the model in its original
   # form), calculate initial values for mean0 (growth factor means) and psi0 (var-cov matrix of growth factors)
@@ -277,6 +279,7 @@ getTVC.initial <- function(dat, t_var, y_var, curveFun, records, growth_TIC, TVC
       tvc_rel_rate = TVC_starts$rel_rate
     )
   }
+  kappa <- .zero_aliased_effects(kappa)
   kappa <- .stabilize_kappa_start(kappa, intrinsic = intrinsic, decompose = decompose)
   if (curveFun %in% c("bilinear spline", "BLS")){
     # Transformed matrices obtained by multivariate Delta method
@@ -319,19 +322,11 @@ getTVC.initial <- function(dat, t_var, y_var, curveFun, records, growth_TIC, TVC
     }
   } else if (decompose != 0){
     # Calculate initial value of residual covariance between TVC and longitudinal outcome if TVC is added in the model
-    # in a decomposed form. If res_cor not provided, estimate from data using within-person residuals.
+    # in a decomposed form. If res_cor is not provided, estimate it from the per-person curve residuals of the
+    # outcome and the deviations of the TVC from its person-specific piecewise-linear trend.
     if (is.null(res_cor)){
-      dat_y <- dat[, paste0(y_var, records), drop = FALSE]
-      dat_x <- dat[, paste0(TVC, records), drop = FALSE]
-      resid_y <- dat_y - rowMeans(dat_y, na.rm = TRUE)
-      resid_x <- dat_x - rowMeans(dat_x, na.rm = TRUE)
-      res_cor <- cor(unlist(resid_y), unlist(resid_x), use = "complete.obs")
-      if (is.na(res_cor)) {
-        warning("Data-driven residual correlation estimation failed for outcome ", y_var,
-                " and TVC ", TVC, "; falling back to heuristic (res_cor = 0.3).", call. = FALSE)
-        res_cor <- 0.3
-      }
-      res_cor <- max(min(res_cor, 0.99), -0.99)
+      tvc_residuals <- attr(getUNI.GF(dat_traj = dat_TVC, dat_time = dat_time, nT = nT, curveFun = "NonP"), "residuals")
+      res_cor <- .residual_correlation_starts(list(Y_curve_residuals, tvc_residuals), labels = c(y_var, TVC))
     }
     XY_cov <- res_cor * sqrt(Y_residuals * TVC_starts$residuals)
     starts <- list(Y_starts = Y_starts, TVC_starts = TVC_starts, BL_starts = BL_starts, beta = gf_beta, kappa = kappa, XY_cov = XY_cov)

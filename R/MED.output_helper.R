@@ -27,7 +27,7 @@
 getMED.output <- function(model, y_var, m_var, x_type, x_var, curveFun, names){
   if (x_type == "baseline"){
     if (curveFun %in% c("linear", "LIN")){
-      model.est <- round(c(model@output$estimate[grep("muX", names(model@output$estimate))],
+      model.est <- c(model@output$estimate[grep("muX", names(model@output$estimate))],
                            model@output$estimate[grep("phi11", names(model@output$estimate))],
                            model$M_alpha$result, c(model$M_psi_r$result)[c(1, 2, 4)],
                            model$Y_alpha$result, c(model$Y_psi_r$result)[c(1, 2, 4)],
@@ -37,21 +37,21 @@ getMED.output <- function(model, y_var, m_var, x_type, x_var, curveFun, names){
                            model$mediator$result, model$total$result,
                            model@output$estimate[names(model@output$estimate) == paste0(y_var, "_residuals")],
                            model@output$estimate[names(model@output$estimate) == paste0(m_var, "_residuals")],
-                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")]), 4)
-      model.se <- round(c(model@output$standardErrors[, 1][grep("muX", names(model@output$standardErrors[, 1]))],
+                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")])
+      model.se <- c(model@output$standardErrors[, 1][grep("muX", names(model@output$standardErrors[, 1]))],
                           model@output$standardErrors[, 1][grep("phi11", names(model@output$standardErrors[, 1]))],
-                          mxSE(M_alpha, model), c(mxSE(M_psi_r, model))[c(1, 2, 4)],
-                          mxSE(Y_alpha, model), c(mxSE(Y_psi_r, model))[c(1, 2, 4)],
-                          mxSE(beta_xm, model), mxSE(beta_xy, model),
-                          c(mxSE(beta_my, model))[c(1, 2, 4)],
-                          mxSE(M_mean, model), mxSE(Y_mean, model),
-                          mxSE(mediator, model), mxSE(total, model),
+                          mxSE(M_alpha, model, silent = TRUE), c(mxSE(M_psi_r, model, silent = TRUE))[c(1, 2, 4)],
+                          mxSE(Y_alpha, model, silent = TRUE), c(mxSE(Y_psi_r, model, silent = TRUE))[c(1, 2, 4)],
+                          mxSE(beta_xm, model, silent = TRUE), mxSE(beta_xy, model, silent = TRUE),
+                          c(mxSE(beta_my, model, silent = TRUE))[c(1, 2, 4)],
+                          mxSE(M_mean, model, silent = TRUE), mxSE(Y_mean, model, silent = TRUE),
+                          mxSE(mediator, model, silent = TRUE), mxSE(total, model, silent = TRUE),
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(m_var, "_residuals")],
-                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")]), 4)
+                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")])
     }
     else if (curveFun %in% c("bilinear spline", "BLS")){
-      model.est <- round(c(model@output$estimate[grep("muX", names(model@output$estimate))],
+      model.est <- c(model@output$estimate[grep("muX", names(model@output$estimate))],
                            model@output$estimate[grep("phi11", names(model@output$estimate))],
                            model$M_alpha$result, c(model$M_psi_r$result)[c(1:3, 5:6, 9)],
                            model$Y_alpha$result, c(model$Y_psi_r$result)[c(1:3, 5:6, 9)],
@@ -61,23 +61,23 @@ getMED.output <- function(model, y_var, m_var, x_type, x_var, curveFun, names){
                            model$mediator$result, model$total$result,
                            model@output$estimate[names(model@output$estimate) == paste0(y_var, "_residuals")],
                            model@output$estimate[names(model@output$estimate) == paste0(m_var, "_residuals")],
-                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")]), 4)
-      model.se <- round(c(model@output$standardErrors[, 1][grep("muX", names(model@output$standardErrors[, 1]))],
+                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")])
+      model.se <- c(model@output$standardErrors[, 1][grep("muX", names(model@output$standardErrors[, 1]))],
                           model@output$standardErrors[, 1][grep("phi11", names(model@output$standardErrors[, 1]))],
-                          mxSE(M_alpha, model), c(mxSE(M_psi_r, model))[c(1:3, 5:6, 9)],
-                          mxSE(Y_alpha, model), c(mxSE(Y_psi_r, model))[c(1:3, 5:6, 9)],
-                          mxSE(beta_xm, model), mxSE(beta_xy, model),
-                          c(mxSE(beta_my, model))[c(1:3, 5:6, 9)],
-                          mxSE(M_mean, model), mxSE(Y_mean, model),
-                          mxSE(mediator, model), mxSE(total, model),
+                          mxSE(M_alpha, model, silent = TRUE), c(mxSE(M_psi_r, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          mxSE(Y_alpha, model, silent = TRUE), c(mxSE(Y_psi_r, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          mxSE(beta_xm, model, silent = TRUE), mxSE(beta_xy, model, silent = TRUE),
+                          c(mxSE(beta_my, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          mxSE(M_mean, model, silent = TRUE), mxSE(Y_mean, model, silent = TRUE),
+                          mxSE(mediator, model, silent = TRUE), mxSE(total, model, silent = TRUE),
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(m_var, "_residuals")],
-                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")]), 4)
+                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")])
     }
   }
   if (x_type == "longitudinal"){
     if (curveFun %in% c("linear", "LIN")){
-      model.est <- round(c(model$X_mean$result, c(model$X_psi0$result)[c(1, 2, 4)],
+      model.est <- c(model$X_mean$result, c(model$X_psi0$result)[c(1, 2, 4)],
                            model$M_alpha$result, c(model$M_psi_r$result)[c(1, 2, 4)],
                            model$Y_alpha$result, c(model$Y_psi_r$result)[c(1, 2, 4)],
                            c(model$beta_xm$result)[c(1, 2, 4)], c(model$beta_xy$result)[c(1, 2, 4)],
@@ -88,22 +88,22 @@ getMED.output <- function(model, y_var, m_var, x_type, x_var, curveFun, names){
                            model@output$estimate[names(model@output$estimate) == paste0(m_var, "_residuals")],
                            model@output$estimate[names(model@output$estimate) == paste0(m_var, x_var, "_RES")],
                            model@output$estimate[names(model@output$estimate) == paste0(y_var, x_var, "_RES")],
-                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")]), 4)
-      model.se <- round(c(mxSE(X_mean, model), c(mxSE(X_psi0, model))[c(1, 2, 4)],
-                          mxSE(M_alpha, model), c(mxSE(M_psi_r, model))[c(1, 2, 4)],
-                          mxSE(Y_alpha, model), c(mxSE(Y_psi_r, model))[c(1, 2, 4)],
-                          c(mxSE(beta_xm, model))[c(1, 2, 4)], c(mxSE(beta_xy, model))[c(1, 2, 4)],
-                          c(mxSE(beta_my, model))[c(1, 2, 4)], mxSE(M_mean, model), mxSE(Y_mean, model),
-                          mxSE(mediator, model), mxSE(total, model)[c(1, 2, 4)],
+                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")])
+      model.se <- c(mxSE(X_mean, model, silent = TRUE), c(mxSE(X_psi0, model, silent = TRUE))[c(1, 2, 4)],
+                          mxSE(M_alpha, model, silent = TRUE), c(mxSE(M_psi_r, model, silent = TRUE))[c(1, 2, 4)],
+                          mxSE(Y_alpha, model, silent = TRUE), c(mxSE(Y_psi_r, model, silent = TRUE))[c(1, 2, 4)],
+                          c(mxSE(beta_xm, model, silent = TRUE))[c(1, 2, 4)], c(mxSE(beta_xy, model, silent = TRUE))[c(1, 2, 4)],
+                          c(mxSE(beta_my, model, silent = TRUE))[c(1, 2, 4)], mxSE(M_mean, model, silent = TRUE), mxSE(Y_mean, model, silent = TRUE),
+                          mxSE(mediator, model, silent = TRUE), mxSE(total, model, silent = TRUE)[c(1, 2, 4)],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(x_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(m_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(m_var, x_var, "_RES")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, x_var, "_RES")],
-                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")]), 4)
+                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")])
     }
     else if (curveFun %in% c("bilinear spline", "BLS")){
-      model.est <- round(c(model$X_mean$result, c(model$X_psi0$result)[c(1:3, 5:6, 9)],
+      model.est <- c(model$X_mean$result, c(model$X_psi0$result)[c(1:3, 5:6, 9)],
                            model$M_alpha$result, c(model$M_psi_r$result)[c(1:3, 5:6, 9)],
                            model$Y_alpha$result, c(model$Y_psi_r$result)[c(1:3, 5:6, 9)],
                            c(model$beta_xm$result)[c(1:3, 5:6, 9)], c(model$beta_xy$result)[c(1:3, 5:6, 9)],
@@ -114,31 +114,22 @@ getMED.output <- function(model, y_var, m_var, x_type, x_var, curveFun, names){
                            model@output$estimate[names(model@output$estimate) == paste0(m_var, "_residuals")],
                            model@output$estimate[names(model@output$estimate) == paste0(m_var, x_var, "_RES")],
                            model@output$estimate[names(model@output$estimate) == paste0(y_var, x_var, "_RES")],
-                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")]), 4)
-      model.se <- round(c(mxSE(X_mean, model), c(mxSE(X_psi0, model))[c(1:3, 5:6, 9)],
-                          mxSE(M_alpha, model), c(mxSE(M_psi_r, model))[c(1:3, 5:6, 9)],
-                          mxSE(Y_alpha, model), c(mxSE(Y_psi_r, model))[c(1:3, 5:6, 9)],
-                          c(mxSE(beta_xm, model))[c(1:3, 5:6, 9)], c(mxSE(beta_xy, model))[c(1:3, 5:6, 9)],
-                          c(mxSE(beta_my, model))[c(1:3, 5:6, 9)], mxSE(M_mean, model), mxSE(Y_mean, model),
-                          mxSE(mediator, model), mxSE(total, model)[c(1:3, 5:6, 9)],
+                           model@output$estimate[names(model@output$estimate) == paste0(y_var, m_var, "_RES")])
+      model.se <- c(mxSE(X_mean, model, silent = TRUE), c(mxSE(X_psi0, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          mxSE(M_alpha, model, silent = TRUE), c(mxSE(M_psi_r, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          mxSE(Y_alpha, model, silent = TRUE), c(mxSE(Y_psi_r, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          c(mxSE(beta_xm, model, silent = TRUE))[c(1:3, 5:6, 9)], c(mxSE(beta_xy, model, silent = TRUE))[c(1:3, 5:6, 9)],
+                          c(mxSE(beta_my, model, silent = TRUE))[c(1:3, 5:6, 9)], mxSE(M_mean, model, silent = TRUE), mxSE(Y_mean, model, silent = TRUE),
+                          mxSE(mediator, model, silent = TRUE), mxSE(total, model, silent = TRUE)[c(1:3, 5:6, 9)],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(x_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(m_var, "_residuals")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(m_var, x_var, "_RES")],
                           model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, x_var, "_RES")],
-                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")]), 4)
+                          model@output$standardErrors[, 1][names(model@output$standardErrors[, 1]) == paste0(y_var, m_var, "_RES")])
     }
   }
-  # Safety net: ensure names and estimates have matching length
-  if (length(names) != length(model.est)){
-    warning("Number of parameter names (", length(names), ") does not match number of estimates (",
-            length(model.est), "). Auto-padding with generic labels.")
-    if (length(names) < length(model.est)){
-      names <- c(names, paste0("param_", seq(length(names) + 1, length(model.est))))
-    } else {
-      names <- names[seq_len(length(model.est))]
-    }
-  }
+  names <- .validate_output_names(names, length(model.est))
   estimate_out <- data.frame(Name = names, Estimate = model.est, SE = model.se)
   return(estimate_out)
 }

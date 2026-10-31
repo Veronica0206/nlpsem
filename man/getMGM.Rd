@@ -32,7 +32,10 @@ with repeated measurements and occasions for multiple longitudinal outcomes.}
 variable for the corresponding outcome variable at each study wave.}
 
 \item{y_var}{A vector of strings, with each element representing the prefix for column names corresponding to a
-particular outcome variable at each study wave.}
+particular outcome variable at each study wave. The parameters shared by two outcomes are labelled by joining their
+prefixes (\code{"Y"} and \code{"Z"} give \code{"YZ"}), so prefixes for which a joined pair equals a prefix or another
+pair (such as \code{"A"}, \code{"B"} and \code{"AB"}) are rejected; with \code{y_model = "LCSM"}, the prefixes must
+also differ in more than letter case.}
 
 \item{curveFun}{A string specifying the functional forms of the growth curve(s). Supported options for \code{y_model = "LGCM"} include:
 \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"}
@@ -44,7 +47,9 @@ and \code{"Jenss-Bayley"} (or \code{"JB"}).}
 \code{TRUE}.}
 
 \item{records}{A list of numeric vectors, with each vector specifying the indices of the observed study waves for
-the corresponding outcome variable.}
+the corresponding outcome variable. Every pair of outcomes must share at least one
+record ID to estimate its residual covariance. Residual pairs are matched by record
+ID, independently of the order of the selected columns.}
 
 \item{y_model}{A string specifying how to fit the longitudinal outcome. Supported values are \code{"LGCM"} and \code{"LCSM"}.}
 
@@ -90,37 +95,53 @@ This function fits a multivariate latent growth curve model or a multivariate la
 with the provided data. It manages model setup, optimization, and if requested, outputs parameter estimates and
 standard errors.
 }
+\details{
+New fits retain their resolved model specification and fitting provenance.
+A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+indefinite covariance matrix) is returned with a warning that lists them.
+Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+\code{logLik()} and \code{plot()} methods are available.
+}
+\section{Standardized fitting}{
+
+Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+centred at the mean and divided by the standard deviation of its first recorded occasion, a
+time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+same model in the original units; only the numerical conditioning of the optimization differs.
+\code{getSpecification()} records the centres, scales and condition numbers under
+\code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+}
+
 \examples{
 mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
+# Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 data("RMS_dat")
 RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
 baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
 
 \donttest{
-# Fit linear multivariate latent growth curve model
+# Linear multivariate latent growth curve model for reading and mathematics
 LIN_PLGCM_f <- getMGM(
   dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "LIN",
-  intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM"
-  )
-# Fit bilinear spline multivariate latent growth curve model (random knots)
-## Fit model
+  intrinsic = FALSE, records = list(1:9, 1:9), y_model = "LGCM", paramOut = TRUE
+)
+printTable(LIN_PLGCM_f)
+}
+\dontrun{
+# Bilinear spline multivariate model with random knots and 20 extra optimization
+# attempts; this takes several minutes
 set.seed(20191029)
 BLS_PLGCM_f <- getMGM(
-  dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "BLS", intrinsic = TRUE,
-  records = list(1:9, 1:9), y_model = "LGCM",
+  dat = RMS_dat0, t_var = c("T", "T"), y_var = c("R", "M"), curveFun = "BLS",
+  intrinsic = TRUE, records = list(1:9, 1:9), y_model = "LGCM",
   tries = 20, paramOut = TRUE
-  )
+)
 printTable(BLS_PLGCM_f)
 }
 

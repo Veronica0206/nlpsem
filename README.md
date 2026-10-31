@@ -4,13 +4,69 @@
 [![GitHub repo](https://img.shields.io/badge/GitHub-nlpsem-black)](https://github.com/Veronica0206/nlpsem)
 [![R](https://img.shields.io/badge/R-OpenMx%20package-blue)](https://www.r-project.org/)
 [![DOI](https://img.shields.io/badge/DOI-10.3758%2Fs13428--025--02596--4-blue)](https://doi.org/10.3758/s13428-025-02596-4)
-[![License: GPL >= 3](https://img.shields.io/badge/License-GPL--3%2B-green.svg)](DESCRIPTION)
+[![License: GPL >= 3](https://img.shields.io/badge/License-GPL--3%2B-green.svg)](https://github.com/Veronica0206/nlpsem/blob/main/DESCRIPTION)
 
 `nlpsem` provides tools for fitting linear and nonlinear longitudinal models
 within the structural equation modeling (SEM) framework. The package is built
 on top of `OpenMx` and is designed for settings where the trajectory shape is
 nonlinear and may be intrinsically nonlinear rather than a simple
 reparameterization of a linear growth model.
+
+## Version 1.0.0
+
+Quadratic, negative exponential and Jenss-Bayley models are fitted to standardized
+data and converted back exactly: the estimates, standard errors and likelihood are
+reported in the original units, and `getSpecification()` records the scaling.
+`options(nlpsem.standardize = FALSE)` fits on the raw scale. Other functional forms
+and mediation models retain raw-scale fitting.
+
+The 1.0.0.9005 update made EXP, Jenss-Bayley and bilinear spline starting values use per-person
+`stats::nls()` with the 0.3 curve formulas and default Gauss-Newton algorithm.
+The shared initializer supplies this method to all model families. Failed NLS
+fits use recorded heuristic fallbacks; they are not counted as NLS convergence.
+The final SEM optimizer is unchanged. The matched comparison protocol explicitly
+uses CSOLNP and identical saved unfitted models on each platform.
+
+Version 1.0.0 fixes mediation wave/covariance starts, one-class mixture
+post-processing, posterior normalization and class-count validation, multivariate
+summary columns, parameter names and confidence-interval labels. It adds
+`getDiagnostics()` checks for stored covariance admissibility, Hessian and standard
+error information, and mixture component sizes. New fits warn when these checks find
+issues; `getDiagnostics()` supplies the details without refitting or constraining models.
+
+Mediation disturbance covariance starts use aligned structural regression residuals
+before numerical path damping. This avoids invalid covariance starts when
+direct and indirect effects oppose each other or observations are missing, while
+preserving the per-person NLS method and optimizer controls.
+
+LCSM change plots follow the fitted interval recurrence and rebase selected waves
+with covariance-aware intervals. `getSimData()` retains generating growth-curve
+parameters in `truth`, identifies their parameterization and time origin in
+`truth_info`, and supplies first-occasion LCSM targets in `truth_lcsm` for quadratic
+and nonparametric models. A time-zero growth-curve intercept is a different target
+from an LCSM initial level when the first modeled time is nonzero.
+
+```r
+print(fit)
+coef(fit)
+getDiagnostics(fit)
+getSpecification(fit)$specification
+plot(fit, draw = FALSE)
+```
+
+The [V1.0.0 validation record](.github/VALIDATION-1.0.0.md) separates completed
+checks from the limits of numerical qualification. The fitting-layer reference values
+were regenerated with 1.0.0.9006; each fit is compared with its reference only after
+it passes the `getDiagnostics()` checks (see `NEWS.md`). The saved examples were
+regenerated with 1.0.0.9006 (`inst/extdata/REGENERATED.txt`); `getDiagnostics()` flags four
+of them, which the guides note. These stored objects retain their original development-version
+provenance; they are illustrative examples rather than evidence that every model is admissible.
+
+New estimate tables retain full precision. Older serialized tables retain their
+historical rounding and need recomputation or refitting to recover precision. S4
+slots are preserved. Invalid custom names now fail explicitly instead of recycling.
+Factor scoring supports single RAM/LISREL models with their own raw data; mixture
+and multiple-group parent objects are rejected with a clear explanation.
 
 ## Portfolio positioning
 
@@ -30,8 +86,7 @@ This repository demonstrates:
 
 The methods implemented in this package are described in:
 
-Liu, J. (2025). *Examination of nonlinear longitudinal processes in the
-framework of structural equation modeling: The R package nlpsem*. Behavior
+Liu, J. (2025). *Examination of nonlinear longitudinal processes with latent variables, latent processes, latent changes, and latent classes in the structural equation modeling framework: The R package nlpsem*. Behavior
 Research Methods. <https://doi.org/10.3758/s13428-025-02596-4>
 
 ## Connection to AI evaluation
@@ -93,17 +148,17 @@ their intrinsically nonlinear forms by setting `intrinsic = TRUE`.
 
 ## Installation
 
-If the package is available on CRAN:
+The published version is available from CRAN:
 
 ```r
 install.packages("nlpsem")
 ```
 
-To install the development version from GitHub:
+To install the development source from a local checkout:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("Veronica0206/nlpsem")
+remotes::install_local(".")
 ```
 
 ## Quick example
@@ -137,7 +192,7 @@ Math_BLS <- getLGCM(
 printTable(Math_BLS)
 ```
 
-## What is new in version 0.4
+## Earlier changes in version 0.4
 
 Version 0.4 keeps the modeling scope of version 0.3 while substantially
 improving robustness, usability, and documentation.
@@ -155,13 +210,14 @@ Highlights include:
 - synchronized vignettes and saved example objects
 - a new `testthat` test suite and cleaner CRAN-facing documentation
 
-See [NEWS.md](NEWS.md) for a more comprehensive summary of changes from version 0.3.
+See `NEWS.md` for a more comprehensive summary of changes from version 0.3.
 
 ## Documentation
 
 The package includes an overview vignette and scenario-specific example
 vignettes:
 
+- `vignette("fitted_model_workflow")`
 - `vignette("nlpsem_overview")`
 - `vignette("getLGCM_examples")`
 - `vignette("getLCSM_examples")`

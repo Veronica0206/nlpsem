@@ -10,7 +10,7 @@ S4 Class for the output structure for the \code{getLatentKappa()} function.
 \section{Slots}{
 
 \describe{
-\item{\code{kappa_value}}{A character vector for the kappa statistic with 95\% CI.}
+\item{\code{kappa_value}}{A character vector for the kappa statistic with a confidence interval.}
 
 \item{\code{judgment}}{A character vector for the judgement for agreement.}
 }}

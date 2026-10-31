@@ -24,8 +24,8 @@
 #' data-driven residual variance estimation is used. If data-driven estimation fails, a heuristic of \code{0.1} is applied as
 #' fallback.
 #' @param res_cor An optional numeric value or vector for user-specified residual correlation between any two longitudinal processes
-#' to calculate the corresponding initial value. Default is \code{NULL}, in which case data-driven residual correlation estimation
-#' is used. If data-driven estimation fails, a heuristic of \code{0.3} is applied as fallback.
+#' to calculate the corresponding initial value. Default is \code{NULL}, in which case the residual correlations start at
+#' \code{0.3}.
 #' @param tries An integer specifying the number of additional optimization attempts. Default is \code{NULL}.
 #' @param OKStatus An integer (vector) specifying acceptable status codes for convergence. Default is \code{0}.
 #' @param jitterD A string specifying the distribution for jitter. Supported values are: \code{"runif"} (uniform
@@ -58,44 +58,41 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getTVCmodel}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+#' indefinite covariance matrix) is returned with a warning that lists them.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' # Standardized time-invariant covariates
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
+#' # Standardized baseline predictor
 #' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 #'
 #' \donttest{
-#' # Example 1: Baseline predictor, linear functional form
-#' ## Fit model
-#' set.seed(20191029)
+#' # Baseline predictor, linear functional form
 #' Med2_LGCM_LIN <- getMediation(
 #'   dat = RMS_dat0, t_var = rep("T", 2), y_var = "M", m_var = "R", x_type = "baseline",
-#'   x_var = "ex1", curveFun = "LIN", records = list(1:9, 1:9)
-#'   )
-#'
-#' # Example 2: Longitudinal predictor, bilinear spline functional form
-#' ## Fit model
+#'   x_var = "ex1", curveFun = "LIN", records = list(1:9, 1:9), paramOut = TRUE
+#' )
+#' printTable(Med2_LGCM_LIN)
+#' }
+#' \dontrun{
+#' # Longitudinal predictor, bilinear spline functional form, 10 extra optimization
+#' # attempts; this takes several minutes
 #' set.seed(20191029)
 #' Med3_LGCM_BLS <- getMediation(
 #'   dat = RMS_dat0, t_var = rep("T", 3), y_var = "S", m_var = "M", x_type = "longitudinal",
 #'   x_var = "R", curveFun = "bilinear spline", records = list(2:9, 1:9, 1:9),
 #'   tries = 10, paramOut = TRUE
-#'   )
+#' )
 #' printTable(Med3_LGCM_BLS)
 #' }
 #'
@@ -116,8 +113,14 @@ getMediation <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, reco
   }
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    m_var = m_var, x_var = x_var, x_type = x_type)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_MED(curveFun, x_type, x_var, m_var, y_var)
+    names <- .validate_output_names(names, length(expected_names))
+  }
+  metadata <- .capture_fit_metadata(match.call(), "getMediation", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getMED.initial(dat = dat, t_var = t_var, y_var = y_var, m_var = m_var, x_type = x_type,
                              x_var = x_var, curveFun = curveFun, records = records, res_scale = res_scale,
                              res_cor = res_cor)
@@ -143,5 +146,7 @@ getMediation <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, reco
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
+  model <- .warn_fit_issues(model)
   return(model)
 }

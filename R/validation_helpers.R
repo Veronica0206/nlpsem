@@ -4,13 +4,40 @@
 #' @keywords internal
 #' @noRd
 validate_paramOut <- function(paramOut, names) {
-  if (!is.logical(paramOut) || length(paramOut) != 1) {
+  if (!is.logical(paramOut) || length(paramOut) != 1L || is.na(paramOut)) {
     stop("paramOut must be a single logical value (TRUE or FALSE).")
   }
-  if (!is.null(names) && !is.character(names)) {
-    stop("names must be a character vector or NULL.")
-  }
+  if (!is.null(names)) .validate_output_names(names)
   invisible(NULL)
+}
+
+# Parameter labels are a one-to-one mapping, never a recyclable data-frame
+# column. The optional derived names preserve standalone LCSM's documented
+# core-only naming convention; arbitrary shorter vectors are rejected.
+#' @keywords internal
+#' @noRd
+.validate_output_names <- function(names, expected_length = NULL, derived_names = character()) {
+  if (!is.character(names) || !is.null(dim(names))) {
+    stop("names must be a character vector or NULL.", call. = FALSE)
+  }
+  if (!length(names) || anyNA(names) || any(!nzchar(trimws(names))) || anyDuplicated(names)) {
+    stop("names must contain non-missing, non-empty, unique parameter names.", call. = FALSE)
+  }
+  if (!is.null(expected_length)) {
+    if (length(derived_names) && length(names) == expected_length - length(derived_names)) {
+      names <- c(names, derived_names)
+    }
+    if (length(names) != expected_length) {
+      stop("names must contain exactly ", expected_length, " parameter names",
+           if (length(derived_names)) paste0(" (or ", expected_length - length(derived_names),
+                                             " core names for this LCSM)"),
+           "; received ", length(names), ".", call. = FALSE)
+    }
+    if (anyDuplicated(names)) {
+      stop("names must remain unique after derived parameter names are appended.", call. = FALSE)
+    }
+  }
+  names
 }
 
 #' Validate res_scale values are between 0 and 1 (exclusive)
@@ -275,4 +302,70 @@ validate_columns <- function(dat, t_var, y_var, records,
     stop("Column(s) not found in data: ", paste(missing_cols, collapse = ", "))
   }
   invisible(NULL)
+}
+
+#' Recode a grouping variable to consecutive integer codes 1..K
+#'
+#' Multiple-group helpers select each group with \code{dat[, grp_var] == k}, so the codes must be
+#' \code{1, ..., K}. Distinct non-missing values are sorted and mapped to their rank.
+#' @param x The grouping variable (numeric, character, or factor).
+#' @param grp_var Column name, used in messages.
+#' @return A list with \code{codes} (integer, \code{NA} where \code{x} is missing), \code{nClass},
+#'   and \code{levels} (the original values in the order of the new codes).
+#' @keywords internal
+#' @noRd
+.recode_group_codes <- function(x, grp_var = "grp_var") {
+  missing <- is.na(x)
+  levels <- sort(unique(x[!missing]))
+  if (length(levels) < 2) {
+    stop("The grouping variable '", grp_var, "' must have at least two distinct non-missing values.")
+  }
+  codes <- match(x, levels)
+  if (any(missing)) {
+    warning(sum(missing), " row(s) with a missing value in '", grp_var,
+            "' were removed before fitting the multiple-group model.", call. = FALSE)
+  }
+  already_consecutive <- is.numeric(levels) &&
+    isTRUE(all.equal(as.numeric(levels), as.numeric(seq_along(levels))))
+  if (!already_consecutive) {
+    message("Groups in '", grp_var, "' are recoded for estimation: ",
+            paste(sprintf("%s -> %d", as.character(levels), seq_along(levels)), collapse = ", "))
+  }
+  list(codes = as.integer(codes), nClass = length(levels), levels = levels)
+}
+
+#' Check that the process prefixes of a multivariate model give unambiguous parameter labels
+#'
+#' Between-process parameters are labelled by joining the prefixes of the two processes (the pair
+#' \code{"A"}, \code{"B"} gives \code{"AB_psi00"}), so a joined pair must not equal a process prefix or
+#' another pair's; latent change scores use the prefixes in lower case, so these must differ too.
+#'
+#' @param y_var Character vector of process prefixes.
+#' @param y_model Optional string, \code{"LGCM"} or \code{"LCSM"}.
+#' @keywords internal
+#' @noRd
+validate_mgm_names <- function(y_var, y_model = NULL) {
+  y_var <- as.character(y_var)
+  if (anyDuplicated(y_var)) stop("The process prefixes in 'y_var' must be distinct.", call. = FALSE)
+  if (identical(y_model, "LCSM") && anyDuplicated(tolower(y_var))) {
+    stop("The process prefixes in 'y_var' must differ in more than letter case for a latent change score model.",
+         call. = FALSE)
+  }
+  if (length(y_var) < 2L) return(invisible(TRUE))
+  idx <- utils::combn(seq_along(y_var), 2)
+  keys <- apply(idx, 2, function(i) paste0(y_var[i], collapse = ""))
+  pairs <- apply(idx, 2, function(i) paste0("(\"", y_var[i[1]], "\", \"", y_var[i[2]], "\")"))
+  for (j in seq_along(keys)) {
+    if (keys[j] %in% y_var) {
+      stop("Ambiguous multivariate names: process \"", keys[j], "\" and pair ", pairs[j], " both use the identifier \"",
+           keys[j], "\". Rename one process prefix.", call. = FALSE)
+    }
+  }
+  dup <- which(duplicated(keys))
+  if (length(dup)) {
+    first <- match(keys[dup[1]], keys)
+    stop("Ambiguous multivariate names: pairs ", pairs[first], " and ", pairs[dup[1]], " both use the identifier \"",
+         keys[dup[1]], "\". Rename one process prefix.", call. = FALSE)
+  }
+  invisible(TRUE)
 }

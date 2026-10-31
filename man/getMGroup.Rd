@@ -37,7 +37,10 @@ getMGroup(
 repeated measurements and occasions for each longitudinal process, time-invariant covariates (TICs) if any, and a variable
 that indicates manifested group.}
 
-\item{grp_var}{A string specifying the column that indicates manifested classes.}
+\item{grp_var}{A string specifying the column that indicates manifested classes. Any coding (numeric, character,
+or factor) is accepted: the distinct non-missing values are sorted and relabelled \code{1, 2, ...} in that order for
+estimation and in the output, and a message reports the mapping when the original codes differ. Rows with a missing
+group value are removed with a warning.}
 
 \item{sub_Model}{A string that specifies the sub-model for manifested classes. Supported sub-models include \code{"LGCM"}
 (for latent growth curve models), \code{"LCSM"} (for latent change score models), \code{"TVC"} (for latent growth curve
@@ -55,7 +58,8 @@ be a list of numeric vectors, where each vector provides the indices of the obse
 
 \item{y_var}{A string defining the prefix of the column names corresponding to the outcome variable for each study wave. This
 is applicable when \code{sub_Model} is not \code{"MGM"}. For \code{sub_Model} being \code{"MGM"}, \code{y_var} should be a
-string vector where each element corresponds to the prefix of the column names for each outcome variable across the study waves.}
+string vector where each element corresponds to the prefix of the column names for each outcome variable across the study waves;
+see \code{\link{getMGM}} for the prefixes that are rejected because their labels would be ambiguous.}
 
 \item{curveFun}{A string specifying the functional forms of the growth curve(s). Supported options for \code{y_model = "LGCM"}
 include: \code{"linear"} (or \code{"LIN"}), \code{"quadratic"} (or \code{"QUAD"}), \code{"negative exponential"} (or \code{"EXP"}),
@@ -100,8 +104,8 @@ applied as fallback.}
 
 \item{res_cor}{An optional list where each element is a (vector of) numeric initial value(s) for residual correlation in each
 class. Applicable when the sub_Model is \code{"TVC"} (when \code{decompose != 0}), \code{"MGM"}, or \code{"MED"}. Default is
-\code{NULL}, in which case data-driven residual correlation estimation is used. If data-driven estimation fails, a heuristic
-of \code{0.3} is applied as fallback.}
+\code{NULL}, in which case the residual correlations of \code{"TVC"} and \code{"MGM"} models are estimated from the
+per-person curve residuals (with \code{0.3} as fallback) and those of \code{"MED"} models start at \code{0.3}.}
 
 \item{tries}{An integer specifying the number of additional optimization attempts. Default is \code{NULL}.}
 
@@ -139,33 +143,55 @@ include:
   \item Longitudinal mediation models.
 } For the first three submodels, time-invariant covariates are allowed.
 }
+\details{
+New fits retain their resolved model specification and fitting provenance.
+A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+indefinite covariance matrix) is returned with a warning that lists them.
+For multivariate submodels, every outcome pair must share at least one record ID;
+see \code{\link{getMGM}}.
+Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+\code{logLik()} and \code{plot()} methods are available.
+}
+\section{Standardized fitting}{
+
+Latent growth curve, latent change score, TVC and multivariate sub-models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+centred at the mean and divided by the standard deviation of its first recorded occasion, pooled within
+the groups, a time-varying covariate is divided by its first-occasion standard deviation (also pooled within
+the groups), and time is divided by the
+mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+same model in the original units; only the numerical conditioning of the optimization differs.
+\code{getSpecification()} records the centres, scales and condition numbers under
+\code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+}
+
 \examples{
 mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+# Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 data("RMS_dat")
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
 RMS_dat0 <- RMS_dat
 baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
+# Standardized time-invariant covariates
 RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-\donttest{
-# Fit longitudinal multiple group model of bilinear spline functional form with fixed knot
-MGroup_BLS_LGCM.TIC_f <-  getMGroup(
-  dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
-  records = 1:9, curveFun = "BLS", intrinsic = FALSE
-)
 
-# Fit longitudinal multiple group model of bilinear spline functional form with random knot
+\donttest{
+# Multiple-group bilinear spline model with a fixed knot, groups defined by sex
+MGroup_BLS_LGCM_r <- getMGroup(
+  dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
+  records = 1:9, curveFun = "BLS", intrinsic = FALSE, paramOut = TRUE
+)
+printTable(MGroup_BLS_LGCM_r)
+}
+\dontrun{
+# Random knot with time-invariant covariates and 10 extra optimization attempts;
+# this takes several minutes
 set.seed(20191029)
-MGroup_BLS_LGCM.TIC_f <-  getMGroup(
+MGroup_BLS_LGCM.TIC_f <- getMGroup(
   dat = RMS_dat0, grp_var = "SEX", sub_Model = "LGCM", y_var = "M", t_var = "T",
   records = 1:9, curveFun = "BLS", intrinsic = TRUE,
   growth_TIC = c("ex1", "ex2"), tries = 10, paramOut = TRUE

@@ -1,0 +1,22 @@
+bibentry(
+  bibtype = "Article",
+  header  = "To cite nlpsem in publications, please use:",
+  title   = paste("Examination of nonlinear longitudinal processes with latent variables, latent processes,",
+                  "latent changes, and latent classes in the structural equation modeling framework:",
+                  "The {R} package {nlpsem}"),
+  author  = person(given = "Jin", family = "Liu", comment = c(ORCID = "0000-0001-5922-6643")),
+  journal = "Behavior Research Methods",
+  year    = "2025",
+  volume  = "57",
+  number  = "3",
+  pages   = "87",
+  doi     = "10.3758/s13428-025-02596-4",
+  textVersion = paste(
+    "Liu, J. (2025).",
+    "Examination of nonlinear longitudinal processes with latent variables, latent processes,",
+    "latent changes, and latent classes in the structural equation modeling framework:",
+    "The R package nlpsem.",
+    "Behavior Research Methods, 57(3), 87.",
+    "https://doi.org/10.3758/s13428-025-02596-4"
+  )
+)

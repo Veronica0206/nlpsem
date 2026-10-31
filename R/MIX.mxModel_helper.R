@@ -62,26 +62,27 @@
 getMIX.mxModel <- function(dat, nClass, sub_Model, cluster_TIC, t_var, y_var, curveFun, intrinsic, records,
                            y_model, m_var, x_var, x_type, TVC, decompose, growth_TIC, starts, res_cor){
   if (sub_Model == "LGCM"){
-    MIX_submodels <- getsub.LGCM_l(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
-                                   intrinsic = intrinsic, records = records, growth_TIC = growth_TIC, starts = starts)
+    MIX_submodels <- getsub.LGCM(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
+                                 intrinsic = intrinsic, records = records, growth_TIC = growth_TIC, starts = starts,
+                                 container = "mixture")
   }
   else if (sub_Model == "LCSM"){
-    MIX_submodels <- getsub.LCSM_l(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
-                                   intrinsic = intrinsic, records = records, growth_TIC = growth_TIC, starts = starts)
+    MIX_submodels <- getsub.LCSM(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
+                                   intrinsic = intrinsic, records = records, growth_TIC = growth_TIC, starts = starts, container = "mixture")
   }
   else if (sub_Model == "TVC"){
-    MIX_submodels <- getsub.TVC_l(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
+    MIX_submodels <- getsub.TVC(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
                                   intrinsic = intrinsic, records = records, y_model = y_model, TVC = TVC,
-                                  decompose = decompose, growth_TIC = growth_TIC, starts = starts)
+                                  decompose = decompose, growth_TIC = growth_TIC, starts = starts, container = "mixture")
   }
   else if (sub_Model == "MGM"){
-    MIX_submodels <- getsub.MGM_l(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
-                                  intrinsic = intrinsic, records = records, y_model = y_model, starts = starts)
+    MIX_submodels <- getsub.MGM(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
+                                  intrinsic = intrinsic, records = records, y_model = y_model, starts = starts, container = "mixture")
   }
   else if (sub_Model == "MED"){
-    MIX_submodels <- getsub.MED_l(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
+    MIX_submodels <- getsub.MED(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
                                   records = records, m_var = m_var, x_var = x_var, x_type = x_type, starts = starts,
-                                  res_cor = res_cor)
+                                  res_cor = res_cor, container = "mixture")
   }
   if (!is.null(cluster_TIC)){
     classBeta <- mxMatrix(type = "Full", nrow = nClass, ncol = length(cluster_TIC) + 1,

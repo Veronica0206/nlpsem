@@ -1,0 +1,42 @@
+{
+  "dataset": "RMS_dat",
+  "origin": "NCES ECLS-K:2011 public-use exports retained in the project",
+  "external_release_identifier": "Not recorded in historical export metadata; do not infer from filenames",
+  "files": [
+    {
+      "file": "ecls_k_2011_assessment.sas7bdat",
+      "sha256": "064ad49b01e7330486ddbce736a57da73f843832954906a0ed9d680db1b040a9",
+      "rows": 18174
+    },
+    {
+      "file": "demo_ses.sas7bdat",
+      "sha256": "19561f221c96738d32809fa978f5c7d94465fca29e0e327c21f959598af3b54f",
+      "rows": 18174
+    },
+    {
+      "file": "ecls_k_e2.sas7bdat",
+      "sha256": "dc5973c766fa71c6b81eb185f40adf9b6d15fd22092dce585cccf0ab33485e9c",
+      "rows": 18174
+    }
+  ],
+  "reconstruction": {
+    "missing_codes": [
+      -9,
+      -8,
+      -7,
+      -1
+    ],
+    "complete_cases": 1817,
+    "sample_n": 500,
+    "seed": 20191029,
+    "RNG_kind": [
+      "Mersenne-Twister",
+      "Inversion",
+      "Rejection"
+    ],
+    "R": "4.5.3",
+    "verification": "All 49 columns and all 500 rows agree with shipped data ignoring serialization attributes",
+    "variable_map": "RMS_dat-variable-map.csv"
+  },
+  "shipped_RData_sha256": "8df0f80fee8eb71cefc04e093283478f00a1e7cb24cd41b18bccae82222d4a04"
+}

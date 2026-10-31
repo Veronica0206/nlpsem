@@ -22,38 +22,38 @@ A data frame containing the number of free parameters, estimated likelihood (-2l
 in log-likelihood and degrees of freedom, p-values, AIC, and BIC for both the full and reduced models.
 }
 \description{
-This function performs the likelihood ratio test (LRT) to compare a full model (an intrinsically nonlinear
-longitudinal model) with a corresponding parsimonious alternative (a non-intrinsically nonlinear longitudinal model).
-It also provides an option to perform bootstrapping for the comparison.
+Wraps OpenMx model comparison for a fitted full model and a
+corresponding reduced model, with optional parametric bootstrapping. A returned
+p-value is meaningful only when the comparison satisfies the required assumptions.
+}
+\details{
+Both models must use the same observations and observed variables,
+and the reduced model must be nested in the full model. Neither this wrapper
+nor OpenMx establishes mathematical nesting automatically. Inspect
+\code{getDiagnostics()} and check solution stability before interpreting results.
+The ordinary chi-square reference requires the usual likelihood regularity
+conditions; boundary parameters, unidentified parameters, and latent class
+enumeration can violate these conditions.
+
+In particular, random-knot and fixed-knot bilinear spline fits use different
+smooth/absolute-value loading formulas, and latent covariances are not generally
+constrained to be positive semidefinite. Their automatic comparison is not a
+validated significance test for a random-knot effect. Establish the null model,
+admissible parameter space and calibration for the intended analysis.
+
+\code{boot = TRUE} delegates to \code{OpenMx::mxCompare()}. It does not
+repair invalid models or non-nesting. Use enough successful replications to
+control Monte Carlo error, and inspect bootstrap fitting behavior. A reported
+zero bootstrap p-value is bounded by the simulation resolution, not evidence
+of a probability exactly equal to zero.
 }
 \examples{
-
-mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
-data("RMS_dat")
-RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
-baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-
-\donttest{
-# Fit bilinear spline growth model with random knot (intrinsically nonlinear model)
-BLS_LGCM_f <- getLGCM(dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
-                      intrinsic = TRUE, records = 1:9)
-# Fit bilinear spline growth model with fix knot (non-intrinsically nonlinear model)
-BLS_LGCM_r <- getLGCM(dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
-                      intrinsic = FALSE, records = 1:9)
-# Likelihood ratio test
-getLRT(full = BLS_LGCM_f@mxOutput, reduced = BLS_LGCM_r@mxOutput, boot = FALSE, rep = NA)
-}
+# Historical comparison output: inspect the assumptions in Details before
+# interpreting the p-value for these nonlinear models.
+load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
+comparison <- getLRT(full = Math_LGCM_BLS_f@mxOutput,
+                     reduced = Math_LGCM_BLS_r@mxOutput)
+comparison[, c("# of Free Param", "-2loglik", "AIC", "BIC")]
 
 }
 \seealso{

@@ -1,0 +1,9 @@
+.DS_Store
+.Rhistory
+.RData
+.Rproj.user/
+docs/
+test-results/
+*.Rcheck/
+*.tar.gz
+Rplots.pdf

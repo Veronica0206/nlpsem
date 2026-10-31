@@ -1,0 +1,198 @@
+---
+title: "Working with fitted nlpsem models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Working with fitted nlpsem models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
+library(nlpsem)
+```
+
+Newly fitted models retain the specification used to construct them. You can inspect
+and plot the returned object without repeating its outcome names, curve family, or
+selected waves. The underlying OpenMx model remains available in `fit@mxOutput`.
+
+## Fit a small model
+
+This example generates five measurements for 80 people with a random intercept and
+slope. Times are measured from the first occasion. The example is deliberately small
+so that it can be fitted when this article is built.
+
+```{r fit-model, message=FALSE}
+set.seed(20261024)
+n <- 80L
+times <- 0:4
+intercept <- rnorm(n, mean = 10, sd = 2)
+slope <- rnorm(n, mean = 1.5, sd = 0.3)
+dat <- data.frame(ID = seq_len(n))
+for (j in seq_along(times)) {
+  dat[[paste0("T", j)]] <- times[j]
+  dat[[paste0("Y", j)]] <- intercept + slope * times[j] + rnorm(n, sd = 0.5)
+}
+
+fit <- getLGCM(
+  dat, t_var = "T", y_var = "Y", records = 1:5,
+  curveFun = "LIN", intrinsic = FALSE, paramOut = TRUE
+)
+```
+
+## Inspect the fitted object
+
+The compact print method gives an overview. The summary method delegates to OpenMx,
+so its convergence and fit diagnostics remain available.
+
+```{r inspect-model}
+print(fit)
+summary(fit)
+```
+
+Optimizer completion does not establish statistical admissibility. Inspect stored
+covariance matrices, uncertainty information and component sizes without refitting:
+
+```{r fit-diagnostics}
+diagnostics <- getDiagnostics(fit)
+diagnostics
+```
+
+A materially negative variance or indefinite latent covariance requires investigation.
+Small boundary eigenvalues need scale-aware interpretation. Missing Hessian or standard
+error information means that check is unavailable. These checks do not establish global
+optimality: repeat fitting with defensible alternative starts and compare admissible
+solutions. Keep the seed, optimizer and package versions with the analysis.
+
+The coefficient method returns the named free parameters at full precision.
+`printTable(fit)` displays the package's estimate table, including derived quantities
+when that model supplies them; these serve different purposes.
+
+```{r estimates}
+coef(fit)
+logLik(fit)
+printTable(fit)
+```
+
+Use `getSpecification()` to inspect the recorded modeling choices and fitting
+provenance. This is useful when returning to a saved analysis or explaining how a
+figure was constructed.
+
+```{r specification}
+provenance <- getSpecification(fit)
+names(provenance)
+provenance$specification
+provenance$versions
+```
+
+The full object also retains resolved starting values, fitting settings, and available
+RNG state. Save the original data together with the fitted object; provenance records
+the specification but is not an automatically replayable call.
+
+## Plot without repeating the specification
+
+The plotting method reads the recorded model specification. Supply only presentation
+choices such as the time label and outcome title.
+
+```{r plot-model, message=FALSE, warning=FALSE, fig.alt="The simulated mean outcome increases from about 10 at baseline to 16 after four years. The fitted linear mean closely follows the smoothed observed mean, with pointwise 95 percent confidence limits on either side."}
+plot(fit, xstarts = 0, xlab = "Years since baseline", outcome = "Simulated outcome")
+```
+
+The intervals describe uncertainty in the model-implied mean at each plotted time.
+They are pointwise intervals, not prediction intervals for individual people or a
+simultaneous confidence band for the entire curve.
+
+For further customization, request the plotting object without drawing it:
+
+```{r collect-plot}
+figures <- plot(fit, draw = FALSE, xstarts = 0, xlab = "Years since baseline",
+                outcome = "Simulated outcome")
+class(figures)
+```
+
+Its `figures` slot contains the ggplot objects. The layout follows `getFigure()`:
+one entry per outcome, with growth-status or change/rate plots within that entry.
+
+## Check a model on simulated data
+
+`getSimData()` generates wide-format data from a model with known parameter values.
+Each data set carries those values as the attribute `truth`, retaining the generating
+parameterization and time origin. This example generates six measurements for 500 people from a quadratic
+latent growth curve model with the default parameter values.
+
+```{r simulate-data, message=FALSE}
+sim <- getSimData(n = 500, curveFun = "QUAD", nT = 6, seed = 20261027)
+truth <- attr(sim, "truth")
+sim_fit <- getLGCM(
+  sim, t_var = "T", y_var = "Y", records = 1:6,
+  curveFun = "QUAD", intrinsic = FALSE, paramOut = TRUE
+)
+estimates <- sim_fit@Estimates[match(names(truth), sim_fit@Estimates$Name), ]
+data.frame(truth = truth, estimate = round(estimates$Estimate, 3), SE = round(estimates$SE, 3))
+```
+
+Equal parameter names do not always mean equal parameters. For example, a quadratic
+growth curve's `eta0` is its level at time zero, while an LCSM's `eta0` is its level
+at the first fitted occasion. For quadratic and nonparametric data, `truth_lcsm`
+supplies the parameter targets at the first generated occasion:
+
+```{r simulate-time-origin}
+shifted <- getSimData(n = 30, curveFun = "QUAD", times = 5:14, jitter = 0, seed = 1)
+cbind(LGCM = attr(shifted, "truth")[c("mueta0", "psi00")],
+      LCSM = attr(shifted, "truth_lcsm")[c("mueta0", "psi00")])
+attr(shifted, "truth_info")$first_observation_time
+```
+
+The quadratic transformation includes the mean, covariance and covariate effects;
+the initial mean and variance above are 125 and 166.25 for the LCSM, versus the
+time-zero values 50 and 25. The nonparametric generator already starts at the first
+observation. These targets cover all generated records; a later selected baseline
+needs reparameterization, potentially for each person if that time is jittered.
+`truth_info` records the origin, reference records and applicable limits.
+
+`truth_lcsm` is unavailable for EXP and JB: their midpoint approximation, and a
+random ratio's nonlinear transformation, preclude treating a simple conversion
+as an exact recovery target. Direct comparisons with the generating `truth` need
+a zero first fitted time for every person and the approximation qualifications in
+`?getSimData`. For TVC models, transformed factor targets alone do not establish
+equivalence of the full growth-curve and change-score data-generating models.
+
+The data also carry each person's growth factors (`growth_factors`) and the full
+generating values (`settings`). Supply `params` to change the generating values, and
+a list of parameter sets with `prop` to generate latent classes. The same function
+generates data for multivariate, time-varying covariate and mediation models:
+
+```{r simulate-families}
+bivariate <- getSimData(n = 200, sub_Model = "MGM", curveFun = "LIN", seed = 1)
+with_tvc <- getSimData(n = 200, sub_Model = "TVC", curveFun = "LIN", decompose = 1, seed = 1)
+mediation <- getSimData(n = 200, sub_Model = "MED", curveFun = "LIN", x_type = "baseline", seed = 1)
+head(attr(mediation, "truth"))
+```
+
+The matching fit for each is `getMGM()`, `getTVCmodel()` and `getMediation()` with the
+same functional form; `?getSimData` lists the parameter values each model takes.
+
+## Reuse existing analyses
+
+The fitting functions retain their existing arguments and output slots. Calls that
+work directly with OpenMx models, such as the following, remain available:
+
+```{r existing-api}
+getSummary(model_list = list(fit@mxOutput))
+```
+
+Objects saved by older nlpsem versions may not contain specification metadata. Their
+OpenMx results can still be inspected, but structural choices must be supplied when
+plotting. For example, for an older univariate linear fit:
+
+```{r legacy-plot, eval=FALSE}
+plot(
+  old_fit, sub_Model = "LGCM", y_var = "Y", curveFun = "LIN",
+  t_var = "T", records = 1:5, xstarts = 0,
+  xlab = "Years since baseline", outcome = "Outcome"
+)
+```
+
+Use the specification from the original analysis. Do not infer the selected waves or
+curve family solely from the appearance of a plotted trajectory. See the model-specific
+vignettes for time-varying covariates, multiple outcomes, mediation, groups, and mixtures.

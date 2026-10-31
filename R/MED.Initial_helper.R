@@ -45,41 +45,68 @@
   beta
 }
 
-getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, records, res_scale, res_cor){
-  # If res_cor not provided, estimate from data using within-person residuals
-  if (is.null(res_cor)){
-    if (x_type == "baseline"){
-      traj_var <- c(y_var, m_var)
-      traj_records <- records[1:2]
-    } else {
-      traj_var <- c(y_var, m_var, x_var)
-      traj_records <- records[1:3]
-    }
-    res_cor_est <- numeric()
-    for (traj_i in 1:(length(traj_var) - 1)){
-      for (traj_j in (traj_i + 1):length(traj_var)){
-        nT_common <- min(length(traj_records[[traj_i]]), length(traj_records[[traj_j]]))
-        dat_i <- dat[, paste0(traj_var[traj_i], traj_records[[traj_i]][1:nT_common]), drop = FALSE]
-        dat_j <- dat[, paste0(traj_var[traj_j], traj_records[[traj_j]][1:nT_common]), drop = FALSE]
-        resid_i <- dat_i - rowMeans(dat_i, na.rm = TRUE)
-        resid_j <- dat_j - rowMeans(dat_j, na.rm = TRUE)
-        r <- cor(unlist(resid_i), unlist(resid_j), use = "complete.obs")
-        if (is.na(r)) r <- 0.3
-        r <- max(min(r, 0.99), -0.99)
-        res_cor_est <- c(res_cor_est, r)
-      }
-    }
-    res_cor <- res_cor_est
+# Covariances of marginal growth factors cannot be converted to disturbance
+# covariances by subtracting the direct paths alone: a predictor also acts
+# through the mediator. Estimate the conditional disturbance covariance from
+# the fitted structural-regression residuals, retaining their row alignment.
+# BLS path damping is a subsequent numerical starting-value adjustment; its
+# prediction error must not be included in the estimated disturbance variance.
+# Each equation has its own allowed predictors; a missing value in a predictor
+# excluded from that equation must not discard its otherwise usable residual.
+.med_residual_covariance <- function(outcomes, predictors, intercept, beta,
+                                     predictor_sets, label){
+  outcomes <- as.matrix(outcomes)
+  predictors <- as.matrix(predictors)
+  beta <- as.matrix(beta)
+  residuals <- matrix(NA_real_, nrow(outcomes), ncol(outcomes),
+                      dimnames = dimnames(outcomes))
+  for (p in seq_len(ncol(outcomes))){
+    use <- predictor_sets[[p]]
+    x <- predictors[, use, drop = FALSE]
+    keep <- is.finite(outcomes[, p]) & apply(is.finite(x), 1, all)
+    residuals[keep, p] <- outcomes[keep, p] - intercept[p] -
+      drop(x[keep, , drop = FALSE] %*% beta[p, use])
   }
+  shared <- apply(is.finite(residuals), 1, all)
+  if (sum(shared) >= 2L){
+    covariance <- stats::cov(residuals[shared, , drop = FALSE])
+  } else{
+    # Pairwise covariances from different samples need not be positive
+    # semidefinite. With no shared sample, start cross-covariances at zero and
+    # retain every estimable marginal residual variance. Make this fallback
+    # explicit; it does not represent an estimated joint covariance.
+    warning("Fewer than two shared residual rows for ", label,
+            "; using diagonal covariance starts. Unavailable residual variances ",
+            "use 10% of the observed factor variance, or 1 if that is unavailable.",
+            call. = FALSE)
+    variances <- vapply(seq_len(ncol(outcomes)), function(p){
+      r <- residuals[is.finite(residuals[, p]), p]
+      value <- if (length(r) >= 2L) stats::var(r) else NA_real_
+      if (!is.finite(value)){
+        y <- outcomes[is.finite(outcomes[, p]), p]
+        value <- if (length(y) >= 2L) 0.1 * stats::var(y) else NA_real_
+        if (!is.finite(value) || value <= 0) value <- 1
+      }
+      value
+    }, numeric(1))
+    covariance <- diag(variances, nrow = ncol(outcomes))
+    dimnames(covariance) <- list(colnames(outcomes), colnames(outcomes))
+  }
+  .ensure_pd(covariance, label = label)
+}
+
+getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, records, res_scale, res_cor){
+  # The residual covariances between the processes are started by the model builders (res_cor, default 0.3);
+  # getMED.initial() does not use res_cor itself.
   # Helper: use data-driven residual variance if available, otherwise fall back to heuristic
   .get_res_init <- function(gf, col_idx, scale){
     data_res_var <- attr(gf, "mean_res_var")
     if (!is.null(data_res_var) && !is.na(data_res_var) && data_res_var > 0){
       data_res_var
     } else if (!is.null(scale)){
-      var(gf[, col_idx]) * scale
+      var(gf[, col_idx], na.rm = TRUE) * scale
     } else{
-      var(gf[, col_idx]) * 0.1
+      var(gf[, col_idx], na.rm = TRUE) * 0.1
     }
   }
   # Define the number of growth factors for each functional form
@@ -120,15 +147,16 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
          na.action = na.exclude)$coefficients[-1]
     }), nrow = nGF, byrow = TRUE)
     M_alpha <- if (curveFun %in% c("bilinear spline", "BLS")){
-      c(M_alpha, mean(M_growth_factor[, 4]))
+      c(M_alpha, mean(M_growth_factor[, 4], na.rm = TRUE))
     } else{
       M_alpha
     }
-    M_psi_r <- if (curveFun %in% c("bilinear spline", "BLS")){
+    M_beta <- .zero_aliased_effects(M_beta)
+    M_psi_r <- .med_residual_covariance(
+      M_growth_factor[, seq_len(nGF), drop = FALSE], dat[, x_var, drop = FALSE],
+      M_alpha, M_beta, rep(list(1L), nGF), label = "MED M_psi_r")
+    if (curveFun %in% c("bilinear spline", "BLS")){
       M_beta <- .stabilize_med_path_starts(M_beta, curveFun = curveFun)
-      .ensure_pd(var(M_growth_factor[, 1:3]) - M_beta %*% X_var %*% t(M_beta), label = "MED M_psi_r")
-    } else{
-      var(M_growth_factor[, 1:2]) - M_beta %*% X_var %*% t(M_beta)
     }
     M_residuals <- .get_res_init(M_growth_factor,
                                   ifelse(curveFun %in% c("linear", "LIN"), 1, 2), res_scale[2])
@@ -143,8 +171,10 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
                               na.action = na.exclude)$coefficients)
       Y_alpha <- c(Y_reg0[1], Y_reg1[1])
       Y_beta <- matrix(c(Y_reg0[2], Y_reg0[3], 0, Y_reg1[-1]), byrow = T, nrow = 2, ncol = 3)
-      Y_psi_r <- var(Y_growth_factor) - t(t(Y_beta[, 1])) %*% X_var %*% t(Y_beta[, 1]) -
-        Y_beta[, 2:3] %*% M_psi_r %*% t(Y_beta[, 2:3])
+      Y_beta <- .zero_aliased_effects(Y_beta)
+      Y_psi_r <- .med_residual_covariance(
+        Y_growth_factor, cbind(dat[, x_var], M_growth_factor), Y_alpha, Y_beta,
+        list(1:2, 1:3), label = "MED Y_psi_r")
       Y_residuals <- .get_res_init(Y_growth_factor, 1, res_scale[1])
       starts.Y <- list(means = Y_alpha, beta_x = Y_beta[, 1], beta_m = Y_beta[, 2:3], covMatrix = Y_psi_r, residuals = Y_residuals)
     }
@@ -158,13 +188,15 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
       Y_reg_2 <- as.numeric(lm(traj_delta ~ ., data = data.frame(traj_delta = Y_growth_factor[, 3],
                                                                  dat[, x_var], M_growth_factor[, 1:3]),
                                na.action = na.exclude)$coefficients)
-      Y_alpha <- c(Y_reg_1[1], Y_reg_r[1], Y_reg_2[1], mean(Y_growth_factor[, 4]))
+      Y_alpha <- c(Y_reg_1[1], Y_reg_r[1], Y_reg_2[1], mean(Y_growth_factor[, 4], na.rm = TRUE))
       Y_beta <- matrix(c(Y_reg_1[2:3], 0, 0,
                          Y_reg_r[2:4], 0,
                          Y_reg_2[-1]), byrow = T, nrow = 3, ncol = 4)
+      Y_beta <- .zero_aliased_effects(Y_beta)
+      Y_psi_r <- .med_residual_covariance(
+        Y_growth_factor[, 1:3], cbind(dat[, x_var], M_growth_factor[, 1:3]),
+        Y_alpha, Y_beta, list(1:2, 1:3, 1:4), label = "MED Y_psi_r")
       Y_beta <- .stabilize_med_path_starts(Y_beta, curveFun = curveFun)
-      Y_psi_r <- cov(Y_growth_factor[, 1:3]) - t(t(Y_beta[, 1])) %*% X_var %*% t(Y_beta[, 1]) - Y_beta[, 2:4] %*% M_psi_r %*% t(Y_beta[, 2:4])
-      Y_psi_r <- .ensure_pd(Y_psi_r, label = "MED Y_psi_r")
       Y_residuals <- .get_res_init(Y_growth_factor, 2, res_scale[1])
       starts.Y <- list(means = Y_alpha, beta_x = Y_beta[, 1], beta_m = Y_beta[, 2:4], covMatrix = Y_psi_r, residuals = Y_residuals)
     }
@@ -190,14 +222,14 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
          na.action = na.exclude)$coefficients[1]
     })
     X_mean <- if (curveFun %in% c("bilinear spline", "BLS")){
-      c(X_mean, mean(X_growth_factor[, 4]))
+      c(X_mean, mean(X_growth_factor[, 4], na.rm = TRUE))
     } else{
       X_mean
     }
     X_psi0 <- if (curveFun %in% c("bilinear spline", "BLS")){
-      .ensure_pd(var(X_growth_factor[, 1:3]), label = "MED X_psi0")
+      .ensure_pd(var(X_growth_factor[, 1:3], use = "pairwise.complete.obs"), label = "MED X_psi0")
     } else{
-      var(X_growth_factor[, 1:2])
+      var(X_growth_factor[, 1:2], use = "pairwise.complete.obs")
     }
     X_residuals <- .get_res_init(X_growth_factor,
                                   ifelse(curveFun %in% c("linear", "LIN"), 1, 2), res_scale[3])
@@ -212,7 +244,10 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
                               na.action = na.exclude)$coefficients)
       M_alpha <- c(M_reg0[1], M_reg1[1])
       M_beta <- matrix(c(M_reg0[-1], 0, M_reg1[-1]), byrow = T, nrow = 2, ncol = 2)
-      M_psi_r <- var(M_growth_factor) - M_beta %*% X_psi0 %*% t(M_beta)
+      M_beta <- .zero_aliased_effects(M_beta)
+      M_psi_r <- .med_residual_covariance(
+        M_growth_factor, X_growth_factor, M_alpha, M_beta,
+        list(1L, 1:2), label = "MED M_psi_r")
       M_residuals <- .get_res_init(M_growth_factor, 1, res_scale[2])
       starts.M <- list(means = M_alpha, beta = M_beta, covMatrix = M_psi_r, residuals = M_residuals)
       # Calculate initial values for parameters related to longitudinal outcome
@@ -227,8 +262,10 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
       Y_alpha <- c(Y_reg0[1], Y_reg1[1])
       Y_beta <- matrix(c(Y_reg0[2], 0, Y_reg0[3], 0,
                          Y_reg1[-1]), byrow = T, nrow = 2, ncol = 4)
-      Y_psi_r <- var(Y_growth_factor) - Y_beta[, 1:2] %*% X_psi0 %*% t(Y_beta[, 1:2]) -
-        Y_beta[, 3:4] %*% M_psi_r %*% t(Y_beta[, 3:4])
+      Y_beta <- .zero_aliased_effects(Y_beta)
+      Y_psi_r <- .med_residual_covariance(
+        Y_growth_factor, cbind(M_growth_factor, X_growth_factor), Y_alpha, Y_beta,
+        list(c(1L, 3L), 1:4), label = "MED Y_psi_r")
       Y_residuals <- .get_res_init(Y_growth_factor, 1, res_scale[1])
       starts.Y <- list(means = Y_alpha, beta_x = Y_beta[, 3:4], beta_m = Y_beta[, 1:2], covMatrix = Y_psi_r, residuals = Y_residuals)
       starts <- list(X = starts.X, M = starts.M, Y = starts.Y)
@@ -244,11 +281,13 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
       M_reg_2 <- as.numeric(lm(traj_delta ~ ., data = data.frame(traj_delta = M_growth_factor[, 3],
                                                                  X_growth_factor[, 1:3]),
                                na.action = na.exclude)$coefficients)
-      M_alpha <- c(M_reg_1[1], M_reg_r[1], M_reg_2[1], mean(M_growth_factor[, 4]))
+      M_alpha <- c(M_reg_1[1], M_reg_r[1], M_reg_2[1], mean(M_growth_factor[, 4], na.rm = TRUE))
       M_beta <- matrix(c(M_reg_1[-1], 0, 0, M_reg_r[-1], 0, M_reg_2[-1]), byrow = T, nrow = 3, ncol = 3)
+      M_beta <- .zero_aliased_effects(M_beta)
+      M_psi_r <- .med_residual_covariance(
+        M_growth_factor[, 1:3], X_growth_factor[, 1:3], M_alpha, M_beta,
+        list(1L, 1:2, 1:3), label = "MED M_psi_r")
       M_beta <- .stabilize_med_path_starts(M_beta, curveFun = curveFun)
-      M_psi_r <- var(M_growth_factor[, 1:3]) - M_beta %*% X_psi0 %*% t(M_beta)
-      M_psi_r <- .ensure_pd(M_psi_r, label = "MED M_psi_r")
       M_residuals <- .get_res_init(M_growth_factor, 2, res_scale[2])
       starts.M <- list(means = M_alpha, beta = M_beta, covMatrix = M_psi_r, residuals = M_residuals)
       # Calculate initial values for parameters related to longitudinal outcome
@@ -264,14 +303,15 @@ getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, re
                                                                  M_growth_factor[, 1:3],
                                                                  X_growth_factor[, 1:3]),
                                na.action = na.exclude)$coefficients)
-      Y_alpha <- c(Y_reg_1[1], Y_reg_r[1], Y_reg_2[1], mean(Y_growth_factor[, 4]))
+      Y_alpha <- c(Y_reg_1[1], Y_reg_r[1], Y_reg_2[1], mean(Y_growth_factor[, 4], na.rm = TRUE))
       Y_beta <- matrix(c(Y_reg_1[2], rep(0, 2), Y_reg_1[3], rep(0, 2),
                          Y_reg_r[2:3], 0, Y_reg_r[4:5], 0, Y_reg_2[-1]),
                        byrow = T, nrow = 3, ncol = 6)
+      Y_beta <- .zero_aliased_effects(Y_beta)
+      Y_psi_r <- .med_residual_covariance(
+        Y_growth_factor[, 1:3], cbind(M_growth_factor[, 1:3], X_growth_factor[, 1:3]),
+        Y_alpha, Y_beta, list(c(1L, 4L), c(1:2, 4:5), 1:6), label = "MED Y_psi_r")
       Y_beta <- .stabilize_med_path_starts(Y_beta, curveFun = curveFun)
-      Y_psi_r <- var(Y_growth_factor[, 1:3]) - Y_beta[, 1:3] %*% M_psi_r %*% t(Y_beta[, 1:3]) -
-        Y_beta[, 4:6] %*% X_psi0 %*% t(Y_beta[, 4:6])
-      Y_psi_r <- .ensure_pd(Y_psi_r, label = "MED Y_psi_r")
       Y_residuals <- .get_res_init(Y_growth_factor, 2, res_scale[1])
       starts.Y <- list(means = Y_alpha, beta_x = Y_beta[, 4:6], beta_m = Y_beta[, 1:3], covMatrix = Y_psi_r, residuals = Y_residuals)
     }

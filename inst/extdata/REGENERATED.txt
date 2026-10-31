@@ -1,0 +1,22 @@
+Regenerated: 2026-10-28 from commit 281c12c (data-raw/regen_*.R, each run with out_dir set; see data-raw/README.md)
+R: R version 4.5.3 (2026-03-11)
+OpenMx: 2.22.11
+nlpsem: 1.0.0.9006
+Compared with the 1.0.0.9000 objects (2026-10-24), 14 of the 23 fitted models reproduce the previous -2LL (within
+0.002; Med3_LGCM_BLS moves its estimates by up to 0.74 at the same -2LL). Seven reach a lower -2LL from the 1.0.0.9006
+starts: Math_LGCM_BLS_f (31261.604 vs 31317.966), Math_LGCM_TIC_BLS_f (33537.415 vs 33607.597), RM_PLGCM.f
+(62505.358 vs 62609.185), Math_TVCchgBL_BLS_r (64207.483 vs 64317.602; now admissible), Math_BLS_LGCM2 (31134.615 vs
+31171.413), RM_BLS_PLGCM3 (61865.287 vs 61903.555) and MGroup_Math_BLS_LGCM_f (31204.939 vs 31245.636; now with an
+indefinite covariance matrix in group 1). Two reach a higher -2LL: Math_TVC_BLS_f (47324.020 vs 47243.431; the same
+model reaches 47225.917 with time in months) and Math_BLS_LGCM3 (31022.736 vs 31008.299). getDiagnostics() flags
+MGroup_Math_BLS_LGCM_f, Math_BLS_LGCM2, Math_BLS_LGCM3 and RM_BLS_PLGCM3 (indefinite class or group covariance
+matrices); the guides note them. Parameter labels follow the current builders (knot -> Y_knot; beta01s -> beta01).
+Mediation objects (getMediation_examples.RData) and version 1.0.0: these two fits were produced with the 1.0.0.9006
+starting values; version 1.0.0 (commit a896590) changed the starting values of the mediation disturbance covariances.
+Refitting the documented calls with 1.0.0 (R 4.5.3, OpenMx 2.22.11, CSOLNP, one thread): Med2_LGCM_BLS (tries = 10)
+reaches the stored -2LL 64097.664 with status 0 and estimates within 0.003, with a positive-definite Hessian but two
+larger standard errors (betaM1Yr 1.07 -> 1.65, Mediator1r 0.067 -> 0.103); the stored object was fitted without tries,
+and its first attempt converges, so tries = 10 gives the same fit. Med3_LGCM_BLS (tries = 10, seed 20191029) reaches
+-2LL 87688.847 (stored 87688.849) with estimates within 0.82, but the numerical Hessian is indefinite and the standard
+errors of betaX1Yr, mediator1r2 and mediator1rr are unavailable, so getMediation() warns; 31 retries with that seed
+return the same point. The stored objects are kept as the guide's illustrations.

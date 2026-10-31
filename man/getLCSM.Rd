@@ -79,33 +79,59 @@ An object of class \code{myMxOutput}. Depending on the \code{paramOut} argument,
 This function fits a latent change score model with or without time-invariant covariates to the provided data.
 It manages model setup, optimization, and if requested, outputs parameter estimates and standard errors.
 }
+\details{
+New fits retain their resolved model specification and fitting provenance.
+A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+indefinite covariance matrix) is returned with a warning that lists them.
+Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+\code{logLik()} and \code{plot()} methods are available.
+}
+\section{Standardized fitting}{
+
+Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+centred at the mean and divided by the standard deviation of its first recorded occasion, a
+time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+same model in the original units; only the numerical conditioning of the optimization differs.
+\code{getSpecification()} records the centres, scales and condition numbers under
+\code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+}
+
+\section{Approximations}{
+
+A latent change score model takes the change over each interval as the rate of change at the midpoint of the
+interval times the length of the interval. This is exact for the quadratic and nonparametric forms. For the
+negative exponential and Jenss-Bayley forms, the midpoint approximation introduces an integration error
+whose size depends on curvature and interval length. With \code{intrinsic = TRUE}, a first-order Taylor
+expansion around the mean growth ratio introduces an additional approximation.
+In an illustrative benchmark using \code{getSimData()} defaults (one data set of 5,000 persons per model,
+ten yearly occasions), the estimated mean of \code{eta1} (negative exponential) or \code{eta2} (Jenss-Bayley)
+was up to about 2.5\% too large in magnitude for fixed-ratio models. In the random-ratio cases, the Taylor
+and midpoint errors moved those estimated means in opposite directions; the estimated covariance of
+\code{eta2} and the ratio in the Jenss-Bayley case was about 40\% above its generating value.
+These are observed estimation errors in individual generated data sets, not replicated estimates of bias,
+coverage rates or general error bounds.
+}
+
 \examples{
 mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
+# Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in years)
 data("RMS_dat")
 RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
 baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- (RMS_dat0$T1 - baseT)/12
-RMS_dat0$T2 <- (RMS_dat0$T2 - baseT)/12
-RMS_dat0$T3 <- (RMS_dat0$T3 - baseT)/12
-RMS_dat0$T4 <- (RMS_dat0$T4 - baseT)/12
-RMS_dat0$T5 <- (RMS_dat0$T5 - baseT)/12
-RMS_dat0$T6 <- (RMS_dat0$T6 - baseT)/12
-RMS_dat0$T7 <- (RMS_dat0$T7 - baseT)/12
-RMS_dat0$T8 <- (RMS_dat0$T8 - baseT)/12
-RMS_dat0$T9 <- (RMS_dat0$T9 - baseT)/12
-# Standardized time-invariant covariates
-RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- (RMS_dat0[[paste0("T", j)]] - baseT) / 12
 
 \donttest{
-# Fit nonparametric change score model for reading development
-## Fit model
+# Nonparametric latent change score model for reading development
 NonP_LCSM <- getLCSM(
   dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "nonparametric",
-  intrinsic = FALSE, records = 1:9
-  )
+  intrinsic = FALSE, records = 1:9, paramOut = TRUE
+)
+printTable(NonP_LCSM)
 }
 
 }

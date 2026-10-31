@@ -2,6 +2,16 @@
 #'
 #' @description This function calculates the latent kappa, a measure of agreement between two sets of latent categorical
 #' labels. It also computes the confidence interval and provides a qualitative interpretation of the agreement level.
+#' Categories are matched by their label values, independently of factor-level order.
+#' Latent class numbers have no intrinsic correspondence across models: align their meanings
+#' explicitly before calling this function. The function does not permute classes to maximize agreement.
+#'
+#' @details The confidence interval uses the multinomial delta-method variance for
+#' paired categorical labels, including uncertainty in their empirical marginal
+#' frequencies. It treats subjects as independent and the supplied labels as observed;
+#' uncertainty from fitting latent class models or assigning classes is not included.
+#' The requested confidence level is retained as an attribute for printing. Older
+#' objects without this attribute are printed without assuming a confidence level.
 #'
 #' @param label1 A factor vector representing the first set of latent categorical labels.
 #' @param label2 A factor vector representing the second set of latent categorical labels.
@@ -30,71 +40,32 @@
 #' @export
 #'
 #' @examples
-#' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' data("RMS_dat")
-#' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
-#' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-#' RMS_dat0$gx1 <- scale(RMS_dat0$INCOME)
-#' RMS_dat0$gx2 <- scale(RMS_dat0$EDU)
-#' \donttest{
-#' ## Fit a growth mixture model with no TICs
-#' set.seed(20191029)
-#' MIX_BLS_LGCM_r <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.30, 0.40, 0.30), sub_Model = "LGCM",
-#'   cluster_TIC = NULL, y_var = "M", t_var = "T", records = 1:9,
-#'   curveFun = "BLS", intrinsic = FALSE, growth_TIC = NULL, tries = 10
-#' )
-#' ## Membership of each individual from growth mixture model with no TICs
-#' label1 <- getPosterior(
-#'   model = MIX_BLS_LGCM_r@mxOutput, nClass = 3, label = FALSE, cluster_TIC = NULL
-#' )
-#' set.seed(20191029)
-#' ## Fit a growth mixture model with growth TICs and cluster TICs
-#' MIX_BLS_LGCM.TIC_r <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.33, 0.34, 0.33), sub_Model = "LGCM",
-#'   cluster_TIC = c("gx1", "gx2"), y_var = "M", t_var = "T", records = 1:9,
-#'   curveFun = "BLS", intrinsic = FALSE,
-#'   growth_TIC = c("ex1", "ex2"), tries = 10
-#' )
-#' ## Membership of each individual from growth mixture model with growth TICs and cluster TICs
+#' # Class memberships from two fitted three-class mixtures shipped with the package
+#' load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))
+#' label1 <- getPosterior(model = Math_BLS_LGCM3@mxOutput, nClass = 3)@membership
 #' label2 <- getPosterior(
-#'   model = MIX_BLS_LGCM.TIC_r@mxOutput, nClass = 3, label = FALSE,
-#'   cluster_TIC = c("gx1", "gx2")
-#' )
-#' ## Calculate the agreement between two sets of membership labels
-#' getLatentKappa(label1 = label1@membership, label2 = label2@membership)
-#' }
+#'   model = RM_BLS_PLGCM3@mxOutput, nClass = 3, cluster_TIC = c("gx1", "gx2")
+#' )@membership
+#' kappa <- getLatentKappa(label1 = label1, label2 = label2)
+#' printTable(kappa)
 #'
-#' @importFrom stats complete.cases qnorm pnorm
+#' @importFrom stats complete.cases qnorm
 #' @importFrom methods new
 #'
 getLatentKappa <- function(label1, label2, conf.level = 0.95){
+  .ci_probs(conf.level)
   if (length(label1) != length(label2)){
     stop("Lengths of 'label1' and 'label2' differ!")
   }
   # Remove both if any missing in label1 or label2
   complete <- complete.cases(label1, label2)
-  label1 <- factor(label1[complete])
-  label2 <- factor(label2[complete])
-  if (nlevels(label1) < 2 || nlevels(label2) < 2){
+  label1 <- as.character(label1[complete])
+  label2 <- as.character(label2[complete])
+  if (length(unique(label1)) < 2 || length(unique(label2)) < 2){
     stop("Both label1 and label2 must have at least 2 levels!")
   }
-  tbl <- table(label1, label2)
-  if (nrow(tbl) != ncol(tbl)){
-    stop("Levels for 2 dimensions are different!")
-  }
+  categories <- union(label1, label2)
+  tbl <- table(factor(label1, levels = categories), factor(label2, levels = categories))
   N <- sum(tbl)
   Po <- sum(diag(tbl))/N
   Pe <- sum(rowSums(tbl) * colSums(tbl)/N)/N
@@ -110,15 +81,20 @@ getLatentKappa <- function(label1, label2, conf.level = 0.95){
                    "Moderate Agreement", "Substantial Agreement", "Almost Perfect Agreement")
     judge <- JUDGEMENT[min(which(kappa < seq(0.2, 1, 0.2)))]
   }
-  seK0 <- sqrt(Pe/(N * (1 - Pe)))
-  seK <- sqrt(Po * (1 - Po)/(N * (1 - Pe)^2))
+  # For cell p_ij, dPe/dp_ij = column_i + row_j. Centering the
+  # gradient gives its variance under multinomial sampling and avoids
+  # subtracting nearly equal second moments near perfect agreement.
+  probs <- tbl/N
+  gradient <- diag(length(categories))/(1 - Pe) -
+    (1 - Po)/(1 - Pe)^2 * outer(colSums(probs), rowSums(probs), "+")
+  centered <- gradient - sum(probs * gradient)
+  seK <- sqrt(sum(probs * centered^2)/N)
   norm.pp <- qnorm(1 - (1 - conf.level)/2)
-  Z <- kappa/seK0
-  p.v <- 1 - pnorm(Z)
   kappaL <- round(kappa - norm.pp * seK, 4)
   kappaU <- round(kappa + norm.pp * seK, 4)
   KappaOut <- new("KappaOutput",
                   kappa_value = paste0(round(kappa, 4), " (", kappaL, ", ", kappaU, ")"),
                   judgment = judge)
+  attr(KappaOut, "conf.level") <- conf.level
   return(KappaOut)
 }

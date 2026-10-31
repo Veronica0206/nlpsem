@@ -85,7 +85,7 @@
 
 getMULTI.initial <- function(dat, t_var, y_var, curveFun, records, res_scale, res_cor, intrinsic = FALSE){
   # Growth factors from raw data
-  GF_list <- uni_mean0 <- list(); uni_residual <- rep(0, length(y_var))
+  GF_list <- uni_mean0 <- res_list <- list(); uni_residual <- rep(0, length(y_var))
   # Extract the measurement values and occasions for each y_var
   for (traj in seq_along(y_var)){
     nT <- length(records[[traj]])
@@ -93,9 +93,10 @@ getMULTI.initial <- function(dat, t_var, y_var, curveFun, records, res_scale, re
     dat_time <- dat[, paste0(t_var[traj], records[[traj]])]
     # Calculate individual growth factors for each longitudinal outcome using `getUNI.GF()` function
     uni_GF <- getUNI.GF(dat_traj = dat_traj, dat_time = dat_time, nT = nT, curveFun = curveFun)
+    res_list[[traj]] <- attr(uni_GF, "residuals")
     colnames(uni_GF) <- paste0(colnames(uni_GF), y_var[traj])
     GF_list[[length(GF_list) + 1]] <- uni_GF
-    uni_mean0[[length(uni_mean0) + 1]] <- apply(uni_GF, 2, mean)
+    uni_mean0[[length(uni_mean0) + 1]] <- apply(uni_GF, 2, mean, na.rm = TRUE)
     # Calculate the residual variance for each longitudinal outcome.
     # Priority: (1) user-specified res_scale  (2) data-driven mean_res_var  (3) 0.1 heuristic
     if (!is.null(res_scale)){
@@ -111,31 +112,9 @@ getMULTI.initial <- function(dat, t_var, y_var, curveFun, records, res_scale, re
       }
     }
   }
-  # If res_cor not provided, estimate from data using within-person residuals
+  # If res_cor is not provided, estimate it from the per-person curve residuals of the processes
   if (is.null(res_cor)){
-    res_cor_est <- numeric()
-    for (traj_i in 1:(length(y_var) - 1)){
-      for (traj_j in (traj_i + 1):length(y_var)){
-        nT_common <- min(length(records[[traj_i]]), length(records[[traj_j]]))
-        dat_i <- dat[, paste0(y_var[traj_i], records[[traj_i]][1:nT_common]), drop = FALSE]
-        dat_j <- dat[, paste0(y_var[traj_j], records[[traj_j]][1:nT_common]), drop = FALSE]
-        # Remove person means to get within-person deviations
-        resid_i <- dat_i - rowMeans(dat_i, na.rm = TRUE)
-        resid_j <- dat_j - rowMeans(dat_j, na.rm = TRUE)
-        # Correlate all residuals across person-timepoint observations
-        r <- cor(unlist(resid_i), unlist(resid_j), use = "complete.obs")
-        # Clamp to valid range and use 0.3 fallback if estimation fails
-        if (is.na(r)) {
-          warning("Data-driven residual correlation estimation failed for outcomes ",
-                  y_var[traj_i], " and ", y_var[traj_j],
-                  "; falling back to heuristic (res_cor = 0.3).", call. = FALSE)
-          r <- 0.3
-        }
-        r <- max(min(r, 0.99), -0.99)
-        res_cor_est <- c(res_cor_est, r)
-      }
-    }
-    res_cor <- res_cor_est
+    res_cor <- .residual_correlation_starts(res_list, labels = y_var, records = records)
   }
   # Combine the univariate growth factors into a single matrix
   growth_factor <- do.call("cbind", GF_list)

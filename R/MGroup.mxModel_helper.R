@@ -61,30 +61,30 @@
 getMGroup.mxModel <- function(dat, nClass, grp_var, sub_Model, t_var, y_var, curveFun, intrinsic, records,
                               y_model, m_var, x_var, x_type, TVC, decompose, growth_TIC, starts, res_cor){
   if (sub_Model == "LGCM"){
-    MIX_submodels <- getsub.LGCM_m(dat = dat, nClass = nClass, grp_var = grp_var, t_var = t_var, y_var = y_var,
-                                   curveFun = curveFun, intrinsic = intrinsic, records = records, growth_TIC = growth_TIC,
-                                   starts = starts)
+    MIX_submodels <- getsub.LGCM(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var, curveFun = curveFun,
+                                 intrinsic = intrinsic, records = records, growth_TIC = growth_TIC, starts = starts,
+                                 container = "multigroup", grp_var = grp_var)
   }
   else if (sub_Model == "LCSM"){
-    MIX_submodels <- getsub.LCSM_m(dat = dat, nClass = nClass, grp_var = grp_var, t_var = t_var, y_var = y_var,
+    MIX_submodels <- getsub.LCSM(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var,
                                    curveFun = curveFun, intrinsic = intrinsic, records = records, growth_TIC = growth_TIC,
-                                   starts = starts)
+                                   starts = starts, container = "multigroup", grp_var = grp_var)
   }
   else if (sub_Model == "TVC"){
-    MIX_submodels <- getsub.TVC_m(dat = dat, nClass = nClass, grp_var = grp_var, t_var = t_var, y_var = y_var,
+    MIX_submodels <- getsub.TVC(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var,
                                   curveFun = curveFun, intrinsic = intrinsic, records = records, y_model = y_model,
-                                  TVC = TVC, decompose = decompose, growth_TIC = growth_TIC, starts = starts)
+                                  TVC = TVC, decompose = decompose, growth_TIC = growth_TIC, starts = starts, container = "multigroup", grp_var = grp_var)
   }
   else if (sub_Model == "MGM"){
-    MIX_submodels <- getsub.MGM_m(dat = dat, nClass = nClass, grp_var = grp_var, t_var = t_var, y_var = y_var,
+    MIX_submodels <- getsub.MGM(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var,
                                   curveFun = curveFun, intrinsic = intrinsic, records = records, y_model = y_model,
-                                  starts = starts)
+                                  starts = starts, container = "multigroup", grp_var = grp_var)
   }
   else if (sub_Model == "MED"){
-    MIX_submodels <- getsub.MED_m(dat = dat, nClass = nClass, grp_var = grp_var, t_var = t_var, y_var = y_var,
+    MIX_submodels <- getsub.MED(dat = dat, nClass = nClass, t_var = t_var, y_var = y_var,
                                   curveFun = curveFun, records = records, m_var = m_var, x_var = x_var, x_type = x_type,
                                   starts = starts,
-                                  res_cor = res_cor)
+                                  res_cor = res_cor, container = "multigroup", grp_var = grp_var)
   }
   obj_names <- paste0("Class", 1:nClass, ".objective")
   algebraObjective <- mxAlgebraFromString(paste(obj_names, collapse = " + "), name = "algebra_obj")

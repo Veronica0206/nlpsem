@@ -10,54 +10,30 @@
 #' optimal number of latent classes based on model fit statistics such as BIC. The default value is \code{FALSE}.
 #'
 #' @return A data frame summarizing model fit statistics (number of parameters, estimated likelihood, AIC, BIC, etc.)
-#' for each model.
+#' for each model. A plain \code{data.frame} is returned for both \code{HetModels = TRUE} and \code{HetModels = FALSE}.
+#'
+#' @details Residual columns are combined by name, with NA where a model does not
+#' contain that parameter. For heterogeneous models, each class has one proportion
+#' column regardless of the number of longitudinal outcomes. Mixture proportions
+#' count maximum-posterior assignments; multiple-group proportions count observations.
+#' A summary table does not establish that its models are statistically comparable:
+#' compare information criteria only for appropriate models fitted to the same data
+#' and observed variables.
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getMIX}}, \code{\link{getMGroup}}
 #'
 #' @export
 #'
 #' @examples
-#' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
-#' data("RMS_dat")
-#' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
-#' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' \donttest{
-#' # Fit bilinear spline growth model with fix knot
-#' ## Single group model
-#' BLS_LGCM1 <- getLGCM(
-#'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS", intrinsic = FALSE,
-#'   records = 1:9
-#'   )
-#' getSummary(model_list = list(BLS_LGCM1@mxOutput), HetModels = FALSE)
-#' ## Mixture model with two latent classes
-#' set.seed(20191029)
-#' BLS_LGCM2 <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.45, 0.55), sub_Model = "LGCM", cluster_TIC = NULL,
-#'   y_var = "M", t_var = "T", records = 1:9, curveFun = "BLS", intrinsic = FALSE,
-#'   growth_TIC = NULL, tries = 10
-#'   )
-#' ## Mixture model with three latent classes
-#' set.seed(20191029)
-#' BLS_LGCM3 <-  getMIX(
-#'   dat = RMS_dat0, prop_starts = c(0.30, 0.40, 0.30), sub_Model = "LGCM", cluster_TIC = NULL,
-#'   y_var = "M", t_var = "T", records = 1:9, curveFun = "BLS", intrinsic = FALSE,
-#'   growth_TIC = NULL, tries = 10
-#'   )
-#'
-#' getSummary(model_list = list(BLS_LGCM1@mxOutput, BLS_LGCM2@mxOutput, BLS_LGCM3@mxOutput),
-#'   HetModels = TRUE)
-#' }
+#' # Fitted models shipped with the package: one-, two- and three-class bilinear spline models
+#' load(system.file("extdata", "getMIX_examples.RData", package = "nlpsem"))
+#' # Single model
+#' getSummary(model_list = list(Math_BLS_LGCM1@mxOutput), HetModels = FALSE)
+#' # Enumeration of latent classes
+#' getSummary(
+#'   model_list = list(Math_BLS_LGCM1@mxOutput, Math_BLS_LGCM2@mxOutput, Math_BLS_LGCM3@mxOutput),
+#'   HetModels = TRUE
+#' )
 #'
 #' @importFrom dplyr left_join
 #' @importFrom tidyr separate spread pivot_wider
@@ -66,89 +42,65 @@
 #' @importFrom methods new
 #'
 getSummary <- function(model_list, HetModels = FALSE){
-  if (HetModels){
-    output0 <- list()
-    for (model in seq_along(model_list)){
-      params <- omxGetParameters(model_list[[model]])
-      res_indices <- grep("_res|_RES", names(params))
-      res_names <- names(params)[res_indices]
-      res_estimates <- round(params[res_indices], 4)
-      nClass <- length(model_list[[model]]@submodels)
-      if (nClass == 0){
-        output0[[model]] <- data.frame(Model = paste0("Model", model),
-                                       No_Params = length(params),
-                                       `-2ll` = round(model_list[[model]]@output$Minus2LogLikelihood, 2),
-                                       AIC = round(AIC(model_list[[model]]), 2),
-                                       BIC = round(BIC(model_list[[model]]), 2),
-                                       Class = "c1", Prop = "100%")
-        output0[[model]][1, res_names] <- res_estimates
-      }
-      else if (nClass > 0){
-        if (is.null(model_list[[model]]$data$observed)){
-          model_names <- names(model_list[[model]]@submodels)
-          sub_dat <- lapply(model_names, function(name) {
-            as.data.frame(model_list[[model]][[name]]$data$observed)
-          })
-          sub_cnt <- lapply(sub_dat, function(dat) nrow(dat))
-          cnt <- unlist(sub_cnt)
-          prop <- paste0(cnt/sum(cnt) * 100, "%")
-        }
-        else{
-          cluster_TIC <- if (is.null(model_list[[model]]$weightsV)){
-            NULL
-          }else{
-            substring(model_list[[model]]$weightsV$labels[-1], 6)
-          }
-          membership <- getPosterior(model = model_list[[model]], nClass = nClass, cluster_TIC = cluster_TIC)@membership
-          # Ensure all classes are represented in the proportion table (handle empty classes)
-          mem_table <- table(factor(membership, levels = 1:nClass))
-          prop <- paste0(mem_table/length(membership) * 100, "%")
-        }
-        output0[[model]] <- data.frame(Model = paste0("Model", model),
-                                       No_Params = length(params),
-                                       `-2ll` = round(model_list[[model]]@output$Minus2LogLikelihood, 2),
-                                       AIC = round(AIC(model_list[[model]]), 2),
-                                       BIC = round(BIC(model_list[[model]]), 2),
-                                       Class = paste0("c", 1:nClass), Prop = prop)
-        tmp_l <- data.frame(res_names, res_estimates)
-        tmp_l <- separate(tmp_l, col = "res_names", into = c("Class", "Residual"), sep = "(?<=^.{2})")
-        tmp_w <- spread(tmp_l, key = "Residual", value = "res_estimates")
-        output0[[model]] <- output0[[model]] %>% left_join(tmp_w, by = "Class")
-      }
-    }
-    output1 <- do.call(rbind, output0)
-    res_cols <- grep("_residuals$", names(output1), value = TRUE)
-    output_list <- lapply(res_cols, function(res_cols) {
-      output1 %>%
-        select(Model, No_Params, X.2ll, AIC, BIC, Class, Prop, matches(res_cols)) %>%
-        pivot_wider(names_from = Class,
-                    values_from = c(matches(res_cols), Prop),
-                    names_sep = "_")
-    })
-    output <- Reduce(function(x, y) {
-      merge(x, y, by = c("Model", "No_Params", "X.2ll", "AIC", "BIC"))
-    }, output_list)
-    names(output) <- str_replace_all(names(output), "_residuals_", "_res_")
-    names(output) <- str_replace_all(names(output), "Prop_c", "%Class")
+  if (!is.list(model_list) || !length(model_list) ||
+      any(!vapply(model_list, methods::is, logical(1), class2 = "MxModel"))) {
+    stop("'model_list' must be a nonempty list of fitted mxModel objects.", call. = FALSE)
   }
-  else {
-    # create an empty data frame with columns for the output
-    output0 <- list()
-    # loop over the models and extract the relevant information
-    for (model in seq_along(model_list)){
-      params <- omxGetParameters(model_list[[model]])
-      res_indices <- grep("_res|_RES", names(params))
-      res_names <- names(params)[res_indices]
-      res_estimates <- round(params[res_indices], 4)
-      output0[[model]] <- data.frame(Model = paste0("Model", model),
-                                     No_Params = length(params),
-                                     `-2ll` = round(model_list[[model]]@output$Minus2LogLikelihood, 2),
-                                     AIC = round(AIC(model_list[[model]]), 2),
-                                     BIC = round(BIC(model_list[[model]]), 2))
-      output0[[model]][1, res_names] <- res_estimates
-    }
-    output <- do.call(rbind, output0)
+  if (!is.logical(HetModels) || length(HetModels) != 1L || is.na(HetModels)) {
+    stop("'HetModels' must be TRUE or FALSE.", call. = FALSE)
   }
-  names(output)[3] <- "-2ll"
-  return(output)
+  rows <- lapply(seq_along(model_list), function(i) {
+    model <- model_list[[i]]
+    params <- omxGetParameters(model)
+    likelihood <- model@output$Minus2LogLikelihood
+    if (!is.numeric(likelihood) || length(likelihood) != 1L || !is.finite(likelihood)) {
+      stop("Model ", i, " has no finite fitted -2 log-likelihood.", call. = FALSE)
+    }
+    out <- data.frame(Model = paste0("Model", i), No_Params = length(params),
+                      `-2ll` = round(likelihood, 2), AIC = round(AIC(model), 2),
+                      BIC = round(BIC(model), 2), check.names = FALSE)
+    if (!HetModels) {
+      residual_names <- grep("_res|_RES", names(params), value = TRUE)
+      for (nm in residual_names) out[[nm]] <- round(unname(params[nm]), 4)
+      return(out)
+    }
+    nClass <- length(model@submodels)
+    if (!nClass) {
+      proportion <- "100%"
+      residual_names <- grep("_residuals$", names(params), value = TRUE)
+      residual_columns <- sub("_residuals$", "_res_c1", residual_names)
+    } else {
+      if (is.null(model$data$observed)) {
+        counts <- vapply(model@submodels, function(submodel) {
+          observed <- submodel$data$observed
+          if (is.null(observed)) return(0L)
+          nrow(observed)
+        }, integer(1))
+        if (!sum(counts)) stop("Model ", i, " has no group observations.", call. = FALSE)
+      } else {
+        membership <- getPosterior(model, nClass = nClass)@membership
+        counts <- tabulate(membership, nbins = nClass)
+      }
+      proportion <- paste0(counts / sum(counts) * 100, "%")
+      residual_names <- grep("_residuals$", names(params), value = TRUE)
+      classes <- sub("^(c[0-9]+).*", "\\1", residual_names)
+      if (any(!classes %in% paste0("c", seq_len(nClass)))) {
+        stop("Model ", i, " has residual labels without valid class prefixes.", call. = FALSE)
+      }
+      residual_columns <- paste0(sub("_residuals$", "_res_", sub("^c[0-9]+", "", residual_names)), classes)
+    }
+    for (j in seq_along(residual_names)) out[[residual_columns[j]]] <- round(unname(params[residual_names[j]]), 4)
+    for (k in seq_along(proportion)) out[[paste0("%Class", k)]] <- proportion[k]
+    out
+  })
+  # Union schemas rather than relying on positional rbind; every model retains
+  # exactly one row, and absent residuals or classes are explicitly missing.
+  columns <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(row) {
+    for (nm in setdiff(columns, names(row))) row[[nm]] <- NA
+    row[columns]
+  })
+  output <- do.call(rbind, rows)
+  rownames(output) <- NULL
+  output
 }

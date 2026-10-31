@@ -49,44 +49,55 @@
 #'
 #' @seealso \code{\link{getLCSM}}, \code{\link{getTVCmodel}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+#' indefinite covariance matrix) is returned with a warning that lists them.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
+#' @section Standardized fitting:
+#' Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
+#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+#' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+#' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+#' growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+#' matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+#' same model in the original units; only the numerical conditioning of the optimization differs.
+#' \code{getSpecification()} records the centres, scales and condition numbers under
+#' \code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
 #' # Standardized time-invariant covariates
 #' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 #' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
 #'
 #' \donttest{
-#' # Fit bilinear spline latent growth curve model (fixed knots)
+#' # Bilinear spline latent growth curve model with a fixed knot
 #' BLS_LGCM_r <- getLGCM(
 #'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
-#'   intrinsic = FALSE, records = 1:9, growth_TIC = NULL
+#'   intrinsic = FALSE, records = 1:9, paramOut = TRUE
 #' )
-#' # Fit bilinear spline latent growth curve model (random knots) with
-#' # time-invariant covariates for mathematics development
-#' ## Fit the model
+#' printTable(BLS_LGCM_r)
+#' }
+#' \dontrun{
+#' # Intrinsically nonlinear model (random knot) with time-invariant covariates and 20 extra
+#' # optimization attempts; this takes several minutes
 #' set.seed(20191029)
 #' BLS_LGCM.TIC_f <- getLGCM(
 #'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
 #'   intrinsic = TRUE, records = 1:9, growth_TIC = c("ex1", "ex2"),
 #'   tries = 20, paramOut = TRUE
 #' )
-#' ## Output point estimate and standard errors
 #' printTable(BLS_LGCM.TIC_f)
 #' }
 #'
@@ -103,8 +114,14 @@ getLGCM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   validate_intrinsic(intrinsic, curveFun, model_type = "LGCM")
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_LGCM(curveFun, intrinsic, growth_TIC)
+    names <- .validate_output_names(names, length(expected_names))
+  }
+  metadata <- .capture_fit_metadata(match.call(), "getLGCM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getUNI.initial(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, records = records,
                              growth_TIC = growth_TIC, res_scale = res_scale, intrinsic = intrinsic)
   }
@@ -112,13 +129,21 @@ getLGCM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   model_mx <- getLGCM.mxModel(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
                               records = records, growth_TIC = growth_TIC, starts = starts)
   ## Optimize the constructed latent growth curve model
-  if (!is.null(tries)){
-    model <- mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
-                        loc = loc, scale = scale)
-  }
-  else{
-    model <- mxRun(model_mx)
-  }
+  ## Quadratic, negative exponential and Jenss-Bayley models are fitted on the standardized scale and
+  ## converted back exactly (see ?getLGCM, Details); other forms are fitted as built.
+  fit_std <- .fit_model(model_mx, run = function(model_mx){
+    if (!is.null(tries)){
+      mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
+                loc = loc, scale = scale)
+    }
+    else{
+      mxRun(model_mx)
+    }
+  }, plan = .std_plan(dat, "LGCM", curveFun, y_var, records, t_var, covariates = growth_TIC),
+  build = function(plan) getLGCM.mxModel(dat = .std_data(dat, plan), t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
+                                records = records, growth_TIC = .std_cov(plan, growth_TIC), starts = starts))
+  model <- fit_std$model
+  metadata$fitting$standardization <- fit_std$standardization
   ## Print out the point estimates and standard errors for the parameters of interest
   if(paramOut){
     if (is.null(names)) names <- .auto_names_LGCM(curveFun, intrinsic, growth_TIC)
@@ -128,5 +153,7 @@ getLGCM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
+  model <- .warn_fit_issues(model)
   return(model)
 }

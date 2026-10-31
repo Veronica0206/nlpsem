@@ -38,38 +38,38 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
   if (decompose == 0){
     if (y_model == "LGCM"){
       if (!is.null(growth_TIC)){
-        model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+        model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                              model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                              model@output$estimate[grep("TVC_m", names(model@output$estimate))],
                              model@output$estimate[grep("TVC_v", names(model@output$estimate))],
                              mxEval(beta, model), model@output$estimate[grep("mux", names(model@output$estimate))],
                              model@output$estimate[grep("phi", names(model@output$estimate))], mxEval(Y_mean0, model),
-                             model@output$estimate[grep("kappa", names(model@output$estimate))]), 4)
-        model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                             model@output$estimate[grep("kappa", names(model@output$estimate))])
+        model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                             model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
                             model@output$standardErrors[, 1][grep("TVC_m", names(model@output$standardErrors[, 1]))],
                             model@output$standardErrors[, 1][grep("TVC_v", names(model@output$standardErrors[, 1]))],
-                            mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                            model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model),
-                            model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))]), 4)
+                            mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                            model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE),
+                            model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))])
       }
       else if (is.null(growth_TIC)){
-        model.est <- round(c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
+        model.est <- c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
                              model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                              model@output$estimate[grep("TVC_m", names(model@output$estimate))],
                              model@output$estimate[grep("TVC_v", names(model@output$estimate))],
-                             model@output$estimate[grep("kappa", names(model@output$estimate))]), 4)
-        model.se <- round(c(mxSE(Y_mean0, model), mxSE(Y_psi0, model)[row(mxSE(Y_psi0, model)) >= col(mxSE(Y_psi0, model))],
+                             model@output$estimate[grep("kappa", names(model@output$estimate))])
+        model.se <- c(mxSE(Y_mean0, model, silent = TRUE), mxSE(Y_psi0, model, silent = TRUE)[row(mxSE(Y_psi0, model, silent = TRUE)) >= col(mxSE(Y_psi0, model, silent = TRUE))],
                             model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
                             model@output$standardErrors[, 1][grep("TVC_m", names(model@output$standardErrors[, 1]))],
                             model@output$standardErrors[, 1][grep("TVC_v", names(model@output$standardErrors[, 1]))],
-                            model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))]), 4)
+                            model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))])
       }
     }
     else if (y_model == "LCSM"){
       if (curveFun %in% c("nonparametric", "NonP")){
         if (!is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+          model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                                model@output$estimate[grep("Y_rel_rate", names(model@output$estimate))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                model@output$estimate[grep("TVC_m", names(model@output$estimate))],
@@ -79,21 +79,21 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("kappa", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_rel_rate", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_m", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_v", names(model@output$standardErrors[, 1]))],
-                              mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model),
+                              mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE),
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
         else if (is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
+          model.est <- c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
                                model@output$estimate[grep("Y_rel_rate", names(model@output$estimate))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                model@output$estimate[grep("TVC_m", names(model@output$estimate))],
@@ -101,21 +101,21 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("kappa", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_mean0, model), mxSE(Y_psi0, model)[row(mxSE(Y_psi0, model)) >= col(mxSE(Y_psi0, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_mean0, model, silent = TRUE), mxSE(Y_psi0, model, silent = TRUE)[row(mxSE(Y_psi0, model, silent = TRUE)) >= col(mxSE(Y_psi0, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_rel_rate", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_m", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_v", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
       }
       else{
         if (!is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+          model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                model@output$estimate[grep("TVC_m", names(model@output$estimate))],
                                model@output$estimate[grep("TVC_v", names(model@output$estimate))],
@@ -124,35 +124,35 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("kappa", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_m", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_v", names(model@output$standardErrors[, 1]))],
-                              mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model),
+                              mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE),
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
         else if (is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
+          model.est <- c(mxEval(Y_mean0, model), mxEval(Y_psi0, model)[row(mxEval(Y_psi0, model)) >= col(mxEval(Y_psi0, model))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                model@output$estimate[grep("TVC_m", names(model@output$estimate))],
                                model@output$estimate[grep("TVC_v", names(model@output$estimate))],
                                model@output$estimate[grep("kappa", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_mean0, model), mxSE(Y_psi0, model)[row(mxSE(Y_psi0, model)) >= col(mxSE(Y_psi0, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_mean0, model, silent = TRUE), mxSE(Y_psi0, model, silent = TRUE)[row(mxSE(Y_psi0, model, silent = TRUE)) >= col(mxSE(Y_psi0, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_m", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("TVC_v", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
       }
     }
@@ -162,11 +162,11 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
     for (idx in seq_along(records[-1])){
       j <- records[-1][idx]
       X_slp_m.est[idx] <- mxEvalByName(paste0("X_abs_rate", j), model)
-      X_slp_m.se[idx] <- mxSE(paste0("X_abs_rate", j), model, forceName = TRUE)
+      X_slp_m.se[idx] <- mxSE(paste0("X_abs_rate", j), model, forceName = TRUE, silent = TRUE)
     }
     if (y_model == "LGCM"){
       if (!is.null(growth_TIC)){
-        model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+        model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                              model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                              mxEval(X_mean0, model), mxEval(X_psi0, model)[row(mxEval(X_psi0, model)) >= col(mxEval(X_psi0, model))],
                              model@output$estimate[grep("X_rel_rate", names(model@output$estimate))], X_slp_m.est,
@@ -175,20 +175,20 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                              model@output$estimate[grep("phi", names(model@output$estimate))], mxEval(Y_mean0, model),
                              model@output$estimate[grep("covBL", names(model@output$estimate))],
                              model@output$estimate[grep("kappa", names(model@output$estimate))],
-                             model@output$estimate[grep("Cov_XYres", names(model@output$estimate))]), 4)
-        model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                             model@output$estimate[grep("Cov_XYres", names(model@output$estimate))])
+        model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                             model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                            mxSE(X_mean0, model), mxSE(X_psi0, model)[row(mxSE(X_psi0, model)) >= col(mxSE(X_psi0, model))],
+                            mxSE(X_mean0, model, silent = TRUE), mxSE(X_psi0, model, silent = TRUE)[row(mxSE(X_psi0, model, silent = TRUE)) >= col(mxSE(X_psi0, model, silent = TRUE))],
                             model@output$standardErrors[, 1][grep("X_rel_rate", names(model@output$standardErrors[, 1]))], X_slp_m.se,
                             model@output$standardErrors[, 1][grep("X_residuals", names(model@output$standardErrors[, 1]))],
-                            mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                            model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model),
+                            mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                            model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE),
                             model@output$standardErrors[, 1][grep("covBL", names(model@output$standardErrors[, 1]))],
                             model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
-                            model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))]), 4)
+                            model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))])
       }
       else if (is.null(growth_TIC)){
-        model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+        model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                              model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                              mxEval(X_mean0, model), mxEval(X_psi0, model)[row(mxEval(X_psi0, model)) >= col(mxEval(X_psi0, model))],
                              model@output$estimate[grep("X_rel_rate", names(model@output$estimate))], X_slp_m.est,
@@ -196,22 +196,22 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                              mxEval(beta, model), mxEval(Y_mean0, model),
                              model@output$estimate[grep("covBL", names(model@output$estimate))],
                              model@output$estimate[grep("kappa", names(model@output$estimate))],
-                             model@output$estimate[grep("Cov_XYres", names(model@output$estimate))]), 4)
-        model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                             model@output$estimate[grep("Cov_XYres", names(model@output$estimate))])
+        model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                             model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                            mxSE(X_mean0, model), mxSE(X_psi0, model)[row(mxSE(X_psi0, model)) >= col(mxSE(X_psi0, model))],
+                            mxSE(X_mean0, model, silent = TRUE), mxSE(X_psi0, model, silent = TRUE)[row(mxSE(X_psi0, model, silent = TRUE)) >= col(mxSE(X_psi0, model, silent = TRUE))],
                             model@output$standardErrors[, 1][grep("X_rel_rate", names(model@output$standardErrors[, 1]))], X_slp_m.se,
                             model@output$standardErrors[, 1][grep("X_residuals", names(model@output$standardErrors[, 1]))],
-                            mxSE(beta, model), mxSE(Y_mean0, model),
+                            mxSE(beta, model, silent = TRUE), mxSE(Y_mean0, model, silent = TRUE),
                             model@output$standardErrors[, 1][grep("covBL", names(model@output$standardErrors[, 1]))],
                             model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
-                            model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))]), 4)
+                            model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))])
       }
     }
     else if (y_model == "LCSM"){
       if (curveFun %in% c("nonparametric", "NonP")){
         if (!is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+          model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                                model@output$estimate[grep("Y_rel_rate", names(model@output$estimate))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                mxEval(X_mean0, model), mxEval(X_psi0, model)[row(mxEval(X_psi0, model)) >= col(mxEval(X_psi0, model))],
@@ -224,24 +224,24 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("Cov_XYres", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_rel_rate", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(X_mean0, model), mxSE(X_psi0, model)[row(mxSE(X_psi0, model)) >= col(mxSE(X_psi0, model))],
+                              mxSE(X_mean0, model, silent = TRUE), mxSE(X_psi0, model, silent = TRUE)[row(mxSE(X_psi0, model, silent = TRUE)) >= col(mxSE(X_psi0, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("X_rel_rate", names(model@output$standardErrors[, 1]))], X_slp_m.se,
                               model@output$standardErrors[, 1][grep("X_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model),
+                              mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE),
                               model@output$standardErrors[, 1][grep("covBL", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
         else if (is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+          model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                                model@output$estimate[grep("Y_rel_rate", names(model@output$estimate))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                mxEval(X_mean0, model), mxEval(X_psi0, model)[row(mxEval(X_psi0, model)) >= col(mxEval(X_psi0, model))],
@@ -253,25 +253,25 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("Cov_XYres", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_rel_rate", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(X_mean0, model), mxSE(X_psi0, model)[row(mxSE(X_psi0, model)) >= col(mxSE(X_psi0, model))],
+                              mxSE(X_mean0, model, silent = TRUE), mxSE(X_psi0, model, silent = TRUE)[row(mxSE(X_psi0, model, silent = TRUE)) >= col(mxSE(X_psi0, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("X_rel_rate", names(model@output$standardErrors[, 1]))], X_slp_m.se,
                               model@output$standardErrors[, 1][grep("X_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(beta, model), mxSE(Y_mean0, model),
+                              mxSE(beta, model, silent = TRUE), mxSE(Y_mean0, model, silent = TRUE),
                               model@output$standardErrors[, 1][grep("covBL", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
       }
       else{
         if (!is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+          model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                mxEval(X_mean0, model), mxEval(X_psi0, model)[row(mxEval(X_psi0, model)) >= col(mxEval(X_psi0, model))],
                                model@output$estimate[grep("X_rel_rate", names(model@output$estimate))], X_slp_m.est,
@@ -283,23 +283,23 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("Cov_XYres", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(X_mean0, model), mxSE(X_psi0, model)[row(mxSE(X_psi0, model)) >= col(mxSE(X_psi0, model))],
+                              mxSE(X_mean0, model, silent = TRUE), mxSE(X_psi0, model, silent = TRUE)[row(mxSE(X_psi0, model, silent = TRUE)) >= col(mxSE(X_psi0, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("X_rel_rate", names(model@output$standardErrors[, 1]))], X_slp_m.se,
                               model@output$standardErrors[, 1][grep("X_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(beta, model), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
-                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model),
+                              mxSE(beta, model, silent = TRUE), model@output$standardErrors[, 1][grep("mux", names(model@output$standardErrors[, 1]))],
+                              model@output$standardErrors[, 1][grep("phi", names(model@output$standardErrors[, 1]))], mxSE(Y_mean0, model, silent = TRUE),
                               model@output$standardErrors[, 1][grep("covBL", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
         else if (is.null(growth_TIC)){
-          model.est <- round(c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
+          model.est <- c(mxEval(Y_alpha0, model), mxEval(Y_psi_r, model)[row(mxEval(Y_psi_r, model)) >= col(mxEval(Y_psi_r, model))],
                                model@output$estimate[grep("Y_residuals", names(model@output$estimate))],
                                mxEval(X_mean0, model), mxEval(X_psi0, model)[row(mxEval(X_psi0, model)) >= col(mxEval(X_psi0, model))],
                                model@output$estimate[grep("X_rel_rate", names(model@output$estimate))], X_slp_m.est,
@@ -310,33 +310,24 @@ getTVC.output <- function(model, curveFun, records, y_model, decompose, growth_T
                                model@output$estimate[grep("Cov_XYres", names(model@output$estimate))],
                                mxEval(Yslp_m, model), diag(mxEval(Yslp_v, model)),
                                mxEval(Ychg_inv_m, model), mxEval(Ychg_inv_v, model),
-                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model))), 4)
-          model.se <- round(c(mxSE(Y_alpha0, model), mxSE(Y_psi_r, model)[row(mxSE(Y_psi_r, model)) >= col(mxSE(Y_psi_r, model))],
+                               mxEval(Ychg_bl_m, model), diag(mxEval(Ychg_bl_v, model)))
+          model.se <- c(mxSE(Y_alpha0, model, silent = TRUE), mxSE(Y_psi_r, model, silent = TRUE)[row(mxSE(Y_psi_r, model, silent = TRUE)) >= col(mxSE(Y_psi_r, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("Y_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(X_mean0, model), mxSE(X_psi0, model)[row(mxSE(X_psi0, model)) >= col(mxSE(X_psi0, model))],
+                              mxSE(X_mean0, model, silent = TRUE), mxSE(X_psi0, model, silent = TRUE)[row(mxSE(X_psi0, model, silent = TRUE)) >= col(mxSE(X_psi0, model, silent = TRUE))],
                               model@output$standardErrors[, 1][grep("X_rel_rate", names(model@output$standardErrors[, 1]))], X_slp_m.se,
                               model@output$standardErrors[, 1][grep("X_residuals", names(model@output$standardErrors[, 1]))],
-                              mxSE(beta, model), mxSE(Y_mean0, model),
+                              mxSE(beta, model, silent = TRUE), mxSE(Y_mean0, model, silent = TRUE),
                               model@output$standardErrors[, 1][grep("covBL", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("kappa", names(model@output$standardErrors[, 1]))],
                               model@output$standardErrors[, 1][grep("Cov_XYres", names(model@output$standardErrors[, 1]))],
-                              mxSE(Yslp_m, model), diag(mxSE(Yslp_v, model)),
-                              mxSE(Ychg_inv_m, model), mxSE(Ychg_inv_v, model),
-                              mxSE(Ychg_bl_m, model), diag(mxSE(Ychg_bl_v, model))), 4)
+                              mxSE(Yslp_m, model, silent = TRUE), diag(mxSE(Yslp_v, model, silent = TRUE)),
+                              mxSE(Ychg_inv_m, model, silent = TRUE), mxSE(Ychg_inv_v, model, silent = TRUE),
+                              mxSE(Ychg_bl_m, model, silent = TRUE), diag(mxSE(Ychg_bl_v, model, silent = TRUE)))
         }
       }
     }
   }
-  # Safety net: ensure names and estimates have matching length
-  if (length(names) != length(model.est)){
-    warning("Number of parameter names (", length(names), ") does not match number of estimates (",
-            length(model.est), "). Auto-padding with generic labels.")
-    if (length(names) < length(model.est)){
-      names <- c(names, paste0("param_", seq(length(names) + 1, length(model.est))))
-    } else {
-      names <- names[seq_len(length(model.est))]
-    }
-  }
+  names <- .validate_output_names(names, length(model.est))
   estimate_out <- data.frame(Name = names, Estimate = model.est, SE = model.se)
   return(estimate_out)
 }

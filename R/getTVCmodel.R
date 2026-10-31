@@ -64,56 +64,70 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getLCSM}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+#' indefinite covariance matrix) is returned with a warning that lists them.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
+#' @section Standardized fitting:
+#' Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
+#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+#' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+#' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+#' growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+#' matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+#' same model in the original units; only the numerical conditioning of the optimization differs.
+#' \code{getSpecification()} records the centres, scales and condition numbers under
+#' \code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+#'
+#' @section Approximations:
+#' With \code{intrinsic = TRUE}, the model is fitted through a first-order Taylor expansion of the growth curve
+#' around the mean growth ratio or knot. When the expected change of the TVC over time has a similar shape to the
+#' growth curve of the outcome, the estimated TVC effect can absorb part of this approximation error.
+#' In an illustrative benchmark using \code{getSimData()} defaults and a negative exponential curve (one data
+#' set of 5,000 persons per model), the estimated TVC effect was 5\% to 10\% above its generating value and the
+#' estimated mean of \code{eta1} or of the ratio was up to 3\% below it with \code{decompose = 1} or \code{3}.
+#' These are observed estimation errors in individual generated data sets, not replicated estimates of bias,
+#' coverage rates or general error bounds. A fixed ratio (\code{intrinsic = FALSE}) removes the random-ratio
+#' Taylor approximation; it does not eliminate other sources of estimation error.
+#' With \code{y_model = "LCSM"}, the midpoint approximation described in \code{\link{getLCSM}} also applies.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in years)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- (RMS_dat0$T1 - baseT)/12
-#' RMS_dat0$T2 <- (RMS_dat0$T2 - baseT)/12
-#' RMS_dat0$T3 <- (RMS_dat0$T3 - baseT)/12
-#' RMS_dat0$T4 <- (RMS_dat0$T4 - baseT)/12
-#' RMS_dat0$T5 <- (RMS_dat0$T5 - baseT)/12
-#' RMS_dat0$T6 <- (RMS_dat0$T6 - baseT)/12
-#' RMS_dat0$T7 <- (RMS_dat0$T7 - baseT)/12
-#' RMS_dat0$T8 <- (RMS_dat0$T8 - baseT)/12
-#' RMS_dat0$T9 <- (RMS_dat0$T9 - baseT)/12
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- (RMS_dat0[[paste0("T", j)]] - baseT) / 12
+#' # Standardized time-invariant covariates
 #' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 #' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
-#'
-#' # Standardize reading ability over time with its baseline value
-#' BL_mean <- mean(RMS_dat0[, "R1"])
-#' BL_var <- var(RMS_dat0[, "R1"])
-#' RMS_dat0$Rs1 <- (RMS_dat0$R1 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs2 <- (RMS_dat0$R2 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs3 <- (RMS_dat0$R3 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs4 <- (RMS_dat0$R4 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs5 <- (RMS_dat0$R5 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs6 <- (RMS_dat0$R6 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs7 <- (RMS_dat0$R7 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs8 <- (RMS_dat0$R8 - BL_mean)/sqrt(BL_var)
-#' RMS_dat0$Rs9 <- (RMS_dat0$R9 - BL_mean)/sqrt(BL_var)
+#' # Standardize the time-varying covariate (reading) by its baseline distribution
+#' BL_mean <- mean(RMS_dat0$R1)
+#' BL_sd <- sd(RMS_dat0$R1)
+#' for (j in 1:9) RMS_dat0[[paste0("Rs", j)]] <- (RMS_dat0[[paste0("R", j)]] - BL_mean) / BL_sd
 #'
 #' \donttest{
-#' # Fit bilinear spline latent growth curve model (fixed knot) with a time-varying
-#' # reading ability for mathematics development
-#' BLS_TVC_LGCM1 <- getTVCmodel(
-#'  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS", intrinsic = FALSE,
-#'  records = 1:9, y_model = "LGCM", TVC = "Rs", decompose = 0, growth_TIC = NULL
-#'  )
-#'
-#' # Fit negative exponential latent growth curve model (random ratio) with a
-#' # decomposed time-varying reading ability and time-invariant covariates for
-#' # mathematics development
+#' # Linear latent growth curve model with the time-varying covariate in its original form
+#' LIN_TVC_LGCM <- getTVCmodel(
+#'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "LIN", intrinsic = FALSE,
+#'   records = 1:9, y_model = "LGCM", TVC = "Rs", decompose = 0, paramOut = TRUE
+#' )
+#' printTable(LIN_TVC_LGCM)
+#' }
+#' \dontrun{
+#' # Negative exponential model with a random ratio, a decomposed time-varying covariate
+#' # (interval-specific slopes) and time-invariant covariates; this takes several minutes
 #' set.seed(20191029)
 #' EXP_TVCslp_LGCM3.f <- getTVCmodel(
 #'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "EXP", intrinsic = TRUE,
 #'   records = 1:9, y_model = "LGCM", TVC = "Rs", decompose = 1,
-#'   growth_TIC = c("ex1", "ex2"),
-#'   tries = 20, paramOut = TRUE
+#'   growth_TIC = c("ex1", "ex2"), tries = 20, paramOut = TRUE
 #' )
 #' printTable(EXP_TVCslp_LGCM3.f)
 #' }
@@ -135,8 +149,14 @@ getTVCmodel <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, 
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC, TVC = TVC)
 
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_TVC(curveFun, intrinsic, records, y_model, decompose, growth_TIC)
+    names <- .validate_output_names(names, length(expected_names))
+  }
+  metadata <- .capture_fit_metadata(match.call(), "getTVCmodel", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getTVC.initial(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, records = records,
                              growth_TIC = growth_TIC, TVC = TVC, decompose = decompose, res_scale = res_scale,
                              res_cor = res_cor, intrinsic = intrinsic)
@@ -146,13 +166,22 @@ getTVCmodel <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, 
                              records = records, growth_TIC = growth_TIC, TVC = TVC, decompose = decompose,
                              y_model = y_model, starts = starts)
   ## Optimize the constructed latent growth curve model or latent change score model with a decomposed TVC
-  if (!is.null(tries)){
-    model <- mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
-                        loc = loc, scale = scale)
-  }
-  else{
-    model <- mxRun(model_mx)
-  }
+  ## Quadratic, negative exponential and Jenss-Bayley models are fitted on the standardized scale and
+  ## converted back exactly (see ?getLGCM, Details); other forms are fitted as built.
+  fit_std <- .fit_model(model_mx, run = function(model_mx){
+    if (!is.null(tries)){
+      mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
+                loc = loc, scale = scale)
+    }
+    else{
+      mxRun(model_mx)
+    }
+  }, plan = .std_plan(dat, "TVC", curveFun, y_var, records, t_var, TVC, decompose, covariates = growth_TIC),
+  build = function(plan) getTVC.mxModel(dat = .std_data(dat, plan), t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
+                               records = records, growth_TIC = .std_cov(plan, growth_TIC), TVC = TVC, decompose = decompose,
+                               y_model = y_model, starts = starts))
+  model <- fit_std$model
+  metadata$fitting$standardization <- fit_std$standardization
   ## Print out the point estimates and standard errors for the parameters of interest
   if(paramOut){
     if (is.null(names)) names <- .auto_names_TVC(curveFun, intrinsic, records, y_model, decompose, growth_TIC)
@@ -163,5 +192,7 @@ getTVCmodel <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, 
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
+  model <- .warn_fit_issues(model)
   return(model)
 }

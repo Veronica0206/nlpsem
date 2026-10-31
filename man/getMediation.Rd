@@ -57,8 +57,8 @@ data-driven residual variance estimation is used. If data-driven estimation fail
 fallback.}
 
 \item{res_cor}{An optional numeric value or vector for user-specified residual correlation between any two longitudinal processes
-to calculate the corresponding initial value. Default is \code{NULL}, in which case data-driven residual correlation estimation
-is used. If data-driven estimation fails, a heuristic of \code{0.3} is applied as fallback.}
+to calculate the corresponding initial value. Default is \code{NULL}, in which case the residual correlations start at
+\code{0.3}.}
 
 \item{tries}{An integer specifying the number of additional optimization attempts. Default is \code{NULL}.}
 
@@ -89,42 +89,40 @@ An object of class \code{myMxOutput}. Depending on the \code{paramOut} argument,
 This function fits a longitudinal mediation model to the provided data. It manages model setup, optimization,
 and if requested, outputs parameter estimates and standard errors.
 }
+\details{
+New fits retain their resolved model specification and fitting provenance.
+A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+indefinite covariance matrix) is returned with a warning that lists them.
+Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+\code{logLik()} and \code{plot()} methods are available.
+}
 \examples{
 mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
+# Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 data("RMS_dat")
 RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
 baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-# Standardized time-invariant covariates
+for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
+# Standardized baseline predictor
 RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 
 \donttest{
-# Example 1: Baseline predictor, linear functional form
-## Fit model
-set.seed(20191029)
+# Baseline predictor, linear functional form
 Med2_LGCM_LIN <- getMediation(
   dat = RMS_dat0, t_var = rep("T", 2), y_var = "M", m_var = "R", x_type = "baseline",
-  x_var = "ex1", curveFun = "LIN", records = list(1:9, 1:9)
-  )
-
-# Example 2: Longitudinal predictor, bilinear spline functional form
-## Fit model
+  x_var = "ex1", curveFun = "LIN", records = list(1:9, 1:9), paramOut = TRUE
+)
+printTable(Med2_LGCM_LIN)
+}
+\dontrun{
+# Longitudinal predictor, bilinear spline functional form, 10 extra optimization
+# attempts; this takes several minutes
 set.seed(20191029)
 Med3_LGCM_BLS <- getMediation(
   dat = RMS_dat0, t_var = rep("T", 3), y_var = "S", m_var = "M", x_type = "longitudinal",
   x_var = "R", curveFun = "bilinear spline", records = list(2:9, 1:9, 1:9),
   tries = 10, paramOut = TRUE
-  )
+)
 printTable(Med3_LGCM_BLS)
 }
 

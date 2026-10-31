@@ -20,3 +20,12 @@
   reduced <- cov_mat[keep_idx, keep_idx, drop = FALSE]
   t(reduced)[row(t(reduced)) >= col(t(reduced))]
 }
+
+# A unique index for the outcome pair (i, j), with i < j, in lexicographic
+# order: (1, 2), (1, 3), ..., (2, 3), ... . Adding the two indices collides
+# once there are four outcomes and silently overwrites covariance components.
+#' @keywords internal
+#' @noRd
+.outcome_pair_index <- function(i, j, n_traj){
+  (i - 1L) * n_traj - (i - 1L) * i / 2L + j - i
+}

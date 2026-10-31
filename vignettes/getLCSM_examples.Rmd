@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getLCSM()` function. This function is designed to construct Latent Change Score Models (LCSMs) using one of four different functional forms: quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LCSMs can be fitted as intrinsically nonlinear models. Moreover, the function provides the flexibility to be constructed with or without the incorporation of time-invariant covariates (TICs).
 vignette: >
-  %\VignetteIndexEntry{getLCSM_examples}
+  %\VignetteIndexEntry{Examples of Latent Change Score Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,6 +17,20 @@ knitr::opts_chunk$set(
 has_data <- nzchar(system.file("extdata", "getLCSM_examples.RData", package = "nlpsem"))
 knitr::opts_chunk$set(eval = has_data)
 ```
+
+The saved examples below were generated with nlpsem 1.0.0.9006; `extdata/REGENERATED.txt`
+records the versions and how the fits compare with the previous ones. Rendering this
+guide does not refit its disabled model-fitting chunks. Refit with the current version
+for a new analysis, use `getDiagnostics()` to check admissibility and uncertainty, and
+compare multiple starts for difficult nonlinear or mixture models. These examples are
+not evidence of numerical qualification.
+
+The change plots follow the fitted LCSM interval recurrence. For exponential and
+Jenss-Bayley models this includes the midpoint approximation used in fitting.
+The rate plots show interval-average rates at the ending observation time, with
+joint-covariance pointwise intervals. Selecting fewer fitted waves retains all
+intervening increments and measures change from the first selected wave; it does
+not fit or integrate a new curve over the enlarged intervals.
 
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
@@ -53,7 +67,7 @@ RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
 xstarts <- mean(baseT)/12
 ```
 
-## Example 1: Fit nonparametric LCSMs to assess the development of reading ability from Kindergarten to Grade 5, both with and without incorporating baseline teacher-reported approach to learning and attentional focus. The `getSummary()` function is used to generate a comprehensive summary table for these two models. Additionally, the visual representations of the growth rate and change from the baseline for both models.
+## Example 1: Fit nonparametric LCSMs to assess the development of reading ability from Kindergarten to Grade 5, both with and without incorporating baseline teacher-reported approach to learning and attentional focus. The `getSummary()` function is used to generate a comprehensive summary table for these two models. Additionally, the visual representations of the interval-average growth rate and change from the baseline for both models.
 ```{r, message = FALSE, eval = FALSE}
 Read_LCSM_NonP <- getLCSM(
   dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "nonparametric",
@@ -67,7 +81,7 @@ Read_LCSM_NonP_TIC <- getLCSM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading change from the first selected occasion over time in years from a nonparametric change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading interval-average growth rate over time in years from a nonparametric change-score model, with pointwise 95 percent confidence limits.", "Reading change from the first selected occasion over time in years from a nonparametric change-score model with time-invariant covariates, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading interval-average growth rate over time in years from a nonparametric change-score model with time-invariant covariates, with pointwise 95 percent confidence limits.")}
 getSummary(model_list = list(Read_LCSM_NonP@mxOutput, Read_LCSM_NonP_TIC@mxOutput))
 Figure1 <- getFigure(
   model = Read_LCSM_NonP@mxOutput, sub_Model = "LCSM", y_var = "R", curveFun = "NonP", 
@@ -102,7 +116,7 @@ Read_LCSM_JB_r <- getLCSM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading change from the first selected occasion over time in years from a quadratic change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading interval-average growth rate over time in years from a quadratic change-score model, with pointwise 95 percent confidence limits.", "Reading change from the first selected occasion over time in years from a negative-exponential change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading interval-average growth rate over time in years from a negative-exponential change-score model, with pointwise 95 percent confidence limits.", "Reading change from the first selected occasion over time in years from a Jenss-Bayley change-score model, with the smoothed observed change and pointwise 95 percent confidence limits.", "Reading interval-average growth rate over time in years from a Jenss-Bayley change-score model, with pointwise 95 percent confidence limits.")}
 Figure3 <- getFigure(
   model = Read_LCSM_QUAD@mxOutput, sub_Model = "LCSM", y_var = "R", curveFun = "QUAD", 
   y_model = "LCSM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",

@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical demonstrations of the `getMGM()` function. This function is designed to construct multivariate Latent Growth Curve Models (LGCMs) or Latent Change Score Models (LCSMs). The supported functional forms of LGCMs include linear, quadratic, negative exponential, Jenss-Bayley, and bilinear spline. LCSMs support quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LGCMs/LCSMs, as well as bilinear spline LGCMs, can be fitted as intrinsically nonlinear models. 
 vignette: >
-  %\VignetteIndexEntry{getMGM_examples}
+  %\VignetteIndexEntry{Examples of Multivariate Longitudinal Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,6 +17,13 @@ knitr::opts_chunk$set(
 has_data <- nzchar(system.file("extdata", "getMGM_examples.RData", package = "nlpsem"))
 knitr::opts_chunk$set(eval = has_data)
 ```
+
+The saved examples below were generated with nlpsem 1.0.0.9006; `extdata/REGENERATED.txt`
+records the versions and how the fits compare with the previous ones. Rendering this
+guide does not refit its disabled model-fitting chunks. Refit with the current version
+for a new analysis, use `getDiagnostics()` to check admissibility and uncertainty, and
+compare multiple starts for difficult nonlinear or mixture models. These examples are
+not evidence of numerical qualification.
 
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
@@ -58,7 +65,7 @@ RM_PLGCM.r <- getMGM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading mean trajectory over months from a bivariate bilinear spline growth model with fixed knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a bivariate bilinear spline growth model with fixed knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure1 <- getFigure(
   model = RM_PLGCM.r@mxOutput, sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", 
   y_model = "LGCM", t_var = c("T", "T"), records = list(1:9, 1:9), xstarts = xstarts, 
@@ -76,7 +83,7 @@ RM_PLGCM.f <- getMGM(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Reading mean trajectory over months from a bivariate bilinear spline growth model with random knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over months from a bivariate bilinear spline growth model with random knots, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure2 <- getFigure(
   model = RM_PLGCM.f@mxOutput, sub_Model = "MGM", y_var = c("R", "M"), curveFun = "BLS", 
   y_model = "LGCM", t_var = c("T", "T"), records = list(1:9, 1:9), xstarts = xstarts, 

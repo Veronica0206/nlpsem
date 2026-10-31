@@ -8,7 +8,8 @@ getIndFS(model, FS_type = "Regression")
 }
 \arguments{
 \item{model}{A fitted mxModel object. Specifically, this should be the \code{mxOutput} slot from the result returned by
-one of the estimation functions provided by this package.}
+a single-process or multivariate model with one RAM or LISREL expectation
+and its own raw data. Multiple-group and mixture parent models are not supported.}
 
 \item{FS_type}{A string specifying the type of factor scores to compute. Supported options include \code{"ML"} (for
 Maximum Likelihood), \code{"WeightedML"} (for Weighted Maximum Likelihood), and \code{"Regression"}. Default is \code{"Regression"}.}
@@ -25,40 +26,24 @@ The content of these slots can be printed using the \code{printTable()} method f
 This function computes individual factor scores for each latent variable in a given model. It supports three
 types of factor scores: maximum likelihood, weighted maximum likelihood, and regression.
 }
+\details{
+Before scoring, the observed data stored in the model are reduced to the variables the model actually uses
+(manifest variables and definition variables), and the model is given a name without spaces or punctuation. Both
+steps are required by \code{OpenMx::mxFactorScores()}: columns that are not part of the model make the
+\code{"ML"} and \code{"WeightedML"} scoring runs fail, and the descriptive model names used by this package
+are not valid identifiers for the scoring model.
+}
 \examples{
-mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
-data("RMS_dat")
-RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
-baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-# Standardized time-invariant covariates
-RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+# Fitted bilinear spline model (fixed knot) shipped with the package
+load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
 \donttest{
-# Fit bilinear spline latent growth curve model (fixed knots)
-LIN_LGCM <- getLGCM(
-  dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "linear",
-  intrinsic = FALSE, records = 1:9, growth_TIC = NULL
-)
-getIndFS(model = LIN_LGCM@mxOutput, FS_type = "Regression")
-# Fit bilinear spline latent growth curve model (random knots) with time-invariant covariates for
-# mathematics development
-## Fit the model
-set.seed(20191029)
-BLS_LGCM.TIC_f <- getLGCM(dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS",
-                          intrinsic = TRUE, records = 1:9, growth_TIC = c("ex1", "ex2"),
-                          tries = 20)
-getIndFS(model = BLS_LGCM.TIC_f@mxOutput, FS_type = "Regression")
+# Regression scores for the 500 persons (individual measurement occasions are definition
+# variables, so the scores are computed person by person; about 15 seconds)
+FS <- getIndFS(model = Math_LGCM_BLS_r@mxOutput, FS_type = "Regression")
+head(FS@scores_est)
+# Maximum-likelihood scores re-optimize one model per person
+FS_ML <- getIndFS(model = Math_LGCM_BLS_r@mxOutput, FS_type = "ML")
+head(FS_ML@scores_est)
 }
 
 }

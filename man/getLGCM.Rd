@@ -79,42 +79,56 @@ An object of class \code{myMxOutput}. Depending on the \code{paramOut} argument,
 This function fits a latent growth curve model with or without time-invariant covariates to the provided data.
 It manages model setup, optimization, and if requested, outputs parameter estimates and standard errors.
 }
+\details{
+New fits retain their resolved model specification and fitting provenance.
+A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+indefinite covariance matrix) is returned with a warning that lists them.
+Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+\code{logLik()} and \code{plot()} methods are available.
+}
+\section{Standardized fitting}{
+
+Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+centred at the mean and divided by the standard deviation of its first recorded occasion, a
+time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+same model in the original units; only the numerical conditioning of the optimization differs.
+\code{getSpecification()} records the centres, scales and condition numbers under
+\code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+}
+
 \examples{
 mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-# Load ECLS-K (2011) data
+# Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in months)
 data("RMS_dat")
 RMS_dat0 <- RMS_dat
-# Re-baseline the data so that the estimated initial status is for the starting point of the study
 baseT <- RMS_dat0$T1
-RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-RMS_dat0$T9 <- RMS_dat0$T9 - baseT
+for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- RMS_dat0[[paste0("T", j)]] - baseT
 # Standardized time-invariant covariates
 RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
 RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
 
 \donttest{
-# Fit bilinear spline latent growth curve model (fixed knots)
+# Bilinear spline latent growth curve model with a fixed knot
 BLS_LGCM_r <- getLGCM(
   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
-  intrinsic = FALSE, records = 1:9, growth_TIC = NULL
+  intrinsic = FALSE, records = 1:9, paramOut = TRUE
 )
-# Fit bilinear spline latent growth curve model (random knots) with
-# time-invariant covariates for mathematics development
-## Fit the model
+printTable(BLS_LGCM_r)
+}
+\dontrun{
+# Intrinsically nonlinear model (random knot) with time-invariant covariates and 20 extra
+# optimization attempts; this takes several minutes
 set.seed(20191029)
 BLS_LGCM.TIC_f <- getLGCM(
   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "bilinear spline",
   intrinsic = TRUE, records = 1:9, growth_TIC = c("ex1", "ex2"),
   tries = 20, paramOut = TRUE
 )
-## Output point estimate and standard errors
 printTable(BLS_LGCM.TIC_f)
 }
 

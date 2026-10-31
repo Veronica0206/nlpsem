@@ -52,35 +52,56 @@
 #'
 #' @seealso \code{\link{getLGCM}}, \code{\link{getTVCmodel}}, \code{\link{getFigure}}
 #'
+#' @details New fits retain their resolved model specification and fitting provenance.
+#' A new fit whose \code{\link{getDiagnostics}} reports issues (for example a nonzero optimizer status or an
+#' indefinite covariance matrix) is returned with a warning that lists them.
+#' Use \code{\link{getSpecification}} to inspect it; standard \code{summary()}, \code{coef()},
+#' \code{logLik()} and \code{plot()} methods are available.
+#'
+#' @section Standardized fitting:
+#' Models with a quadratic, negative exponential or Jenss-Bayley functional form are fitted to standardized data and converted back to the original units. Each outcome is
+#' centred at the mean and divided by the standard deviation of its first recorded occasion, a
+#' time-varying covariate is divided by its first-occasion standard deviation, and time is divided by the
+#' mean of its last recorded occasion; time-invariant covariates are not changed. The model starts from the
+#' same starting values, mapped exactly to the standardized scale, and is optimized with the same optimizer
+#' and retry settings. The estimates (means, variances, covariances, residual variances, path coefficients,
+#' growth ratios and, with a time-varying covariate, its effects), the Hessian, the parameter covariance
+#' matrix, the standard errors and the -2 log-likelihood are converted back exactly, so the result is the
+#' same model in the original units; only the numerical conditioning of the optimization differs.
+#' \code{getSpecification()} records the centres, scales and condition numbers under
+#' \code{fitting$standardization}. Set \code{options(nlpsem.standardize = FALSE)} to fit on the original scale.
+#'
+#' @section Approximations:
+#' A latent change score model takes the change over each interval as the rate of change at the midpoint of the
+#' interval times the length of the interval. This is exact for the quadratic and nonparametric forms. For the
+#' negative exponential and Jenss-Bayley forms, the midpoint approximation introduces an integration error
+#' whose size depends on curvature and interval length. With \code{intrinsic = TRUE}, a first-order Taylor
+#' expansion around the mean growth ratio introduces an additional approximation.
+#' In an illustrative benchmark using \code{getSimData()} defaults (one data set of 5,000 persons per model,
+#' ten yearly occasions), the estimated mean of \code{eta1} (negative exponential) or \code{eta2} (Jenss-Bayley)
+#' was up to about 2.5\% too large in magnitude for fixed-ratio models. In the random-ratio cases, the Taylor
+#' and midpoint errors moved those estimated means in opposite directions; the estimated covariance of
+#' \code{eta2} and the ratio in the Jenss-Bayley case was about 40\% above its generating value.
+#' These are observed estimation errors in individual generated data sets, not replicated estimates of bias,
+#' coverage rates or general error bounds.
+#'
 #' @export
 #'
 #' @examples
 #' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
+#' # Load the ECLS-K (2011) sample and re-baseline the measurement occasions (in years)
 #' data("RMS_dat")
 #' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
 #' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- (RMS_dat0$T1 - baseT)/12
-#' RMS_dat0$T2 <- (RMS_dat0$T2 - baseT)/12
-#' RMS_dat0$T3 <- (RMS_dat0$T3 - baseT)/12
-#' RMS_dat0$T4 <- (RMS_dat0$T4 - baseT)/12
-#' RMS_dat0$T5 <- (RMS_dat0$T5 - baseT)/12
-#' RMS_dat0$T6 <- (RMS_dat0$T6 - baseT)/12
-#' RMS_dat0$T7 <- (RMS_dat0$T7 - baseT)/12
-#' RMS_dat0$T8 <- (RMS_dat0$T8 - baseT)/12
-#' RMS_dat0$T9 <- (RMS_dat0$T9 - baseT)/12
-#' # Standardized time-invariant covariates
-#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+#' for (j in 1:9) RMS_dat0[[paste0("T", j)]] <- (RMS_dat0[[paste0("T", j)]] - baseT) / 12
 #'
 #' \donttest{
-#' # Fit nonparametric change score model for reading development
-#' ## Fit model
+#' # Nonparametric latent change score model for reading development
 #' NonP_LCSM <- getLCSM(
 #'   dat = RMS_dat0, t_var = "T", y_var = "R", curveFun = "nonparametric",
-#'   intrinsic = FALSE, records = 1:9
-#'   )
+#'   intrinsic = FALSE, records = 1:9, paramOut = TRUE
+#' )
+#' printTable(NonP_LCSM)
 #' }
 #'
 #' @importFrom OpenMx mxTryHard mxRun
@@ -96,8 +117,15 @@ getLCSM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   validate_intrinsic(intrinsic, curveFun, model_type = "LCSM")
   validate_columns(dat, t_var = t_var, y_var = y_var, records = records,
                    growth_TIC = growth_TIC)
+  if (paramOut && !is.null(names)) {
+    expected_names <- .auto_names_LCSM(curveFun, intrinsic, growth_TIC, length(records))
+    derived_names <- utils::tail(expected_names, 6L * (length(records) - 1L))
+    names <- .validate_output_names(names, length(expected_names), derived_names)
+  }
+  metadata <- .capture_fit_metadata(match.call(), "getLCSM", environment(), dat)
   ## Derive initial values for the parameters of interest if not specified by users
   if (is.null(starts)){
+    metadata$fitting$starts_source <- "automatic"
     starts <- getUNI.initial(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, records = records,
                              growth_TIC = growth_TIC, res_scale = res_scale, intrinsic = intrinsic)
   }
@@ -105,13 +133,21 @@ getLCSM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   model_mx <- getLCSM.mxModel(dat = dat, t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
                               records = records, growth_TIC = growth_TIC, starts = starts)
   ## Optimize the constructed latent change score model
-  if (!is.null(tries)){
-    model <- mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
-                        loc = loc, scale = scale)
-  }
-  else{
-    model <- mxRun(model_mx)
-  }
+  ## Quadratic, negative exponential and Jenss-Bayley models are fitted on the standardized scale and
+  ## converted back exactly (see ?getLGCM, Details); other forms are fitted as built.
+  fit_std <- .fit_model(model_mx, run = function(model_mx){
+    if (!is.null(tries)){
+      mxTryHard(model_mx, extraTries = tries, OKstatuscodes = OKStatus, jitterDistrib = jitterD,
+                loc = loc, scale = scale)
+    }
+    else{
+      mxRun(model_mx)
+    }
+  }, plan = .std_plan(dat, "LCSM", curveFun, y_var, records, t_var, covariates = growth_TIC),
+  build = function(plan) getLCSM.mxModel(dat = .std_data(dat, plan), t_var = t_var, y_var = y_var, curveFun = curveFun, intrinsic = intrinsic,
+                                records = records, growth_TIC = .std_cov(plan, growth_TIC), starts = starts))
+  model <- fit_std$model
+  metadata$fitting$standardization <- fit_std$standardization
   ## Print out the point estimates and standard errors for the parameters of interest
   if(paramOut){
     if (is.null(names)) names <- .auto_names_LCSM(curveFun, intrinsic, growth_TIC, length(records))
@@ -121,5 +157,7 @@ getLCSM <- function(dat, t_var, y_var, curveFun, intrinsic = TRUE, records, grow
   else{
     model <- new("myMxOutput", mxOutput = model)
   }
+  model <- .attach_fit_metadata(model, metadata, starts, frame = environment())
+  model <- .warn_fit_issues(model)
   return(model)
 }

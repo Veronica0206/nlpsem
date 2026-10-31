@@ -4,7 +4,8 @@
 #' types of factor scores: maximum likelihood, weighted maximum likelihood, and regression.
 #'
 #' @param model A fitted mxModel object. Specifically, this should be the \code{mxOutput} slot from the result returned by
-#' one of the estimation functions provided by this package.
+#' a single-process or multivariate model with one RAM or LISREL expectation
+#' and its own raw data. Multiple-group and mixture parent models are not supported.
 #' @param FS_type A string specifying the type of factor scores to compute. Supported options include \code{"ML"} (for
 #' Maximum Likelihood), \code{"WeightedML"} (for Weighted Maximum Likelihood), and \code{"Regression"}. Default is \code{"Regression"}.
 #'
@@ -14,6 +15,12 @@
 #'   \item \code{scores_se}: Contains the standard errors of the factor score estimates.
 #' }
 #' The content of these slots can be printed using the \code{printTable()} method for S4 objects.
+#'
+#' @details Before scoring, the observed data stored in the model are reduced to the variables the model actually uses
+#' (manifest variables and definition variables), and the model is given a name without spaces or punctuation. Both
+#' steps are required by \code{OpenMx::mxFactorScores()}: columns that are not part of the model make the
+#' \code{"ML"} and \code{"WeightedML"} scoring runs fail, and the descriptive model names used by this package
+#' are not valid identifiers for the scoring model.
 #'
 #' @references
 #' \itemize{
@@ -28,46 +35,69 @@
 #' @export
 #'
 #' @examples
-#' mxOption(model = NULL, key = "Default optimizer", "CSOLNP", reset = FALSE)
-#' # Load ECLS-K (2011) data
-#' data("RMS_dat")
-#' RMS_dat0 <- RMS_dat
-#' # Re-baseline the data so that the estimated initial status is for the starting point of the study
-#' baseT <- RMS_dat0$T1
-#' RMS_dat0$T1 <- RMS_dat0$T1 - baseT
-#' RMS_dat0$T2 <- RMS_dat0$T2 - baseT
-#' RMS_dat0$T3 <- RMS_dat0$T3 - baseT
-#' RMS_dat0$T4 <- RMS_dat0$T4 - baseT
-#' RMS_dat0$T5 <- RMS_dat0$T5 - baseT
-#' RMS_dat0$T6 <- RMS_dat0$T6 - baseT
-#' RMS_dat0$T7 <- RMS_dat0$T7 - baseT
-#' RMS_dat0$T8 <- RMS_dat0$T8 - baseT
-#' RMS_dat0$T9 <- RMS_dat0$T9 - baseT
-#' # Standardized time-invariant covariates
-#' RMS_dat0$ex1 <- scale(RMS_dat0$Approach_to_Learning)
-#' RMS_dat0$ex2 <- scale(RMS_dat0$Attention_focus)
+#' # Fitted bilinear spline model (fixed knot) shipped with the package
+#' load(system.file("extdata", "getLGCM_examples.RData", package = "nlpsem"))
 #' \donttest{
-#' # Fit bilinear spline latent growth curve model (fixed knots)
-#' LIN_LGCM <- getLGCM(
-#'   dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "linear",
-#'   intrinsic = FALSE, records = 1:9, growth_TIC = NULL
-#' )
-#' getIndFS(model = LIN_LGCM@mxOutput, FS_type = "Regression")
-#' # Fit bilinear spline latent growth curve model (random knots) with time-invariant covariates for
-#' # mathematics development
-#' ## Fit the model
-#' set.seed(20191029)
-#' BLS_LGCM.TIC_f <- getLGCM(dat = RMS_dat0, t_var = "T", y_var = "M", curveFun = "BLS",
-#'                           intrinsic = TRUE, records = 1:9, growth_TIC = c("ex1", "ex2"),
-#'                           tries = 20)
-#' getIndFS(model = BLS_LGCM.TIC_f@mxOutput, FS_type = "Regression")
+#' # Regression scores for the 500 persons (individual measurement occasions are definition
+#' # variables, so the scores are computed person by person; about 15 seconds)
+#' FS <- getIndFS(model = Math_LGCM_BLS_r@mxOutput, FS_type = "Regression")
+#' head(FS@scores_est)
+#' # Maximum-likelihood scores re-optimize one model per person
+#' FS_ML <- getIndFS(model = Math_LGCM_BLS_r@mxOutput, FS_type = "ML")
+#' head(FS_ML@scores_est)
 #' }
 #'
-#' @importFrom OpenMx mxFactorScores
+#' @importFrom OpenMx mxFactorScores mxRename mxModel mxData
 #' @importFrom methods new
 #'
 getIndFS <- function(model, FS_type = "Regression"){
-  out <- mxFactorScores(model = model, type = FS_type)
-  FSOut <- new("FSOutput", scores_est = out[, , 1], scores_se = out[, , 2])
+  if (!is.character(FS_type) || length(FS_type) != 1L || is.na(FS_type) ||
+      !FS_type %in% c("ML", "WeightedML", "Regression")) {
+    stop("FS_type must be one of 'ML', 'WeightedML', or 'Regression'.", call. = FALSE)
+  }
+  if (!methods::is(model, "MxModel")) {
+    stop("model must be a fitted OpenMx model (fit@mxOutput).", call. = FALSE)
+  }
+  if (length(model@submodels) ||
+      !(methods::is(model@expectation, "MxExpectationRAM") ||
+        methods::is(model@expectation, "MxExpectationLISREL")) ||
+      is.null(model$data) || !identical(model$data$type, "raw")) {
+    stop("getIndFS supports a single RAM or LISREL model with its own raw data; multiple-group and mixture parent models are not supported.", call. = FALSE)
+  }
+  if (is.null(model@output$estimate)) {
+    stop("model must be fitted before factor scoring.", call. = FALSE)
+  }
+  out <- mxFactorScores(model = .prepare_FS_model(model), type = FS_type)
+  # Keep matrix dimensions for a single person or latent variable.
+  estimates <- matrix(out[, , 1], nrow = dim(out)[1], ncol = dim(out)[2],
+                      dimnames = dimnames(out)[1:2])
+  errors <- matrix(out[, , 2], nrow = dim(out)[1], ncol = dim(out)[2],
+                   dimnames = dimnames(out)[1:2])
+  FSOut <- new("FSOutput", scores_est = estimates, scores_se = errors)
   return(FSOut)
+}
+
+## Variables referenced by a fitted model: manifest variables plus definition variables (`data.*` labels or
+## algebra references).
+.model_variables <- function(model){
+  labels <- unlist(lapply(model@matrices, function(mat) mat$labels))
+  formulas <- vapply(model@algebras, function(alg) paste(deparse(alg$formula), collapse = " "), character(1))
+  text <- c(labels, formulas)
+  defvars <- unlist(regmatches(text, gregexpr("data\\.[A-Za-z0-9_.]+", text)))
+  unique(c(model@manifestVars, sub("^data\\.", "", defvars)))
+}
+
+## Reduce the stored raw data to the variables the model uses and give the model a scoring-safe name.
+.prepare_FS_model <- function(model){
+  observed <- model$data$observed
+  if (!is.null(observed)){
+    used <- intersect(.model_variables(model), colnames(observed))
+    if (length(used) > 0 && length(used) < ncol(observed)){
+      model <- mxModel(model, mxData(observed = observed[, used, drop = FALSE], type = "raw"))
+    }
+  }
+  safe_name <- gsub("[^A-Za-z0-9_]", "", model@name)
+  if (!nzchar(safe_name)) safe_name <- "nlpsemModel"
+  if (!identical(safe_name, model@name)) model <- mxRename(model, safe_name)
+  model
 }

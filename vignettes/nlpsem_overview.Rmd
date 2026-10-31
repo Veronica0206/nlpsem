@@ -34,8 +34,8 @@ The package supports four modeling scenarios:
    (TICs) and time-varying covariates (TVCs). Key functions: `getLGCM()`,
    `getLCSM()`, `getTVCmodel()`.
 
-2. **Multivariate longitudinal processes** -- Models that assess the correlation
-   or causation between multiple longitudinal variables. Key functions:
+2. **Multivariate longitudinal processes** -- Models that assess the associations
+   and directional relationships between multiple longitudinal variables. Key functions:
    `getMGM()`, `getMediation()`.
 
 3. **Multiple-group models** -- Extensions of scenarios 1 and 2 that evaluate
@@ -161,7 +161,7 @@ show(Figure)
 
 - `getLRT()`: Perform a likelihood ratio test to compare nested models (e.g.,
   fixed vs. random knot).
-- `getIndFS()`: Obtain individual factor scores from a fitted model.
+- `getIndFS()`: Obtain factor scores from a single RAM/LISREL model; mixture and multiple-group parent objects are unsupported.
 - `getPosterior()`: Compute posterior class probabilities for mixture models.
 - `getLatentKappa()`: Calculate Cohen's kappa for agreement between latent
   class assignments.

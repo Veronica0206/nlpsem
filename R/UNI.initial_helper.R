@@ -155,6 +155,7 @@ getUNI.initial <- function(dat, t_var, y_var, curveFun, records, growth_TIC, res
       lm(GF ~ ., data = data.frame(cbind(GF = growth_factor[, p], dat_covariate)),
          na.action = na.exclude)$coefficients[-1]
     }), nrow = nGF, byrow = TRUE)
+    gf_beta <- .zero_aliased_effects(gf_beta)
   }
   # If no growth TICs are provided, calculate initial values for mean0 (growth factor means) and psi0 (var-cov matrix
   # of growth factors)

@@ -4,7 +4,7 @@ output: rmarkdown::html_vignette
 description: > 
   This vignette provides a comprehensive exploration and practical examples of the `getTVCmodel()` function. This function is designed to construct Latent Growth Curve Models (LGCMs) or Latent Change Score Models (LCSMs) with a (decomposed) time-varying covariate. The supported functional forms of LGCMs include linear, quadratic, negative exponential, Jenss-Bayley, and bilinear spline. LCSMs support quadratic, negative exponential, Jenss-Bayley, and nonparametric functions. Notably, the negative exponential and Jenss-Bayley LGCMs/LCSMs, as well as bilinear spline LGCMs, can be fitted as intrinsically nonlinear models. Furthermore, this function offers flexibility in allowing the incorporation of time-invariant covariates (TICs) as needed.
 vignette: >
-  %\VignetteIndexEntry{getTVCmodel_examples}
+  %\VignetteIndexEntry{Examples of Longitudinal Models with Time-varying Covariates}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,6 +17,13 @@ knitr::opts_chunk$set(
 has_data <- nzchar(system.file("extdata", "getTVCmodel_examples.RData", package = "nlpsem"))
 knitr::opts_chunk$set(eval = has_data)
 ```
+
+The saved examples below were generated with nlpsem 1.0.0.9006; `extdata/REGENERATED.txt`
+records the versions and how the fits compare with the previous ones. Rendering this
+guide does not refit its disabled model-fitting chunks. Refit with the current version
+for a new analysis, use `getDiagnostics()` to check admissibility and uncertainty, and
+compare multiple starts for difficult nonlinear or mixture models. These examples are
+not evidence of numerical qualification.
 
 ## Load nlpsem package, dependent packages and set CSOLNP as the optimizer
 ```{r, message = FALSE}
@@ -80,7 +87,7 @@ Math_TVCslp_BLS_f <- getTVCmodel(
   )
 ```
 
-```{r}
+```{r, fig.alt = c("Mathematics mean trajectory over years from a random-knot bilinear spline growth model with a direct time-varying covariate, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over years from a random-knot bilinear spline growth model with interval-slope covariate decomposition, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 getEstimateStats(est_in = Math_TVCslp_BLS_f@Estimates, CI_type = "Wald")
 Figure1 <- getFigure(
   model = Math_TVC_BLS_f@mxOutput, sub_Model = "TVC", y_var = "M", curveFun = "BLS", 
@@ -96,7 +103,11 @@ Figure2 <- getFigure(
 show(Figure2)
 ```
 
-A comparison between Figure 1 and Figure 2 demonstrates that incorporating a TVC directly results in underestimation of the growth factor means.
+Figures 1 and 2 show each model's growth component, which leaves out the TVC effect; the dashed line adds it back. With the TVC entered directly, the growth component leaves out the TVC's full value at each occasion, while with interval-specific slopes it leaves out only the slope effect, so the two components describe different quantities.
+
+The saved Model 1 is a local optimum of a likelihood with several: its -2LL is 47324.02, while the same
+model reaches 47225.92 when time is measured in months instead of years. Compare the solutions from
+several starts before interpreting a random-knot model.
 
 ## Example 2: Fit reduced bilinear spline LGCMs with a decomposed TVC (interval-specific slopes, interval-specific changes, and change from baseline) to examine the influence of baseline teacher-reported approach to learning and the development in reading ability on the development of mathematics ability. It also includes a visualization showcasing the growth status of mathematics ability.
 ```{r, message = FALSE, eval = FALSE}
@@ -117,7 +128,7 @@ Math_TVCchgBL_BLS_r <- getTVCmodel(
   tries = 10, paramOut = TRUE)    
 ```
 
-```{r}
+```{r, fig.alt = c("Mathematics mean trajectory over years from a fixed-knot bilinear spline growth model with interval-slope covariate decomposition, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over years from a fixed-knot bilinear spline growth model with interval-change covariate decomposition, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.", "Mathematics mean trajectory over years from a fixed-knot bilinear spline growth model with change-from-baseline covariate decomposition, comparing the fitted mean and smoothed observed mean with pointwise 95 percent confidence limits.")}
 Figure3 <- getFigure(
   model = Math_TVCslp_BLS_r@mxOutput, sub_Model = "TVC", y_var = "M", curveFun = "BLS", 
   y_model = "LGCM", t_var = "T", records = 1:9, xstarts = xstarts, xlab = "Year",
@@ -137,3 +148,16 @@ Figure5 <- getFigure(
 )
 show(Figure5)
 ```
+
+## Check the change-from-baseline example
+
+The saved `Math_TVCchgBL_BLS_r` example reaches optimizer status 0, and `getDiagnostics()`
+reports no issues:
+
+```{r change-diagnostics}
+getDiagnostics(Math_TVCchgBL_BLS_r)$issues
+```
+
+An earlier fit of the same call (nlpsem 1.0.0.9000) also reached status 0, at a poorer
+optimum (-2LL 64317.60 against 64207.48) with a negative latent residual variance
+(`Y_psi22`, about -1.40): optimizer status alone does not distinguish such solutions.
