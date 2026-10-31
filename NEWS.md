@@ -38,6 +38,11 @@
 * Explicit mediation `res_scale` values take precedence over automatic residual
   variance starts. The default `NULL` calculation, per-person NLS and SEM
   optimizer are unchanged.
+* Intrinsic bilinear-spline plots evaluate the fitted smoothed expansion-knot
+  expression, including covariate-induced slope and knot shifts. Pointwise
+  intervals propagate its complete joint covariance for single, group, mixture,
+  multivariate and TVC growth components. Nonintrinsic spline plots retain their
+  sharp-knot formula and its exact-knot interval qualification.
 * Rejects nonfinite simulation schedules and numeric covariate names that could
   overwrite existing data. Plotting preserves groups named `ID` and handles
   occasions with entirely missing outcomes when selecting the observed curve.

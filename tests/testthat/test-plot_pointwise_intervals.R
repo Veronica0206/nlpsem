@@ -64,13 +64,10 @@ test_that("the reported BLS example has covariance-aware public plot intervals",
   dat <- out@figures[[1]][[1]]$data
   at20 <- dat[which.min(abs(dat$time-20)),]
   expect_equal(at20$time,20)
-  mean0 <- c(OpenMx::mxEvalByName("Y_mean0", fit))
-  expect_equal(at20$Y_hat, mean0[1] + 20 * mean0[2], tolerance=1e-10)
-  .expect_plot_se(at20,"Y_hat","Y_mean0[1,1] + 20 * Y_mean0[2,1]",fit)
+  .expect_bls_ram_plot(at20, fit)
   # After the knot, uncertainty in the estimated knot contributes to the interval.
   after <- .plot_test_data(fit,times=40)
-  .expect_plot_se(after,"Y_hat",paste0("Y_mean0[1,1] + Y_mean0[2,1]*Y_mean0[4,1] + ",
-                                      "Y_mean0[3,1]*(40-Y_mean0[4,1])"),fit)
+  .expect_bls_ram_plot(after, fit)
   expect_match(as.character(out@figures[[1]][[1]]$layers[[2]]$mapping$linetype),"Pointwise")
 })
 
@@ -79,9 +76,7 @@ test_that("fixed knots and covariate-adjusted mean uncertainty are propagated", 
   for (nm in c("Math_LGCM_BLS_r","Math_LGCM_TIC_BLS_f")){
     fit <- e[[nm]]@mxOutput
     out <- .plot_test_data(fit,times=40)
-    knot <- if(length(OpenMx::mxEvalByName("Y_mean0",fit))==4) "Y_mean0[4,1]" else "Y_alpha0[4,1]"
-    expression <- paste0("Y_mean0[1,1]+Y_mean0[2,1]*",knot,"+Y_mean0[3,1]*(40-",knot,")")
-    .expect_plot_se(out,"Y_hat",expression,fit)
+    .expect_bls_ram_plot(out, fit)
   }
 })
 
@@ -117,11 +112,11 @@ test_that("TVC, multivariate and mediation curves propagate their joint covarian
   knot <- c(OpenMx::mxEvalByName("Y_mean0",tvc))[4]
   tt <- knot + 1
   out <- .plot_test_data(tvc,family="TVC",times=tt)
-  .expect_plot_se(out,"Y_hat",paste0("Y_mean0[1,1]+Y_mean0[2,1]*Y_mean0[4,1]+Y_mean0[3,1]*(",tt,"-Y_mean0[4,1])"),tvc)
+  .expect_bls_ram_plot(out, tvc, growth_tvc = TRUE)
   mgm <- .load_extdata("getMGM_examples.RData")$RM_PLGCM.f@mxOutput
   for(prefix in c("R","M")){
     out <- .plot_test_data(mgm,prefix=prefix,family="MGM",times=20)
-    .expect_plot_se(out,"Y_hat",paste0(prefix,"_mean0[1,1]+20*",prefix,"_mean0[2,1]"),mgm)
+    .expect_bls_ram_plot(out, mgm, outcome = prefix)
   }
   med <- .load_extdata("getMediation_examples.RData")$Med2_LGCM_BLS@mxOutput
   for(prefix in c("Y","M")){
@@ -137,14 +132,11 @@ test_that("multiple-group and mixture curves use the parent fitted covariance", 
   )
   for(fit in cases){
     for(k in seq_along(fit@submodels)){
-      prefix <- paste0("Class",k,".c",k,"Y")
       mean0 <- c(OpenMx::mxEvalByName(paste0("c",k,"Y_mean0"),fit@submodels[[k]]))
-      knot_expr <- if(length(mean0)==4) paste0(prefix,"_mean0[4,1]") else paste0(prefix,"_alpha0[4,1]")
       knot <- if(length(mean0)==4) mean0[4] else c(OpenMx::mxEvalByName(paste0("c",k,"Y_alpha0"),fit@submodels[[k]]))[4]
       tt <- knot+1
       out <- .plot_test_data(fit,group=k,times=tt)
-      expression <- paste0(prefix,"_mean0[1,1]+",prefix,"_mean0[2,1]*",knot_expr,"+",prefix,"_mean0[3,1]*(",tt,"-",knot_expr,")")
-      .expect_plot_se(out,"Y_hat",expression,fit)
+      .expect_bls_ram_plot(out, fit, group = k)
     }
   }
 })
@@ -227,18 +219,15 @@ test_that("TVC plots label the growth component and add the full model-implied m
   expect_true("Model Implied Growth Component (TVC Effect Excluded)" %in% labels)
   expect_true("Model Implied Mean Outcome (TVC Effect Included)" %in% labels)
   expect_false("Model Implied Growth Status" %in% labels)
-  # With a direct TVC, the full mean is the growth component plus kappa times the TVC mean. The model's
-  # loadings smooth |t - knot| as sqrt((t - knot)^2 + 1e-6) and the plotted curve does not, so at an occasion
-  # near the knot the two differ by up to the half-difference of the slopes times 1e-3.
+  # Both the growth component and full expectation retain the fitted smoothed loadings.
+  # The direct TVC contributes kappa times its mean at each occasion.
   full <- p$layers[[5]]$data
   times <- colMeans(fit$data$observed[, paste0("T", 1:9)])
   component <- nlpsem:::.plot_curve_delta(nlpsem:::.plot_gf_distribution(fit, fit, "Y", "Y", "TVC", "BLS"), times, "BLS")$est
   par <- OpenMx::omxGetParameters(fit)
   expect_equal(full$time, unname(times))
   gap <- abs(full$value - component - unname(par["kappa"] * par[paste0("TVC_m", 1:9)]))
-  knot <- c(OpenMx::mxEvalByName("Y_mean0", fit))[4]
-  expect_lt(max(gap[abs(times - knot) > 0.1]), 1e-5)
-  expect_lt(max(gap), 1e-3)
+  expect_lt(max(gap), 1e-10)
 })
 
 test_that("a fit with the records in descending order can be plotted", {
