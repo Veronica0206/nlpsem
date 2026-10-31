@@ -202,7 +202,7 @@ test_that("the public change plot uses a nonzero first selected observation", {
   .expect_plot_se(out[1,],"cY_hat",expression,fit)
 })
 
-test_that("class-specific nonlinear TIC trajectories use adjusted mean and rate covariance", {
+test_that("stored fixed-rate class-specific TIC trajectories retain their mean and uncertainty", {
   fit <- .load_extdata("getMGroup_examples.RData")$MGroup_Read_EXP_LGCM_TIC_r@mxOutput
   for(k in seq_along(fit@submodels)){
     out <- .plot_test_data(fit,curve="EXP",group=k,times=2)
@@ -210,6 +210,10 @@ test_that("class-specific nonlinear TIC trajectories use adjusted mean and rate 
     gf <- c(OpenMx::mxEvalByName(paste0("c",k,"Y_mean0"),fit@submodels[[k]]))
     rate <- if(length(gf)==3) paste0(prefix,"_mean0[3,1]") else paste0(prefix,"_alpha0[3,1]")
     expression <- paste0(prefix,"_mean0[1,1]+",prefix,"_mean0[2,1]*(1-exp(-",rate,"*2))")
+    at2 <- fit@submodels[[k]]
+    for (j in 1:9) at2@data@observed[[paste0("T",j)]] <- 2
+    expected <- OpenMx::mxGetExpected(at2,"means",defvar.row=1)[1,"R1"]
+    expect_equal(out$Y_hat,unname(expected),tolerance=1e-10)
     .expect_plot_se(out,"Y_hat",expression,fit)
   }
 })

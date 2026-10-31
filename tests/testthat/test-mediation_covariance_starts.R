@@ -30,6 +30,85 @@
        records = rep(list(1:5), if (long) 3 else 2), res_scale = NULL, res_cor = NULL)
 }
 
+test_that("explicit mediation residual scales override automatic estimates for every process", {
+  fixture <- .med_cov_fixture()
+  for (x_type in c("baseline", "longitudinal")){
+    args <- .med_cov_args(fixture$dat, x_type)
+    roles <- if (x_type == "baseline") c("Y", "M") else c("Y", "M", "X")
+    variances <- c(Y = 10, M = 401, X = 100)[roles]
+    automatic <- do.call(nlpsem:::getMED.initial, args)
+    expect_equal(vapply(automatic[roles], `[[`, numeric(1), "residuals"),
+                 setNames(rep(1.190625, length(roles)), roles), tolerance = 1e-10)
+    for (scale in list(rep(.1, length(roles)), rep(.9, length(roles)), c(.2, .4, .6)[seq_along(roles)])){
+      args["res_scale"] <- list(scale)
+      starts <- do.call(nlpsem:::getMED.initial, args)
+      expect_equal(vapply(starts[roles], `[[`, numeric(1), "residuals"), variances * scale, tolerance = 1e-10)
+      for (role in roles){
+        # The scale controls measurement residual seeds only.
+        expect_equal(starts[[role]][setdiff(names(starts[[role]]), "residuals")],
+                     automatic[[role]][setdiff(names(automatic[[role]]), "residuals")])
+      }
+      build_args <- args; build_args$res_scale <- NULL; build_args$starts <- starts
+      model <- do.call(nlpsem:::getMED.mxModel, build_args)
+      expected <- variances * scale
+      for (role in roles) expect_equal(unname(OpenMx::omxGetParameters(model)[paste0(if (role == "X") "P" else role, "_residuals")]),
+                                       unname(expected[role]), tolerance = 1e-10)
+    }
+  }
+})
+
+test_that("group and mixture mediation preserve class-specific residual scales", {
+  dat <- .med_cov_fixture()$dat
+  for (x_type in c("baseline", "longitudinal")){
+    args <- .med_cov_args(dat, x_type)
+    roles <- if (x_type == "baseline") c("Y", "M") else c("Y", "M", "X")
+    variances <- c(Y = 10, M = 401, X = 100)[roles]
+    scales <- list(rep(.1, length(roles)), rep(.9, length(roles)))
+    group_args <- c(args, list(nClass=2L, grp_var="group", sub_Model="MED",
+      intrinsic=NULL, TVC=NULL, decompose=0, growth_TIC=NULL))
+    group_args$dat <- rbind(transform(dat,group=1L), transform(dat,group=2L))
+    group_args$res_scale <- scales
+    groups <- do.call(nlpsem:::getMGroup.initial, group_args)
+    for (k in 1:2) expect_equal(vapply(groups[[k]][roles], `[[`, numeric(1), "residuals"),
+                                variances * scales[[k]], tolerance=1e-10)
+    mix_args <- c(args, list(nClass=1L,prop_starts=1,sub_Model="MED",cluster_TIC=NULL,
+      TVC=NULL,decompose=0,growth_TIC=NULL,intrinsic=NULL))
+    for (scale in scales){
+      mix_args$res_scale <- list(scale)
+      mixture <- do.call(nlpsem:::getMIX.initial,mix_args)
+      expect_equal(vapply(mixture[[1]][roles], `[[`, numeric(1), "residuals"),variances*scale,tolerance=1e-10)
+    }
+  }
+})
+
+test_that("BLS residual scales use knot-level variance and NULL retains automatic/fallback starts", {
+  fixture <- .med_cov_fixture()
+  z <- fixture$z
+  # Isolate the residual-start contract from NLS (covered separately): these
+  # known individual factors make raw-intercept and knot-level variances differ.
+  factors <- function(multiplier, residual){
+    gf <- data.frame(eta0=multiplier*z[,1],eta1=z[,2],eta2=z[,3],gamma=3)
+    attr(gf,"mean_res_var") <- residual
+    gf
+  }
+  for (x_type in c("baseline","longitudinal")) for (automatic in list(2, NA_real_, NULL)){
+    supplied <- list(Y=factors(1,automatic),M=factors(2,automatic),P=factors(3,automatic))
+    local_mocked_bindings(getUNI.GF=function(dat_traj,...){
+      supplied[[substr(names(dat_traj)[1],1,1)]]
+    },.package="nlpsem")
+    args <- .med_cov_args(fixture$dat,x_type,"BLS")
+    roles <- if (x_type=="baseline") c("Y","M") else c("Y","M","X")
+    variances <- c(Y=10,M=13,X=18)[roles]
+    for (scale in list(NULL,rep(.1,length(roles)),rep(.9,length(roles)))){
+      args["res_scale"] <- list(scale)
+      starts <- suppressWarnings(do.call(nlpsem:::getMED.initial,args))
+      expected <- if (!is.null(scale)) variances*scale else if (isTRUE(automatic>0))
+        setNames(rep(automatic,length(roles)),roles) else variances*.1
+      expect_equal(vapply(starts[roles], `[[`, numeric(1), "residuals"),expected,tolerance=1e-10)
+    }
+  }
+})
+
 test_that("opposing mediation paths give correct and admissible linear starts", {
   fixture <- .med_cov_fixture()
   for (x_type in c("baseline", "longitudinal")){

@@ -31,6 +31,13 @@
   or fail because the full fitted vectors have a different length.
   Reported random-rate change means also retain the covariate-induced mean rate
   deviation, so the derived output agrees with the fitted model.
+* Intrinsic exponential and Jenss-Bayley growth-curve plots retain the fitted
+  expansion rate, expansion-point amplitude and covariate-induced rate deviation.
+  Their pointwise intervals propagate the joint uncertainty in those quantities,
+  including class-specific and TVC growth components.
+* Explicit mediation `res_scale` values take precedence over automatic residual
+  variance starts. The default `NULL` calculation, per-person NLS and SEM
+  optimizer are unchanged.
 * Rejects nonfinite simulation schedules and numeric covariate names that could
   overwrite existing data. Plotting preserves groups named `ID` and handles
   occasions with entirely missing outcomes when selecting the observed curve.

@@ -6,6 +6,15 @@ waves, and simulator truth metadata for shifted time origins. The per-person NLS
 method, SEM optimizer and retry controls, numerical reference values and comparison
 tolerances are preserved.
 
+The follow-up to merged revision 8519d00 repairs intrinsic EXP/JB LGCM plotting
+when covariates shift the mean rate, and restores explicit mediation `res_scale`
+precedence. Plot regressions compare the mean and numerical derivatives against
+the RAM expectation, including class-specific and TVC components, expansion-point
+amplitudes, and parent-model parameter covariance. Mediation regressions check
+per-process and per-class scales for linear and bilinear-spline starts, plus the
+unchanged `NULL` automatic estimate and fallback. Specified covariance matrices
+in derivative tests check propagation, not empirical interval coverage.
+
 ## Checks and retained evidence
 
 Use the workflow results for the commit being assessed. A configured workflow does not
