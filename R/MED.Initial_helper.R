@@ -96,15 +96,22 @@
 }
 
 getMED.initial <- function(dat, t_var, y_var, m_var, x_type, x_var, curveFun, records, res_scale, res_cor){
+  n_processes <- if (x_type == "baseline") 2L else 3L
+  if (!is.null(res_scale) && (!is.numeric(res_scale) || length(res_scale) != n_processes ||
+                             any(!is.finite(res_scale)) || any(res_scale <= 0 | res_scale >= 1))){
+    stop("res_scale must be NULL or contain ", n_processes,
+         " finite values between 0 and 1 (exclusive), in outcome, mediator",
+         if (x_type == "longitudinal") ", predictor" else "", " order.", call. = FALSE)
+  }
   # The residual covariances between the processes are started by the model builders (res_cor, default 0.3);
   # getMED.initial() does not use res_cor itself.
-  # Helper: use data-driven residual variance if available, otherwise fall back to heuristic
+  # Explicit scales take precedence; NULL retains the automatic estimate and fallback.
   .get_res_init <- function(gf, col_idx, scale){
     data_res_var <- attr(gf, "mean_res_var")
-    if (!is.null(data_res_var) && !is.na(data_res_var) && data_res_var > 0){
-      data_res_var
-    } else if (!is.null(scale)){
+    if (!is.null(scale)){
       var(gf[, col_idx], na.rm = TRUE) * scale
+    } else if (!is.null(data_res_var) && !is.na(data_res_var) && data_res_var > 0){
+      data_res_var
     } else{
       var(gf[, col_idx], na.rm = TRUE) * 0.1
     }

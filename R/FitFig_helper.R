@@ -50,14 +50,14 @@
 ## Distribution of the growth-factor means in the parameterisation used by the plot.
 ## Asking mxSE for their joint covariance retains correlations between means, rates,
 ## knots and covariate-adjusted means, including mediation reparameterisations.
-.plot_gf_distribution <- function(model, eval_model, eval_prefix, se_prefix, sub_Model, curveFun){
+.plot_gf_components <- function(eval_model, eval_prefix, se_prefix, sub_Model, curveFun){
   suffix <- if (sub_Model == "MED") "_mean" else "_mean0"
-  est <- c(mxEvalByName(paste0(eval_prefix, suffix), model = eval_model))
+  est <- c(mxEvalByName(paste0(eval_prefix, suffix), model = eval_model, compute = TRUE))
   base <- paste0(se_prefix, suffix)
   terms <- paste0(base, "[", seq_along(est), ",1]")
   if (sub_Model == "MED" && curveFun %in% c("bilinear spline", "BLS")){
     if (length(est) == 3L){
-      est <- c(est, c(mxEvalByName(paste0(eval_prefix, "_mug"), model = eval_model)))
+      est <- c(est, c(mxEvalByName(paste0(eval_prefix, "_mug"), model = eval_model, compute = TRUE)))
       terms <- c(terms, paste0(se_prefix, "_mug"))
     }
     terms <- c(paste0("(", terms[2], " - ", terms[1], " * ", terms[4], ")"), terms[c(1, 3, 4)])
@@ -66,13 +66,34 @@
     needed <- if (curveFun %in% c("negative exponential", "exponential", "EXP")) 3L else
       if (curveFun %in% c("Jenss-Bayley", "JB", "bilinear spline", "BLS")) 4L else length(est)
     if (length(est) < needed){
-      est <- c(est, c(mxEvalByName(paste0(eval_prefix, "_alpha0"), model = eval_model))[needed])
+      est <- c(est, c(mxEvalByName(paste0(eval_prefix, "_alpha0"), model = eval_model, compute = TRUE))[needed])
       terms <- c(terms, paste0(se_prefix, "_alpha0[", needed, ",1]"))
     }
   }
-  expression <- paste0("rbind(", paste(terms, collapse = ","), ")")
-  covariance <- mxSE(expression, model, details = TRUE, silent = TRUE)$Cov
-  list(est = est, cov = covariance)
+  intrinsic_rate <- curveFun %in% c("negative exponential", "exponential", "EXP", "Jenss-Bayley", "JB") &&
+    "deltag" %in% eval_model@latentVars
+  if (intrinsic_rate){
+    # The fitted loadings use the expansion rate and the unadjusted amplitude.
+    # The last latent mean is a deviation from that rate, not a new rate to
+    # substitute into the exponential. Keep all three quantities and their
+    # joint covariance, even when the mean deviation happens to be zero.
+    last <- length(est)
+    amplitude_source <- if (paste0(eval_prefix, "_alpha0") %in% names(eval_model@algebras)) "_alpha0" else "_mean0"
+    amplitude <- c(mxEvalByName(paste0(eval_prefix, amplitude_source), eval_model, compute = TRUE))[last - 1L]
+    center <- c(mxEvalByName(paste0(eval_prefix, "_mug"), eval_model, compute = TRUE))
+    est[last] <- est[last] - center
+    terms[last] <- paste0("(", terms[last], " - ", se_prefix, "_mug)")
+    est <- c(est, amplitude, center)
+    terms <- c(terms, paste0(se_prefix, amplitude_source, "[", last - 1L, ",1]"), paste0(se_prefix, "_mug"))
+  }
+  list(est = est, expression = paste0("rbind(", paste(terms, collapse = ","), ")"),
+       intrinsic_rate = intrinsic_rate)
+}
+
+.plot_gf_distribution <- function(model, eval_model, eval_prefix, se_prefix, sub_Model, curveFun){
+  out <- .plot_gf_components(eval_model, eval_prefix, se_prefix, sub_Model, curveFun)
+  out$cov <- mxSE(out$expression, model, details = TRUE, silent = TRUE)$Cov
+  out
 }
 
 ## Pointwise delta-method intervals. No display-range truncation is applied to bounds.
@@ -102,20 +123,50 @@
     gradient <- cbind(one, tt, tt^2)
     if (quantity == "rate") { estimate <- p[2] + 2 * p[3] * tt; gradient <- cbind(z, one, 2 * tt) }
   } else if (curveFun %in% c("negative exponential", "exponential", "EXP")){
-    ee <- exp(-p[3] * tt)
-    estimate <- p[1] + p[2] * (1 - ee)
-    gradient <- cbind(one, 1 - ee, p[2] * tt * ee)
-    if (quantity == "rate"){
-      estimate <- p[2] * p[3] * ee
-      gradient <- cbind(z, p[3] * ee, p[2] * ee * (1 - p[3] * tt))
+    if (isTRUE(distribution$intrinsic_rate)){
+      # p = adjusted intercept, adjusted amplitude, mean rate deviation,
+      #     expansion-point amplitude, expansion rate.
+      ee <- exp(-p[5] * tt)
+      estimate <- p[1] + p[2] * (1 - ee) + p[4] * p[3] * tt * ee
+      gradient <- cbind(one, 1 - ee, p[4] * tt * ee, p[3] * tt * ee,
+                        p[2] * tt * ee - p[4] * p[3] * tt^2 * ee)
+      if (quantity == "rate"){
+        estimate <- p[2] * p[5] * ee + p[4] * p[3] * ee * (1 - p[5] * tt)
+        gradient <- cbind(z, p[5] * ee, p[4] * ee * (1 - p[5] * tt),
+                          p[3] * ee * (1 - p[5] * tt),
+                          p[2] * ee * (1 - p[5] * tt) + p[4] * p[3] * tt * ee * (p[5] * tt - 2))
+      }
+    } else{
+      ee <- exp(-p[3] * tt)
+      estimate <- p[1] + p[2] * (1 - ee)
+      gradient <- cbind(one, 1 - ee, p[2] * tt * ee)
+      if (quantity == "rate"){
+        estimate <- p[2] * p[3] * ee
+        gradient <- cbind(z, p[3] * ee, p[2] * ee * (1 - p[3] * tt))
+      }
     }
   } else if (curveFun %in% c("Jenss-Bayley", "JB")){
-    ee <- exp(p[4] * tt)
-    estimate <- p[1] + p[2] * tt + p[3] * (ee - 1)
-    gradient <- cbind(one, tt, ee - 1, p[3] * tt * ee)
-    if (quantity == "rate"){
-      estimate <- p[2] + p[3] * p[4] * ee
-      gradient <- cbind(z, one, p[4] * ee, p[3] * ee * (1 + p[4] * tt))
+    if (isTRUE(distribution$intrinsic_rate)){
+      # p = adjusted intercept, slope, amplitude, mean rate deviation,
+      #     expansion-point amplitude, expansion rate.
+      ee <- exp(p[6] * tt)
+      estimate <- p[1] + p[2] * tt + p[3] * (ee - 1) + p[5] * p[4] * tt * ee
+      gradient <- cbind(one, tt, ee - 1, p[5] * tt * ee, p[4] * tt * ee,
+                        p[3] * tt * ee + p[5] * p[4] * tt^2 * ee)
+      if (quantity == "rate"){
+        estimate <- p[2] + p[3] * p[6] * ee + p[5] * p[4] * ee * (1 + p[6] * tt)
+        gradient <- cbind(z, one, p[6] * ee, p[5] * ee * (1 + p[6] * tt),
+                          p[4] * ee * (1 + p[6] * tt),
+                          p[3] * ee * (1 + p[6] * tt) + p[5] * p[4] * tt * ee * (2 + p[6] * tt))
+      }
+    } else{
+      ee <- exp(p[4] * tt)
+      estimate <- p[1] + p[2] * tt + p[3] * (ee - 1)
+      gradient <- cbind(one, tt, ee - 1, p[3] * tt * ee)
+      if (quantity == "rate"){
+        estimate <- p[2] + p[3] * p[4] * ee
+        gradient <- cbind(z, one, p[4] * ee, p[3] * ee * (1 + p[4] * tt))
+      }
     }
   } else if (curveFun %in% c("bilinear spline", "BLS")){
     after <- tt > p[4]
@@ -269,15 +320,15 @@
 
 .trajectory_plot_data <- function(model, eval_model, eval_prefix, se_prefix, sub_Model, curveFun, y_model, times,
                                   baseline_time = 0, records = NULL, raw_y_var = NULL){
-  if (y_model == "LGCM"){
-    distribution <- .plot_gf_distribution(model, eval_model, eval_prefix, se_prefix, sub_Model, curveFun)
-    status <- .plot_curve_delta(distribution, times, curveFun, "status")
-    return(data.frame(time = times, Y_hat = status$est, Y_hat_u = status$upper, Y_hat_l = status$lower))
-  }
   # Mixture submodels inherit data from the parent. Supply those data only to
   # this evaluation copy; uncertainty still uses the parent fitted covariance.
   if (!length(eval_model@data) && length(model@data)){
     eval_model <- mxModel(eval_model, mxData(model@data$observed, type = "raw"))
+  }
+  if (y_model == "LGCM"){
+    distribution <- .plot_gf_distribution(model, eval_model, eval_prefix, se_prefix, sub_Model, curveFun)
+    status <- .plot_curve_delta(distribution, times, curveFun, "status")
+    return(data.frame(time = times, Y_hat = status$est, Y_hat_u = status$upper, Y_hat_l = status$lower))
   }
   components <- .lcsm_plot_components(eval_model, eval_prefix, se_prefix, curveFun, sub_Model)
   n <- length(components$est)
