@@ -57,6 +57,19 @@ test_that("explicit mediation residual scales override automatic estimates for e
   }
 })
 
+test_that("mediation rejects malformed scale vectors before individual fits", {
+  local_mocked_bindings(getUNI.GF = function(...) stop("individual fitting was reached"), .package = "nlpsem")
+  for (x_type in c("baseline", "longitudinal")){
+    n <- if (x_type == "baseline") 2L else 3L
+    args <- .med_cov_args(.med_cov_fixture()$dat, x_type)
+    for (scale in list(numeric(), .1, rep(.1, n-1L), rep(.1, n+1L), rep(NA_real_,n),
+                       rep(Inf,n), rep(".1",n), rep(0,n), rep(1,n))){
+      args["res_scale"] <- list(scale)
+      expect_error(do.call(nlpsem:::getMED.initial,args),paste0("res_scale must be NULL or contain ",n))
+    }
+  }
+})
+
 test_that("group and mixture mediation preserve class-specific residual scales", {
   dat <- .med_cov_fixture()$dat
   for (x_type in c("baseline", "longitudinal")){

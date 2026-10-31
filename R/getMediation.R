@@ -23,6 +23,9 @@
 #' the residual variance. These values should be between \code{0} and \code{1}, exclusive. Default is \code{NULL}, in which case
 #' data-driven residual variance estimation is used. If data-driven estimation fails, a heuristic of \code{0.1} is applied as
 #' fallback.
+#' Supply two values for a baseline predictor (outcome, mediator), or three for a longitudinal predictor
+#' (outcome, mediator, predictor). Each scale multiplies the corresponding individual intercept variance
+#' for a linear model, or knot-level variance for a bilinear spline model.
 #' @param res_cor An optional numeric value or vector for user-specified residual correlation between any two longitudinal processes
 #' to calculate the corresponding initial value. Default is \code{NULL}, in which case the residual correlations start at
 #' \code{0.3}.
