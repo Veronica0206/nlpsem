@@ -98,6 +98,7 @@ test_that("mediation trajectories are built from the role-named growth factors a
 })
 
 test_that("output helpers reproduce the shipped estimate tables at full precision", {
+  skip_on_cran()   # standard errors of derived quantities for 14 shipped fits (about 14 s)
   eL <- .load_extdata("getLGCM_examples.RData")
   eC <- .load_extdata("getLCSM_examples.RData")
   eT <- .load_extdata("getTVCmodel_examples.RData")
@@ -147,8 +148,6 @@ test_that("automatic parameter names match the shipped estimate tables", {
   eT <- .load_extdata("getTVCmodel_examples.RData")
   eG <- .load_extdata("getMGM_examples.RData")
   eD <- .load_extdata("getMediation_examples.RData")
-  eR <- .load_extdata("getMGroup_examples.RData")
-  eM <- .load_extdata("getMIX_examples.RData")
 
   expect_equal(nlpsem:::.auto_names_LGCM("bilinear spline", TRUE, c("ex1", "ex2")), eL$Math_LGCM_TIC_BLS_f@Estimates$Name)
   expect_equal(nlpsem:::.auto_names_LCSM("nonparametric", FALSE, NULL, 9), eC$Read_LCSM_NonP@Estimates$Name)
@@ -162,6 +161,12 @@ test_that("automatic parameter names match the shipped estimate tables", {
   expect_equal(nlpsem:::.auto_names_MGM("BLS", TRUE, c("R", "M"), list(1:9, 1:9), "LGCM"), eG$RM_PLGCM.f@Estimates$Name)
   expect_equal(nlpsem:::.auto_names_MED("bilinear spline", "baseline", "ex1", "R", "M"), eD$Med2_LGCM_BLS@Estimates$Name)
   expect_equal(nlpsem:::.auto_names_MED("bilinear spline", "longitudinal", "R", "M", "S"), eD$Med3_LGCM_BLS@Estimates$Name)
+})
+
+test_that("class-specific output helpers reproduce the shipped estimate tables", {
+  skip_on_cran()   # standard errors of derived class-specific quantities (about 5 s)
+  eR <- .load_extdata("getMGroup_examples.RData")
+  eM <- .load_extdata("getMIX_examples.RData")
 
   # Class-specific fits: the auto names feed the output helpers, which add class prefixes
   # (and the cluster-TIC coefficients for mixture models).
@@ -190,7 +195,7 @@ test_that("automatic parameter names match the shipped estimate tables", {
   }
 })
 
-test_that("getIndFS reduces the data to the model variables and keeps regression scores unchanged", {
+test_that("getIndFS reduces the data to the model variables", {
   eL <- .load_extdata("getLGCM_examples.RData")
   m <- eL$Math_LGCM_BLS_r@mxOutput
   used <- intersect(nlpsem:::.model_variables(m), colnames(m$data$observed))
@@ -198,7 +203,12 @@ test_that("getIndFS reduces the data to the model variables and keeps regression
   prepared <- nlpsem:::.prepare_FS_model(m)
   expect_false(grepl("[^A-Za-z0-9_]", prepared@name))
   expect_setequal(colnames(prepared$data$observed), used)
+})
 
+test_that("getIndFS keeps regression scores unchanged by the data reduction", {
+  skip_on_cran()   # regression scores for 500 persons take about 30 s
+  eL <- .load_extdata("getLGCM_examples.RData")
+  m <- eL$Math_LGCM_BLS_r@mxOutput
   fs <- suppressMessages(getIndFS(m, FS_type = "Regression"))
   expect_s4_class(fs, "FSOutput")
   expect_equal(dim(fs@scores_est), c(500, 3))

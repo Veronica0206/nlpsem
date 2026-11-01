@@ -36,6 +36,7 @@
 }
 
 test_that("mediation residuals match wave IDs independently of order and prefixes", {
+  skip_on_cran()   # builds 72 mediation configurations (about 4 s)
   schedules <- list(ordered = rep(list(1:4), 3),
                     permuted = list(1:4, 4:1, c(3, 1, 4, 2)),
                     overlap = list(c(1, 3, 5), c(5, 3, 4), c(2, 5, 3)))

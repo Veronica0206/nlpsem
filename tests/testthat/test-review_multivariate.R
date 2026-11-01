@@ -67,6 +67,7 @@ test_that("EXP covariance starts retain every outcome in all model containers", 
 })
 
 test_that("unequal multivariate wave counts retain independent derived quantities", {
+  skip_on_cran()   # builds 18 multivariate configurations across three containers (about 6 s)
   for (curve in c("QUAD", "JB")) {
     for (intrinsic in if (curve == "QUAD") FALSE else c(FALSE, TRUE)) {
       for (container in c("single", "multigroup", "mixture")) for (unequal in c(FALSE, TRUE)) {
