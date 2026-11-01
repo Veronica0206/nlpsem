@@ -79,6 +79,7 @@ test_that("direct and decomposed TVC growth curves retain covariate-induced rate
 })
 
 test_that("LGCM plot uncertainty agrees with numerical RAM derivatives including parent covariance", {
+  skip_on_cran()   # numerical RAM Jacobians over four configurations take about 6 s
   for (curve in c("EXP", "JB")) for (group in c(FALSE, TRUE)){
     case <- .lgcm_plot_case(curve)
     if (group){

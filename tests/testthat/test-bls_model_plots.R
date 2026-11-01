@@ -87,6 +87,7 @@ test_that("BLS TVC components follow RAM in all decompositions with and without 
 })
 
 test_that("BLS covariance propagation follows numerical RAM derivatives in parent models", {
+  skip_on_cran()   # numerical RAM Jacobians over seven containers take about 20 s
   for (container in c("single", "multigroup", "mixture", paste0("TVC", 0:3))){
     case <- if (startsWith(container, "TVC")) .bls_tvc_case(as.integer(sub("TVC", "", container)), TRUE) else .bls_plot_case()
     grouped <- container %in% c("multigroup", "mixture")

@@ -24,6 +24,7 @@
 }
 
 test_that("the parameter map reproduces the likelihood exactly for every kind of label", {
+  skip_on_cran()   # builds and evaluates 13 configurations (about 9 s)
   # Building without fitting: the optimizer calls return the model they are given.
   local_mocked_bindings(mxRun = function(model, ...) model, mxTryHard = function(model, ...) model, .package = "nlpsem")
   dat <- .with_class_like_names(.golden_data(n = 200))

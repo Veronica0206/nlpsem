@@ -99,6 +99,7 @@ test_that("getMGroup gives the same fit for any coding of the grouping variable"
 })
 
 test_that("starts tolerate persons with too few observations", {
+  skip_on_cran()   # per-person starts for every functional form on the full data (about 5 s)
   dat <- .rebaseline_full()
   dat[1, paste0("M", 1:9)] <- NA   # no observation at all
   dat[2, paste0("M", 2:9)] <- NA   # one observation

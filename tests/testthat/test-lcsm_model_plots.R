@@ -107,6 +107,7 @@ test_that("class-specific fitted recurrences retain their own grid and rate shif
 })
 
 test_that("public LCSM subsets preserve endpoints, baseline and joint contrast uncertainty", {
+  skip_on_cran()   # 24 public subsets with joint contrast standard errors (about 4 s)
   e <- .load_extdata("getLCSM_examples.RData")
   cases <- c(NonP="Read_LCSM_NonP", QUAD="Read_LCSM_QUAD", EXP="Read_LCSM_EXP_r", JB="Read_LCSM_JB_r")
   for (curve in names(cases)){

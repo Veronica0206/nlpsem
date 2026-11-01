@@ -108,6 +108,7 @@ test_that("nonparametric rate intervals include uncertainty in estimated relativ
 })
 
 test_that("TVC, multivariate and mediation curves propagate their joint covariance", {
+  skip_on_cran()   # numerical RAM Jacobians of the stored TVC, multivariate and mediation fits take about 15 s
   tvc <- .load_extdata("getTVCmodel_examples.RData")$Math_TVCslp_BLS_f@mxOutput
   knot <- c(OpenMx::mxEvalByName("Y_mean0",tvc))[4]
   tt <- knot + 1
@@ -126,6 +127,7 @@ test_that("TVC, multivariate and mediation curves propagate their joint covarian
 })
 
 test_that("multiple-group and mixture curves use the parent fitted covariance", {
+  skip_on_cran()   # numerical RAM Jacobians of the stored group and mixture fits take about 9 s
   cases <- list(
     .load_extdata("getMGroup_examples.RData")$MGroup_Math_BLS_LGCM_f@mxOutput,
     .load_extdata("getMIX_examples.RData")$Math_BLS_LGCM3@mxOutput

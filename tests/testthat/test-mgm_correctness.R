@@ -108,6 +108,7 @@ test_that("MGM residual starts align common record IDs instead of column positio
 })
 
 test_that("class-specific NonP MGM parameter tables contain correctly labeled estimates and SEs", {
+  skip_on_cran()   # fits a multiple-group and a mixture nonparametric MGM (about 10 s)
   .mgm_test_optimizer({
     dat <- .mgm_correctness_data()
     fits <- list(group = suppressMessages(getMGroup(dat, "group", "MGM", rep("T", 2),
