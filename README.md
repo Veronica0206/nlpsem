@@ -54,7 +54,7 @@ getSpecification(fit)$specification
 plot(fit, draw = FALSE)
 ```
 
-The [V1.0.0 validation record](.github/VALIDATION-1.0.0.md) separates completed
+The [V1.0.0 validation record](https://github.com/Veronica0206/nlpsem/blob/main/.github/VALIDATION-1.0.0.md) separates completed
 checks from the limits of numerical qualification. The fitting-layer reference values
 were regenerated with 1.0.0.9006; each fit is compared with its reference only after
 it passes the `getDiagnostics()` checks (see `NEWS.md`). The saved examples were
